@@ -1,0 +1,386 @@
+/* ── Reset & variables ─────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --border: #e5e5e3;
+  --text: #1a1a1a;
+  --muted: #888;
+  --accent: #c0392b;
+  --accent-hv: #a93226;
+  --radius: 8px;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  --header-h: 64px;
+}
+
+body {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Capçalera ─────────────────────────────────────────────── */
+header {
+  height: var(--header-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 1.5rem;
+  flex-shrink: 0;
+}
+header h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+header .subtitle {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* ── Layout de 3 columnes ──────────────────────────────────── */
+main {
+  display: grid;
+  grid-template-columns: 280px 1fr 300px;
+  flex: 1;
+  overflow: hidden;
+}
+
+main > section {
+  overflow-y: auto;
+  padding: 1.25rem;
+  border-right: 1px solid var(--border);
+}
+main > section:last-child {
+  border-right: none;
+}
+
+/* ── Toolbar (cerca + ordre) ───────────────────────────────── */
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+input[type="text"],
+select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+input[type="text"]:focus,
+select:focus {
+  border-color: var(--accent);
+}
+
+/* ── Llista de cançons ─────────────────────────────────────── */
+#song-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+#song-list li {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+#song-list li:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+}
+#song-list li.active {
+  border-color: var(--accent);
+  background: #fdf4f3;
+}
+#song-list li .song-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+#song-list li .song-info {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+#song-list li .song-key {
+  float: right;
+  font-size: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: monospace;
+}
+
+/* ── Detall de cançó ───────────────────────────────────────── */
+#panel-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+#detail-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+#detail-meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+
+.transpose-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 120px;
+}
+.transpose-control label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.transpose-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.transpose-buttons button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: background 0.15s;
+}
+.transpose-buttons button:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+#transpose-value {
+  font-size: 1rem;
+  font-weight: 600;
+  min-width: 24px;
+  text-align: center;
+}
+#display-key {
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-weight: 600;
+  font-family: monospace;
+}
+
+#detail-body {
+  flex: 1;
+  font-family: "Courier New", monospace;
+  font-size: 0.9rem;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+ch {
+  position: relative;
+  display: inline-block;
+  top: -12pt;
+  width: 0;
+  height: 25pt;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* ── Panell cançoner ───────────────────────────────────────── */
+#panel-canconer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+#panel-canconer h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.canconer-title-wrap input {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+#canconer-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+#canconer-list li {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+#canconer-list li .c-num {
+  color: var(--muted);
+  min-width: 1.2rem;
+  font-size: 0.75rem;
+}
+#canconer-list li .c-info {
+  flex: 1;
+}
+#canconer-list li .c-title {
+  font-weight: 600;
+}
+#canconer-list li .c-artist {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+#canconer-list li .c-key {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: var(--accent);
+}
+#canconer-list li .c-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 1rem;
+  padding: 0 0.2rem;
+  transition: color 0.15s;
+}
+#canconer-list li .c-remove:hover {
+  color: var(--accent);
+}
+
+/* Drag & drop */
+#canconer-list li {
+  cursor: grab;
+}
+#canconer-list li.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+#canconer-list li.drag-over {
+  border-color: var(--accent);
+  border-style: dashed;
+}
+
+/* ── Botons ────────────────────────────────────────────────── */
+.btn-primary {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hv);
+}
+.btn-primary:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* ── Estat buit ────────────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--muted);
+  padding: 3rem 1rem;
+  text-align: center;
+}
+.empty-state span {
+  font-size: 2.5rem;
+}
+
+/* ── Modal ─────────────────────────────────────────────────── */
+#modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+#modal[hidden] {
+  display: none;
+}
+
+#modal-box {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  width: min(700px, 95vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 2rem;
+  position: relative;
+}
+#modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--muted);
+}
+#modal-close:hover {
+  color: var(--text);
+}

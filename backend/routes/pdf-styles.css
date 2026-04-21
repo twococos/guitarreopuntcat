@@ -1,0 +1,85 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: "Georgia", serif;
+  color: #222;
+}
+
+/* ── Portada ── */
+.cover {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  page-break-after: always;
+}
+.cover h1 {
+  font-size: 2.8rem;
+  margin-bottom: 1rem;
+}
+.cover p {
+  font-size: 1rem;
+  color: #666;
+}
+
+/* ── Índex ── */
+.toc {
+  page-break-after: always;
+  padding-top: 2rem;
+}
+.toc h2 {
+  font-size: 1.6rem;
+  margin-bottom: 1.5rem;
+}
+.toc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.toc td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #eee;
+}
+.toc td:first-child {
+  width: 2rem;
+  color: #999;
+}
+.toc td:last-child {
+  width: 4rem;
+  text-align: right;
+  color: #555;
+}
+
+/* ── Cançons ── */
+.song-page {
+  page-break-before: always;
+}
+.song-title {
+  font-size: 1.8rem;
+  margin-bottom: 0.3rem;
+}
+.song-meta {
+  font-size: 0.85rem;
+  color: #777;
+  margin-bottom: 1.5rem;
+}
+.song-content {
+  font-family: "Courier New", monospace;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+ch {
+  position: relative;
+  display: inline-block;
+  top: -12pt;
+  width: 0;
+  height: 25pt;
+  font-weight: bold;
+  color: #c0392b;
+}

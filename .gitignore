@@ -1,0 +1,17 @@
+# Dependències
+node_modules/
+package-lock.json
+
+# Base de dades
+*.db
+*.sqlite
+*.sqlite3
+
+# Variables d'entorn
+.env
+.env.local
+
+# Altres
+.DS_Store
+.vscode/
+.idea/

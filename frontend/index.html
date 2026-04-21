@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cançoner</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Capçalera ───────────────────────────────────────────── -->
+  <header>
+    <h1>🎵 Cançoner</h1>
+    <p class="subtitle">Tria les cançons, transposa-les i genera el teu PDF</p>
+  </header>
+
+  <main>
+
+    <!-- ── Panell esquerre: llista de cançons ──────────────────── -->
+    <section id="panel-songs">
+
+      <div class="toolbar">
+        <input type="text" id="search" placeholder="Cerca per títol o artista…" />
+        <select id="sort">
+          <option value="title">Ordenar per títol</option>
+          <option value="artist">Ordenar per artista</option>
+          <option value="key">Ordenar per to</option>
+        </select>
+      </div>
+
+      <ul id="song-list">
+        <!-- omplert per JS -->
+      </ul>
+
+    </section>
+
+    <!-- ── Panell central: detall de la cançó ──────────────────── -->
+    <section id="panel-detail">
+      <div id="detail-empty" class="empty-state">
+        <span>👈</span>
+        <p>Selecciona una cançó per veure-la</p>
+      </div>
+      <div id="detail-content" hidden>
+        <div class="detail-header">
+          <div>
+            <h2 id="detail-title"></h2>
+            <p id="detail-meta"></p>
+          </div>
+          <div class="transpose-control">
+            <label>Transposició</label>
+            <div class="transpose-buttons">
+              <button id="btn-down">−</button>
+              <span id="transpose-value">0</span>
+              <button id="btn-up">+</button>
+            </div>
+            <small id="display-key"></small>
+          </div>
+        </div>
+        <div id="detail-body"></div>
+        <button id="btn-add-to-canconer" class="btn-primary">
+          + Afegir al cançoner
+        </button>
+      </div>
+    </section>
+
+    <!-- ── Panell dret: cançoner seleccionat ───────────────────── -->
+    <section id="panel-canconer">
+      <h2>El meu cançoner</h2>
+
+      <div class="canconer-title-wrap">
+        <input type="text" id="canconer-title" placeholder="Títol del cançoner…" value="El meu cançoner" />
+      </div>
+
+      <ul id="canconer-list">
+        <!-- omplert per JS -->
+      </ul>
+
+      <div id="canconer-empty" class="empty-state">
+        <span>🎶</span>
+        <p>Encara no has afegit cap cançó</p>
+      </div>
+
+      <button id="btn-generate" class="btn-primary" disabled>
+        📄 Generar PDF
+      </button>
+    </section>
+
+  </main>
+
+  <!-- ── Modal: vista d'impressió ────────────────────────────── -->
+  <div id="modal" hidden>
+    <div id="modal-box">
+      <button id="modal-close">✕</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
