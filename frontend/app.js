@@ -9,30 +9,7 @@ const state = {
 
 /* ── Helpers ───────────────────────────────────────────────── */
 const API = (path, opts) => fetch(`/api${path}`, opts).then((r) => r.json())
-
-const CHROMATIC = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-const FLAT_MAP = { Db: "C#", Eb: "D#", Fb: "E", Gb: "F#", Ab: "G#", Bb: "A#", Cb: "B" }
-const CHORD_RE = /\b([A-G][b#]?)((?:m|maj|min|dim|aug|sus[24]?|add\d+|\d+)*)(\/[A-G][b#]?)?\b/g
-
-function transposeNote(n, s) {
-  const norm = FLAT_MAP[n] || n
-  const i = CHROMATIC.indexOf(norm)
-  return i === -1 ? n : CHROMATIC[(i + s + 12) % 12]
-}
-function transposeChord(ch, s) {
-  return ch.replace(/[A-G][b#]?/g, (n) => transposeNote(n, s))
-}
-function transposeHTML(html, s) {
-  if (s === 0) return html
-  return html.replace(
-    /(<ch>)([^<]+)(<\/ch>)/g,
-    (_, o, ch, c) => `${o}${transposeChord(ch.trim(), s)}${c}`,
-  )
-}
-function transposeKey(key, s) {
-  if (s === 0) return key
-  return key.replace(/[A-G][b#]?/g, (n) => transposeNote(n, s))
-}
+const { transposeContent, transposeKey } = Transpose
 
 /* ── Càrrega inicial ───────────────────────────────────────── */
 async function loadSongs() {
@@ -88,7 +65,7 @@ function renderDetail() {
     (state.semitones >= 0 ? "+" : "") + state.semitones
   document.getElementById("display-key").textContent = `→ ${transposeKey(s.key, state.semitones)}`
 
-  document.getElementById("detail-body").innerHTML = transposeHTML(s.content, state.semitones)
+  document.getElementById("detail-body").innerHTML = transposeContent(s.content, state.semitones)
 
   // Botó afegir: canvia si ja és al cançoner
   const alreadyIn = state.canconer.some((e) => e.song.id === s.id)

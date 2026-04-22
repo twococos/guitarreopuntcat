@@ -3,7 +3,7 @@ const router = express.Router()
 const fs = require("fs")
 const puppeteer = require("puppeteer")
 const db = require("../db")
-const { transposeContent } = require("../transpose")
+const { transposeContent, transposeKey } = require("../../shared/transpose")
 
 // POST /api/pdf/generate
 // Body: { title, songs: [{ id, semitones }], order: [ids] }
@@ -52,14 +52,6 @@ router.post("/generate", async (req, res) => {
     if (browser) await browser.close()
   }
 })
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function transposeKey(key, semitones) {
-  const { transposeContent } = require("../transpose")
-  // Reutilitzem el motor de transposició per al to
-  return transposeContent(key, semitones)
-}
 
 function buildHTML(title, songs) {
   const pdfStylesSong = fs.readFileSync("frontend/song.css", "utf8")
