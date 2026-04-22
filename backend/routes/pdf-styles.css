@@ -74,12 +74,3 @@ body {
   line-height: 1.7;
   white-space: pre-wrap;
 }
-ch {
-  position: relative;
-  display: inline-block;
-  top: -12pt;
-  width: 0;
-  height: 25pt;
-  font-weight: bold;
-  color: #c0392b;
-}

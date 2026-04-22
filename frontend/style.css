@@ -50,6 +50,22 @@ header .subtitle {
   color: var(--muted);
 }
 
+.btn-new-song {
+  margin-left: auto;
+  padding: 0.4rem 0.9rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.btn-new-song:hover {
+  background: var(--accent-hv);
+}
+
 /* ── Layout de 3 columnes ──────────────────────────────────── */
 main {
   display: grid;
@@ -219,15 +235,6 @@ select:focus {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1.25rem;
-}
-ch {
-  position: relative;
-  display: inline-block;
-  top: -12pt;
-  width: 0;
-  height: 25pt;
-  font-weight: 700;
-  color: var(--accent);
 }
 
 /* ── Panell cançoner ───────────────────────────────────────── */

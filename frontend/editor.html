@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ca">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Editor de cançons — Cançoner</title>
+    <link rel="stylesheet" href="song.css" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="editor.css" />
+  </head>
+  <body>
+    <header>
+      <a href="/" class="back-link">← Cançoner</a>
+      <h1>✏️ Nova cançó</h1>
+      <p class="subtitle">Escriu la lletra, clic dret per inserir acords</p>
+    </header>
+
+    <div id="editor-layout">
+      <!-- ── Columna esquerra: metadades ───────────────────────── -->
+      <aside id="meta-panel">
+        <h2>Metadades</h2>
+
+        <label
+          >Títol <span class="required">*</span>
+          <input type="text" id="meta-title" placeholder="El nom de la cançó" />
+        </label>
+
+        <label
+          >Artista <span class="required">*</span>
+          <input type="text" id="meta-artist" placeholder="Autor o grup" />
+        </label>
+
+        <label
+          >To original <span class="required">*</span>
+          <select id="meta-key"></select>
+        </label>
+
+        <label
+          >Cejilla
+          <input type="number" id="meta-capo" min="0" max="11" value="0" />
+        </label>
+
+        <label
+          >Idioma
+          <select id="meta-language">
+            <option value="ca">Català</option>
+            <option value="es">Castellà</option>
+            <option value="en">Anglès</option>
+            <option value="other">Altre</option>
+          </select>
+        </label>
+
+        <label
+          >Etiquetes
+          <input type="text" id="meta-tags" placeholder="pop, rock, tradicional…" />
+          <small>Separades per comes</small>
+        </label>
+
+        <hr />
+
+        <h2>Acords del to</h2>
+        <p class="hint">
+          Clic dret a l'editor per inserir-ne un.<br />Aquí tens una referència ràpida:
+        </p>
+        <div id="chord-palette"></div>
+
+        <hr />
+
+        <button id="btn-save" class="btn-primary">💾 Guardar cançó</button>
+        <p id="save-status"></p>
+      </aside>
+
+      <!-- ── Columna central: editor ───────────────────────────── -->
+      <section id="editor-section">
+        <div id="editor-toolbar">
+          <button data-action="sec" title="Inserir títol de secció">§ Secció</button>
+          <button data-action="ch" title="Inserir acord buit">♩ Acord</button>
+          <span class="toolbar-sep"></span>
+          <button data-action="undo" title="Desfer">↩ Desfer</button>
+          <button data-action="redo" title="Refer">↪ Refer</button>
+          <span class="toolbar-sep"></span>
+          <label class="toolbar-toggle">
+            <input type="checkbox" id="toggle-preview" />
+            Vista prèvia
+          </label>
+        </div>
+
+        <!-- Editor de text pla amb resaltat sintàctic -->
+        <div id="editor-wrap">
+          <textarea
+            id="editor"
+            spellcheck="false"
+            placeholder="Escriu aquí la lletra de la cançó.
+Clic dret per inserir acords.
+
+Exemple:
+<sec> Estrofa 1 </sec>
+<ch>Am</ch> En un lloc de la <ch>F</ch> Manxa..."
+          ></textarea>
+          <div id="editor-highlight" aria-hidden="true"></div>
+        </div>
+
+        <!-- Vista prèvia -->
+        <div id="preview-panel" hidden>
+          <h3>Vista prèvia</h3>
+          <div id="preview-body"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ── Menú contextual d'acords ──────────────────────────── -->
+    <div id="chord-menu" hidden>
+      <div id="chord-menu-header">Inserir acord</div>
+      <div id="chord-menu-groups"></div>
+    </div>
+
+    <script src="editor.js"></script>
+  </body>
+</html>

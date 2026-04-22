@@ -1,0 +1,37 @@
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --border: #e5e5e3;
+  --text: #1a1a1a;
+  --muted: #888;
+  --accent: #c0392b;
+  --accent-hv: #a93226;
+  --radius: 8px;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  --header-h: 64px;
+}
+
+ch {
+  position: relative;
+  display: inline-block;
+  top: -12pt;
+  width: 0;
+  height: 0pt;
+  margin-top: 5pt;
+  font-weight: 1000;
+  color: var(--accent);
+}
+
+sec {
+  font-weight: 1000;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+sec::before {
+  content: "— ";
+}
+
+sec::after {
+  content: " —";
+}

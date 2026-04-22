@@ -62,7 +62,8 @@ function transposeKey(key, semitones) {
 }
 
 function buildHTML(title, songs) {
-  const pdfStyles = fs.readFileSync(__dirname + "/pdf-styles.css", "utf8")
+  const pdfStylesSong = fs.readFileSync("frontend/song.css", "utf8")
+  const pdfStylesBook = fs.readFileSync(__dirname + "/pdf-styles.css", "utf8")
   const toc = songs
     .map(
       (s, i) =>
@@ -87,7 +88,8 @@ function buildHTML(title, songs) {
 <head>
 <meta charset="UTF-8">
 <style>
-${pdfStyles}
+${pdfStylesSong}
+${pdfStylesBook}
 </style>
 </head>
 <body>
