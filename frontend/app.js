@@ -100,11 +100,13 @@ function renderCanconer() {
   const ul = document.getElementById("canconer-list")
   const empty = document.getElementById("canconer-empty")
   const btn = document.getElementById("btn-generate")
+  const savedBtn = document.getElementById("btn-save-canconer")
 
   ul.innerHTML = ""
   const hasItems = state.canconer.length > 0
   empty.hidden = hasItems
   btn.disabled = !hasItems
+  savedBtn.disabled = !hasItems
 
   state.canconer.forEach(({ song, semitones }, i) => {
     const displayKey = transposeKey(song.key, semitones)
@@ -190,5 +192,51 @@ document.getElementById("search").addEventListener("input", () => {
 })
 document.getElementById("sort").addEventListener("change", loadSongs)
 
+/* ── Guardar cançoner ──────────────────────────────────────── */
+document.getElementById("btn-save-canconer").addEventListener("click", async () => {
+  if (!Auth.isLoggedIn()) {
+    if (!confirm("Has d'iniciar sessió per guardar el cançoner. Vols fer-ho ara?")) return
+    Auth.login()
+    return
+  }
+  // ... (el codi de generació de PDF ja existeix a dalt)
+})
+
+async function saveCanconer() {
+  if (!Auth.isLoggedIn()) {
+    Auth.login()
+    return
+  }
+  const payload = {
+    title: document.getElementById("canconer-title").value || "El meu cançoner",
+    songs: state.canconer.map(({ song, semitones }) => ({ id: song.id, semitones })),
+    id: state.savedCanconerId || undefined,
+  }
+  const res = await Auth.apiFetch("/canconers", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+  if (res.ok) {
+    const { id } = await res.json()
+    state.savedCanconerId = id
+    showToast("Cançoner guardat!")
+  } else {
+    showToast("Error guardant el cançoner", true)
+  }
+}
+
+function showToast(msg, isError = false) {
+  const t = document.createElement("div")
+  t.className = `toast${isError ? " toast-error" : ""}`
+  t.textContent = msg
+  document.body.appendChild(t)
+  setTimeout(() => t.remove(), 3000)
+}
+
 /* ── Arrencada ─────────────────────────────────────────────── */
-loadSongs()
+;(async () => {
+  Auth.captureTokenFromURL()
+  await Auth.loadUser()
+  Auth.renderUserWidget("user-widget")
+  loadSongs()
+})()
