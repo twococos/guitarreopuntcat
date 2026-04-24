@@ -1,0 +1,80 @@
+body { overflow: auto; }
+
+#shared-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - var(--header-h));
+}
+
+/* ── Índex ─────────────────────────────────────────────────── */
+#shared-nav {
+  border-right: 1px solid var(--border);
+  padding: 1.25rem;
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  height: calc(100vh - var(--header-h));
+  overflow-y: auto;
+}
+#shared-nav h2 {
+  font-size: .8rem; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted);
+  margin-bottom: .85rem;
+}
+#shared-index {
+  list-style: none;
+  display: flex; flex-direction: column; gap: .25rem;
+  counter-reset: idx;
+  padding: 0;
+}
+#shared-index li { counter-increment: idx; }
+#shared-index a {
+  display: flex; align-items: baseline; gap: .4rem;
+  font-size: .82rem; text-decoration: none; color: var(--text);
+  padding: .3rem .5rem; border-radius: 4px;
+  transition: background .12s, color .12s;
+}
+#shared-index a::before {
+  content: counter(idx) ".";
+  color: var(--muted); font-size: .72rem; min-width: 1.2rem;
+}
+#shared-index a:hover { background: var(--bg); color: var(--accent); }
+#shared-index a.active { color: var(--accent); font-weight: 600; }
+
+/* ── Cançons ───────────────────────────────────────────────── */
+#shared-songs {
+  padding: 2rem 2.5rem;
+  display: flex; flex-direction: column; gap: 3.5rem;
+  max-width: 720px;
+}
+
+.song-card { scroll-margin-top: 1.5rem; }
+.song-card-header {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: .6rem;
+  margin-bottom: 1rem;
+  display: flex; align-items: baseline;
+  justify-content: space-between; gap: 1rem;
+}
+.song-card-header h2 { font-size: 1.3rem; font-weight: 700; }
+.song-card-meta { font-size: .82rem; color: var(--muted); }
+.song-card-key  {
+  font-family: monospace; font-size: .85rem;
+  color: var(--accent); font-weight: 700;
+  background: #fdf4f3; border: 1px solid #f0c8c4;
+  border-radius: 4px; padding: 2px 8px;
+}
+
+.song-card-body {
+  font-family: 'Courier New', monospace;
+  font-size: .9rem; line-height: 1.9;
+  white-space: pre-wrap;
+}
+.song-card-body .chord {
+  color: var(--accent); font-weight: 700;
+}
+.song-card-body .section-title {
+  display: inline-block;
+  color: #2980b9; font-weight: 700; font-style: italic;
+  margin-top: .4rem;
+}

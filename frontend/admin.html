@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panell d'administració — Cançoner</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+  <header>
+    <a href="/" class="back-link">← Cançoner</a>
+    <h1>⚙️ Panell d'administració</h1>
+    <p class="subtitle"></p>
+    <div id="user-widget"></div>
+  </header>
+
+  <!-- ── Pestanyes ───────────────────────────────────────────── -->
+  <div id="admin-tabs">
+    <button class="tab active" data-tab="stats">📊 Resum</button>
+    <button class="tab" data-tab="proposals">
+      📝 Propostes <span id="pending-badge" hidden></span>
+    </button>
+    <button class="tab" data-tab="songs">🎵 Cançons</button>
+    <button class="tab" data-tab="users">👥 Usuaris</button>
+  </div>
+
+  <div id="admin-content">
+
+    <!-- ── Resum ──────────────────────────────────────────────── -->
+    <section id="tab-stats" class="tab-panel active">
+      <div id="stats-grid">
+        <div class="stat-card" id="stat-songs">
+          <div class="stat-num">—</div><div class="stat-label">Cançons públiques</div>
+        </div>
+        <div class="stat-card" id="stat-drafts">
+          <div class="stat-num">—</div><div class="stat-label">Esborranys pendents</div>
+        </div>
+        <div class="stat-card" id="stat-users">
+          <div class="stat-num">—</div><div class="stat-label">Usuaris registrats</div>
+        </div>
+        <div class="stat-card" id="stat-canconers">
+          <div class="stat-num">—</div><div class="stat-label">Cançoners guardats</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Propostes ──────────────────────────────────────────── -->
+    <section id="tab-proposals" class="tab-panel" hidden>
+      <div class="panel-toolbar">
+        <select id="proposal-filter">
+          <option value="pending">Pendents</option>
+          <option value="approved">Aprovades</option>
+          <option value="rejected">Rebutjades</option>
+          <option value="">Totes</option>
+        </select>
+      </div>
+      <ul id="proposals-list"></ul>
+      <div id="proposals-empty" class="empty-state" hidden>
+        <span>✅</span><p>Cap proposta en aquesta categoria.</p>
+      </div>
+    </section>
+
+    <!-- ── Cançons ────────────────────────────────────────────── -->
+    <section id="tab-songs" class="tab-panel" hidden>
+      <div class="panel-toolbar">
+        <input type="text" id="songs-search" placeholder="Cerca…" style="max-width:260px" />
+      </div>
+      <table id="songs-table">
+        <thead>
+          <tr>
+            <th>Títol</th><th>Artista</th><th>To</th><th>Estat</th><th>Accions</th>
+          </tr>
+        </thead>
+        <tbody id="songs-tbody"></tbody>
+      </table>
+    </section>
+
+    <!-- ── Usuaris ────────────────────────────────────────────── -->
+    <section id="tab-users" class="tab-panel" hidden>
+      <table id="users-table">
+        <thead>
+          <tr>
+            <th>Usuari</th><th>Email</th><th>Rol</th><th>Cançoners</th><th>Registre</th><th>Accions</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody"></tbody>
+      </table>
+    </section>
+
+  </div>
+
+  <!-- ── Modal de revisió de proposta ────────────────────────── -->
+  <div id="review-modal" hidden>
+    <div id="review-box">
+      <button id="review-close">✕</button>
+      <h2 id="review-title"></h2>
+      <p id="review-meta"></p>
+      <div id="review-content"></div>
+      <hr />
+      <label>Nota per al proposant (opcional)
+        <textarea id="review-notes" rows="3" placeholder="Motiu de la decisió…"></textarea>
+      </label>
+      <div class="review-actions">
+        <button id="btn-approve" class="btn-approve">✓ Aprovar</button>
+        <button id="btn-reject"  class="btn-reject">✕ Rebutjar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/shared/transpose.js"></script>
+  <script src="auth.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

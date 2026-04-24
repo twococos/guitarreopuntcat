@@ -80,6 +80,7 @@ document.getElementById("btn-up").addEventListener("click", () => {
   state.semitones = (state.semitones + 1 + 12) % 12
   renderDetail()
 })
+
 document.getElementById("btn-down").addEventListener("click", () => {
   if (!state.activeSong) return
   state.semitones = (state.semitones - 1 + 12) % 12
@@ -107,6 +108,7 @@ function renderCanconer() {
   empty.hidden = hasItems
   btn.disabled = !hasItems
   savedBtn.disabled = !hasItems
+  updateSaveButton()
 
   state.canconer.forEach(({ song, semitones }, i) => {
     const displayKey = transposeKey(song.key, semitones)
@@ -193,13 +195,27 @@ document.getElementById("search").addEventListener("input", () => {
 document.getElementById("sort").addEventListener("change", loadSongs)
 
 /* ── Guardar cançoner ──────────────────────────────────────── */
-document.getElementById("btn-save-canconer").addEventListener("click", async () => {
-  if (!Auth.isLoggedIn()) {
-    if (!confirm("Has d'iniciar sessió per guardar el cançoner. Vols fer-ho ara?")) return
-    Auth.login()
+function updateSaveButton() {
+  const btn = document.getElementById("btn-save-canconer")
+  const hasItems = state.canconer.length > 0
+  btn.disabled = !hasItems
+  if (!hasItems) {
+    btn.textContent = "💾 Guardar cançoner"
     return
   }
-  // ... (el codi de generació de PDF ja existeix a dalt)
+  if (!Auth.isLoggedIn()) {
+    btn.textContent = "🔒 Inicia sessió per guardar"
+  } else {
+    btn.textContent = "💾 Guardar cançoner"
+  }
+}
+
+document.getElementById("btn-save-canconer").addEventListener("click", () => {
+  if (!Auth.isLoggedIn()) {
+    Auth.createLoginPopup()
+    return
+  }
+  saveCanconer()
 })
 
 async function saveCanconer() {
@@ -238,5 +254,22 @@ function showToast(msg, isError = false) {
   Auth.captureTokenFromURL()
   await Auth.loadUser()
   Auth.renderUserWidget("user-widget")
+  updateSaveButton()
+
+  // Si venim de "Els meus cançoners" amb un cançoner per carregar
+  const saved = sessionStorage.getItem("load_canconer")
+  if (saved) {
+    sessionStorage.removeItem("load_canconer")
+    const canconer = JSON.parse(saved)
+    state.savedCanconerId = canconer.id
+    document.getElementById("canconer-title").value = canconer.title
+    // Carregar cada cançó completa i afegir-la al cançoner
+    for (const s of canconer.songs) {
+      const full = await (await fetch(`/api/songs/${s.id}`)).json()
+      state.canconer.push({ song: full, semitones: s.semitones })
+    }
+    renderCanconer()
+  }
+
   loadSongs()
 })()

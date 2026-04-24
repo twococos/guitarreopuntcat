@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ca">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cançoner compartit</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/shared.css" />
+  </head>
+  <body>
+    <header>
+      <a href="/" class="back-link">← Cançoner</a>
+      <h1 id="shared-title">…</h1>
+      <p class="subtitle" id="shared-meta"></p>
+      <button
+        id="btn-pdf"
+        class="btn-primary"
+        style="width: auto; padding: 0.4rem 1rem; font-size: 0.85rem"
+      >
+        📄 Descarregar PDF
+      </button>
+    </header>
+
+    <div id="shared-layout">
+      <!-- ── Índex lateral ─────────────────────────────────────── -->
+      <nav id="shared-nav">
+        <h2>Índex</h2>
+        <ol id="shared-index"></ol>
+      </nav>
+
+      <!-- ── Cançons ───────────────────────────────────────────── -->
+      <main id="shared-songs">
+        <div id="shared-loading" class="empty-state">
+          <span>⏳</span>
+          <p>Carregant cançoner…</p>
+        </div>
+      </main>
+    </div>
+
+    <script src="/shared/transpose.js"></script>
+    <script src="/shared.js"></script>
+  </body>
+</html>

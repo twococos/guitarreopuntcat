@@ -80,35 +80,109 @@ const Auth = (() => {
       window.history.replaceState({}, "", window.location.pathname)
       return true
     }
-    if (error === "error") {
-      console.error("Error d'autenticació amb Google")
-    }
+    if (error === "error") console.error("Error d'autenticació amb Google")
     return false
   }
 
-  /* ── Renderitzar widget d'usuari ─────────────────────────── */
+  /* ── Popup d'inici de sessió ─────────────────────────────── */
+  function createLoginPopup() {
+    // Evitar duplicats
+    document.getElementById("auth-popup-overlay")?.remove()
+
+    const overlay = document.createElement("div")
+    overlay.id = "auth-popup-overlay"
+    overlay.innerHTML = `
+      <div id="auth-popup">
+        <button id="auth-popup-close" aria-label="Tancar">✕</button>
+        <div id="auth-popup-logo">🎵</div>
+        <h2>Benvingut al Cançoner</h2>
+        <p>Inicia sessió per guardar els teus cançoners i molt més.</p>
+        <div id="auth-popup-methods">
+          <button id="btn-google-login">
+            <img src="/img/google.svg" alt="" />
+            Continua amb Google
+          </button>
+        </div>
+        <p class="auth-popup-note">En iniciar sessió acceptes els termes d'ús.</p>
+      </div>`
+
+    // Tancar en clicar el fons
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) overlay.remove()
+    })
+    overlay.querySelector("#auth-popup-close").addEventListener("click", () => overlay.remove())
+    overlay.querySelector("#btn-google-login").addEventListener("click", login)
+
+    document.body.appendChild(overlay)
+  }
+
+  /* ── Widget d'usuari ─────────────────────────────────────── */
   function renderUserWidget(containerId) {
     const el = document.getElementById(containerId)
     if (!el) return
+    el.innerHTML = ""
 
     if (!_user) {
-      el.innerHTML = `<button class="btn-login" onclick="Auth.login()">
-        <img src="/img/google.svg" alt="" width="16"> Inicia sessió
-      </button>`
+      /* ── Botó "Inicia sessió" ── */
+      const btn = document.createElement("button")
+      btn.className = "btn-login"
+      btn.innerHTML = `<img src="/img/google.svg" alt="" />Inicia sessió`
+      btn.addEventListener("click", createLoginPopup)
+      el.appendChild(btn)
       return
     }
 
-    el.innerHTML = `
-      <div class="user-widget">
-        <img src="${_user.avatar_url}" alt="${_user.name}" class="user-avatar" />
-        <span class="user-name">${_user.name.split(" ")[0]}</span>
-        ${isAdmin() ? '<span class="badge-admin">admin</span>' : ""}
-        <div class="user-menu">
-          <a href="/my-canconers.html">Els meus cançoners</a>
-          ${isAdmin() ? '<a href="/admin.html">Panell admin</a>' : ""}
-          <button onclick="Auth.logout()">Tancar sessió</button>
+    /* ── Widget d'usuari autenticat ── */
+    const wrap = document.createElement("div")
+    wrap.className = "user-widget"
+
+    // Trigger
+    const trigger = document.createElement("button")
+    trigger.className = "user-trigger"
+    trigger.innerHTML = `
+      <img src="${_user.avatar_url}" class="user-avatar" alt="${_user.name}" />
+      <span class="user-name">${_user.name.split(" ")[0]}</span>
+      ${isAdmin() ? '<span class="badge-admin">admin</span>' : ""}
+      <span class="user-chevron">▾</span>`
+
+    // Dropdown
+    const dropdown = document.createElement("div")
+    dropdown.className = "user-dropdown"
+    dropdown.hidden = true
+    dropdown.innerHTML = `
+      <div class="user-dropdown-header">
+        <img src="${_user.avatar_url}" class="user-avatar-lg" alt="" />
+        <div>
+          <div class="user-dropdown-name">${_user.name}</div>
+          <div class="user-dropdown-email">${_user.email}</div>
         </div>
-      </div>`
+      </div>
+      <div class="user-dropdown-sep"></div>
+      <a href="/my_canconers.html" class="user-dropdown-item">📚 Els meus cançoners</a>
+      ${isAdmin() ? `<a href="/admin.html" class="user-dropdown-item">⚙️ Panell d'administració</a>` : ""}
+      <div class="user-dropdown-sep"></div>
+      <button class="user-dropdown-item user-dropdown-logout" id="btn-do-logout">Tancar sessió</button>`
+
+    // Obrir/tancar dropdown en clicar el trigger
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation()
+      dropdown.hidden = !dropdown.hidden
+    })
+
+    // Tancar en clicar fora
+    document.addEventListener("click", () => {
+      dropdown.hidden = true
+    })
+
+    // Evitar que clicar dins el dropdown el tanqui
+    dropdown.addEventListener("click", (e) => e.stopPropagation())
+
+    // Logout
+    dropdown.querySelector("#btn-do-logout").addEventListener("click", logout)
+
+    wrap.appendChild(trigger)
+    wrap.appendChild(dropdown)
+    el.appendChild(wrap)
   }
 
   return {
@@ -124,6 +198,7 @@ const Auth = (() => {
     login,
     logout,
     captureTokenFromURL,
+    createLoginPopup,
     renderUserWidget,
   }
 })()
