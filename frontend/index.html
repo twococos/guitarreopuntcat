@@ -13,7 +13,7 @@
       <h1>🎵 Cançoner</h1>
       <p class="subtitle">Tria les cançons, transposa-les i genera el teu PDF</p>
       <div class="header-actions">
-        <a href="/editor.html" class="btn-new-song">+ Nova cançó</a>
+        <a href="/editor.html" id="btn-new-song" class="btn-new-song">+ Nova cançó</a>
         <div id="user-widget"></div>
       </div>
     </header>
@@ -95,6 +95,14 @@
         <button id="modal-close">✕</button>
         <div id="modal-body"></div>
       </div>
+    </div>
+
+    <!-- Avís per a usuaris no autenticats que intenten proposar -->
+    <div id="propose-login-toast" class="propose-toast" hidden>
+      <span>🔒</span>
+      <p>Inicia sessió per poder proposar noves cançons.</p>
+      <button id="propose-login-btn">Inicia sessió</button>
+      <button id="propose-toast-close">✕</button>
     </div>
 
     <script src="/shared/transpose.js"></script>

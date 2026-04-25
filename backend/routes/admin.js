@@ -6,6 +6,30 @@ const router = express.Router()
 // Totes les rutes d'aquest fitxer requereixen admin
 router.use(requireAdmin)
 
+/* ── GET /api/admin/canconers ───────────────────────────────── */
+router.get("/canconers", (req, res) => {
+  const canconers = db
+    .prepare(
+      `
+    SELECT c.*, u.name as owner_name, COUNT(cs.id) as song_count
+    FROM canconers c
+    JOIN users u ON u.id = c.user_id
+    LEFT JOIN canconer_songs cs ON cs.canconer_id = c.id
+    GROUP BY c.id
+    ORDER BY c.updated_at DESC
+  `,
+    )
+    .all()
+  res.json(canconers)
+})
+
+/* ── DELETE /api/admin/canconers/:id ────────────────────────── */
+router.delete("/canconers/:id", (req, res) => {
+  const result = db.prepare("DELETE FROM canconers WHERE id = ?").run(req.params.id)
+  if (!result.changes) return res.status(404).json({ error: "No trobat" })
+  res.json({ ok: true })
+})
+
 /* ── GET /api/admin/users ───────────────────────────────────── */
 router.get("/users", (req, res) => {
   const users = db

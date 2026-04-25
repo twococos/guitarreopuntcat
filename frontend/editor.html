@@ -11,35 +11,33 @@
   <body>
     <header>
       <a href="/" class="back-link">← Cançoner</a>
-      <h1>✏️ Nova cançó</h1>
-      <p class="subtitle">Escriu la lletra, clic dret per inserir acords</p>
+      <h1 id="editor-title">✏️ Nova cançó</h1>
+      <p class="subtitle" id="editor-subtitle">Escriu la lletra, clic dret per inserir acords</p>
+      <div class="header-actions">
+        <div id="user-widget"></div>
+      </div>
     </header>
 
     <div id="editor-layout">
-      <!-- ── Columna esquerra: metadades ───────────────────────── -->
+      <!-- ── Columna esquerra: metadades ── -->
       <aside id="meta-panel">
         <h2>Metadades</h2>
-
         <label
           >Títol <span class="required">*</span>
           <input type="text" id="meta-title" placeholder="El nom de la cançó" />
         </label>
-
         <label
           >Artista <span class="required">*</span>
           <input type="text" id="meta-artist" placeholder="Autor o grup" />
         </label>
-
         <label
           >To original <span class="required">*</span>
           <select id="meta-key"></select>
         </label>
-
         <label
           >Cejilla
           <input type="number" id="meta-capo" min="0" max="11" value="0" />
         </label>
-
         <label
           >Idioma
           <select id="meta-language">
@@ -49,7 +47,6 @@
             <option value="other">Altre</option>
           </select>
         </label>
-
         <label
           >Etiquetes
           <input type="text" id="meta-tags" placeholder="pop, rock, tradicional…" />
@@ -57,64 +54,85 @@
         </label>
 
         <hr />
-
         <h2>Acords del to</h2>
-        <p class="hint">
-          Clic dret a l'editor per inserir-ne un.<br />Aquí tens una referència ràpida:
-        </p>
+        <p class="hint">Clic dret a l'editor per inserir-ne un.<br />Referència ràpida:</p>
         <div id="chord-palette"></div>
-
         <hr />
 
         <button id="btn-save" class="btn-primary">💾 Guardar cançó</button>
         <p id="save-status"></p>
       </aside>
 
-      <!-- ── Columna central: editor ───────────────────────────── -->
-      <section id="editor-section">
-        <div id="editor-toolbar">
-          <button data-action="sec" title="Inserir títol de secció">§ Secció</button>
-          <button data-action="ch" title="Inserir acord buit">♩ Acord</button>
-          <span class="toolbar-sep"></span>
-          <button data-action="undo" title="Desfer">↩ Desfer</button>
-          <button data-action="redo" title="Refer">↪ Refer</button>
-          <span class="toolbar-sep"></span>
-          <label class="toolbar-toggle">
-            <input type="checkbox" id="toggle-preview" />
-            Vista prèvia
-          </label>
-        </div>
-
-        <!-- Editor de text pla amb resaltat sintàctic -->
-        <div id="editor-wrap">
-          <textarea
-            id="editor"
-            spellcheck="false"
-            placeholder="Escriu aquí la lletra de la cançó.
+      <!-- ── Columna central: editor + prèvia ── -->
+      <div id="editor-main">
+        <div id="editor-section">
+          <div id="editor-toolbar">
+            <button data-action="sec" title="Inserir títol de secció">§ Secció</button>
+            <button data-action="ch" title="Inserir acord buit">♩ Acord</button>
+            <span class="toolbar-sep"></span>
+            <button data-action="undo" title="Desfer (Ctrl+Z)">↩ Desfer</button>
+            <button data-action="redo" title="Refer (Ctrl+Y)">↪ Refer</button>
+            <span class="toolbar-sep"></span>
+            <label class="toolbar-toggle">
+              <input type="checkbox" id="toggle-preview" />
+              Vista prèvia
+            </label>
+          </div>
+          <div id="editor-wrap">
+            <textarea
+              id="editor"
+              spellcheck="false"
+              placeholder="Escriu aquí la lletra de la cançó.
 Clic dret per inserir acords.
 
 Exemple:
-<sec> Estrofa 1 </sec>
+<sec>Estrofa 1</sec>
 <ch>Am</ch> En un lloc de la <ch>F</ch> Manxa..."
-          ></textarea>
-          <div id="editor-highlight" aria-hidden="true"></div>
+            ></textarea>
+            <div id="editor-highlight" aria-hidden="true"></div>
+          </div>
         </div>
 
-        <!-- Vista prèvia -->
+        <!-- Vista prèvia a la dreta -->
         <div id="preview-panel" hidden>
           <h3>Vista prèvia</h3>
           <div id="preview-body"></div>
         </div>
-      </section>
+      </div>
     </div>
 
-    <!-- ── Menú contextual d'acords ──────────────────────────── -->
+    <!-- Menú contextual -->
     <div id="chord-menu" hidden>
-      <div id="chord-menu-header">Inserir acord</div>
+      <div id="chord-menu-header">Inserir</div>
       <div id="chord-menu-groups"></div>
     </div>
 
+    <!-- Popup informatiu per a propostes -->
+    <div id="propose-info-overlay" hidden>
+      <div id="propose-info-box">
+        <div id="propose-info-logo">🎵</div>
+        <h2>Proposa una cançó</h2>
+        <p>
+          Aquest cançoner és un projecte de passió obert a tothom. Pots col·laborar afegint cançons,
+          però per garantir la qualitat cal tenir en compte:
+        </p>
+        <ul>
+          <li>
+            🎵 La lletra i els acords han de ser <strong>fidedignes a la cançó original</strong>.
+          </li>
+          <li>🎸 Ha d'estar en la <strong>tonalitat correcta</strong> (o amb cejilla si escau).</li>
+          <li>
+            📋 Com més completa sigui la cançó (estrofes, tornades, ponts…),
+            <strong>més probable és que s'accepti</strong>.
+          </li>
+          <li>✅ Un administrador la revisarà abans de publicar-la.</li>
+        </ul>
+        <button id="btn-propose-accept" class="btn-primary">Ho entenc, continua</button>
+      </div>
+    </div>
+
     <script src="/shared/transpose.js"></script>
+    <script src="auth.js"></script>
     <script src="editor.js"></script>
   </body>
 </html>

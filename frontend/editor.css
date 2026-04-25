@@ -1,117 +1,190 @@
-/* ── Layout ────────────────────────────────────────────────── */
-body { overflow: auto; }
+body {
+  overflow: auto;
+}
 
 .back-link {
-  font-size: .85rem;
+  font-size: 0.85rem;
   color: var(--muted);
   text-decoration: none;
   margin-right: auto;
 }
-.back-link:hover { color: var(--accent); }
+.back-link:hover {
+  color: var(--accent);
+}
 
+/* ── Layout principal: sidebar + editor + prèvia ── */
 #editor-layout {
   display: grid;
   grid-template-columns: 260px 1fr;
-  gap: 0;
   height: calc(100vh - var(--header-h));
   overflow: hidden;
 }
 
-/* ── Panell de metadades ───────────────────────────────────── */
+/* ── Panell metadades ── */
 #meta-panel {
   border-right: 1px solid var(--border);
   padding: 1.25rem;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: .85rem;
+  gap: 0.85rem;
   background: var(--surface);
 }
-#meta-panel h2 { font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-#meta-panel hr  { border: none; border-top: 1px solid var(--border); }
+#meta-panel h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+#meta-panel hr {
+  border: none;
+  border-top: 1px solid var(--border);
+}
 #meta-panel label {
   display: flex;
   flex-direction: column;
-  gap: .25rem;
-  font-size: .82rem;
+  gap: 0.25rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--text);
 }
-#meta-panel label small { font-weight: 400; color: var(--muted); }
-.required { color: var(--accent); }
-.hint { font-size: .78rem; color: var(--muted); line-height: 1.5; }
+#meta-panel label small {
+  font-weight: 400;
+  color: var(--muted);
+}
 
-/* Paleta d'acords de referència */
+/* Inputs i selects del panel — format consistent */
+#meta-panel input[type="number"],
+#meta-panel select {
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  appearance: auto;
+  transition: border-color 0.15s;
+}
+#meta-panel input[type="number"]:focus,
+#meta-panel select:focus {
+  border-color: var(--accent);
+}
+
+.required {
+  color: var(--accent);
+}
+.hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 #chord-palette {
   display: flex;
   flex-wrap: wrap;
-  gap: .3rem;
+  gap: 0.3rem;
 }
 #chord-palette .chip {
-  font-size: .75rem;
+  font-size: 0.75rem;
   font-family: monospace;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 2px 7px;
   cursor: pointer;
-  transition: background .12s, border-color .12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
 }
-#chord-palette .chip:hover { background: #fdf4f3; border-color: var(--accent); color: var(--accent); }
+#chord-palette .chip:hover {
+  background: #fdf4f3;
+  border-color: var(--accent);
+  color: var(--accent);
+}
 
-#save-status { font-size: .82rem; color: var(--muted); text-align: center; min-height: 1.2em; }
-#save-status.ok  { color: #27ae60; }
-#save-status.err { color: var(--accent); }
+#save-status {
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-align: center;
+  min-height: 1.2em;
+}
+#save-status.ok {
+  color: #27ae60;
+}
+#save-status.err {
+  color: var(--accent);
+}
 
-/* ── Editor ────────────────────────────────────────────────── */
-#editor-section {
-  display: flex;
-  flex-direction: column;
+/* ── Zona editor + prèvia (columna dreta del layout) ── */
+#editor-main {
+  display: flex; /* editor | prèvia en horitzontal */
   overflow: hidden;
 }
 
+#editor-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── Toolbar ── */
 #editor-toolbar {
   display: flex;
   align-items: center;
-  gap: .4rem;
-  padding: .5rem .85rem;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 #editor-toolbar button {
-  padding: .3rem .7rem;
-  font-size: .82rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.82rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg);
   cursor: pointer;
-  transition: background .12s, border-color .12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
 }
-#editor-toolbar button:hover { background: #fdf4f3; border-color: var(--accent); color: var(--accent); }
-.toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 .2rem; }
+#editor-toolbar button:hover {
+  background: #fdf4f3;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.toolbar-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 0.2rem;
+}
 .toolbar-toggle {
   display: flex !important;
   flex-direction: row !important;
   align-items: center;
-  gap: .4rem;
-  font-size: .82rem;
+  gap: 0.4rem;
+  font-size: 0.82rem;
   font-weight: 400 !important;
   cursor: pointer;
 }
 
-/* Editor amb ressaltat: textarea + div superposats */
+/* ── Àrea d'edició (textarea + highlight superposats) ── */
 #editor-wrap {
   position: relative;
   flex: 1;
   overflow: hidden;
 }
-
-#editor, #editor-highlight {
+#editor,
+#editor-highlight {
   position: absolute;
   inset: 0;
-  font-family: 'Courier New', monospace;
-  font-size: .92rem;
+  font-family: "Courier New", monospace;
+  font-size: 0.92rem;
   line-height: 1.85;
   padding: 1.25rem 1.5rem;
   white-space: pre-wrap;
@@ -122,101 +195,238 @@ body { overflow: auto; }
   resize: none;
   overflow-y: auto;
 }
-
 #editor {
   background: transparent;
-  color: var(--text);
+  color: transparent;
   caret-color: var(--text);
   z-index: 2;
-  /* text transparent per veure el ressaltat darrera */
-  color: transparent;
 }
-/* Selecció visible */
-#editor::selection { background: rgba(192, 57, 43, .18); }
-
+#editor::selection {
+  background: rgba(192, 57, 43, 0.18);
+}
 #editor-highlight {
   background: var(--bg);
   color: var(--text);
   pointer-events: none;
   z-index: 1;
 }
-
-/* Ressaltat de tags */
-#editor-highlight .hl-ch  { color: var(--accent); font-weight: 700; }
-#editor-highlight .hl-sec { color: #2980b9; font-weight: 700; font-style: italic; }
-#editor-highlight .hl-tag { color: #aaa; }
-
-/* ── Vista prèvia ──────────────────────────────────────────── */
-#preview-panel {
-  border-top: 1px solid var(--border);
-  padding: 1.25rem 1.5rem;
-  max-height: 40%;
-  overflow-y: auto;
-  background: var(--surface);
+#editor-highlight .hl-ch {
+  color: var(--accent);
+  font-weight: 700;
 }
-#preview-panel h3 { font-size: .82rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .75rem; }
-#preview-body {
-  font-family: 'Courier New', monospace;
-  font-size: .88rem;
-  line-height: 1.85;
-  white-space: pre-wrap;
-}
-#preview-body .chord { color: var(--accent); font-weight: 700; }
-#preview-body .section-title {
+#editor-highlight .hl-sec {
   color: #2980b9;
   font-weight: 700;
   font-style: italic;
-  display: block;
-  margin-top: .5rem;
+}
+#editor-highlight .hl-tag {
+  color: #aaa;
 }
 
-/* ── Menú contextual ───────────────────────────────────────── */
+/* ── Vista prèvia (panell lateral dret) ── */
+#preview-panel {
+  width: 340px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+#preview-panel[hidden] {
+  display: none !important;
+}
+#preview-panel h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#preview-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  font-size: 0.88rem;
+  line-height: 1.85;
+}
+
+/* ── Menú contextual ── */
 #chord-menu {
   position: fixed;
   z-index: 200;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 6px 24px rgba(0,0,0,.15);
-  min-width: 220px;
-  padding: .4rem;
-  font-size: .85rem;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  min-width: 230px;
+  padding: 0.4rem;
+  font-size: 0.85rem;
 }
-#chord-menu[hidden] { display: none; }
+#chord-menu[hidden] {
+  display: none;
+}
 #chord-menu-header {
-  font-size: .72rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: 0.06em;
   color: var(--muted);
-  padding: .3rem .5rem .5rem;
+  padding: 0.3rem 0.5rem 0.5rem;
 }
-#chord-menu-groups { display: flex; flex-direction: column; gap: .2rem; }
-
+#chord-menu-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
 .chord-group-label {
-  font-size: .72rem;
+  font-size: 0.72rem;
   color: var(--muted);
-  padding: .25rem .5rem 0;
+  padding: 0.25rem 0.5rem 0;
   text-transform: uppercase;
-  letter-spacing: .05em;
+  letter-spacing: 0.05em;
 }
 .chord-group-items {
   display: flex;
   flex-wrap: wrap;
-  gap: .25rem;
-  padding: .2rem .4rem .3rem;
+  gap: 0.25rem;
+  padding: 0.2rem 0.4rem 0.3rem;
 }
 .chord-group-items button {
   font-family: monospace;
-  font-size: .82rem;
+  font-size: 0.82rem;
   padding: 3px 9px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg);
   cursor: pointer;
-  transition: background .1s, border-color .1s;
+  transition:
+    background 0.1s,
+    border-color 0.1s;
 }
 .chord-group-items button:hover {
   background: #fdf4f3;
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* Separador dins el menú contextual */
+.chord-menu-sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.3rem 0.4rem;
+}
+.chord-menu-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+  transition: background 0.1s;
+}
+.chord-menu-action:hover {
+  background: var(--bg);
+}
+
+/* ── Popup informatiu de proposta ── */
+#propose-info-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.18s ease;
+}
+#propose-info-overlay[hidden] {
+  display: none !important;
+}
+
+#propose-info-box {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  width: min(480px, 92vw);
+  padding: 2.25rem 2rem 2rem;
+  text-align: center;
+  animation: slideUp 0.2s ease;
+}
+#propose-info-logo {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+#propose-info-box h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+#propose-info-box > p {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+#propose-info-box ul {
+  list-style: none;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0 0.5rem;
+}
+#propose-info-box ul li {
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+#btn-propose-accept {
+  max-width: 220px;
+  margin: 0 auto;
+}
+
+/* Toast de proposta login */
+.propose-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+  z-index: 999;
+  white-space: nowrap;
+}
+.propose-toast[hidden] {
+  display: none !important;
+}
+.propose-toast p {
+  margin: 0;
+}
+.propose-toast button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+.propose-toast #propose-login-btn {
+  padding: 0.3rem 0.75rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius);
+  font-size: 0.83rem;
+  font-weight: 600;
 }

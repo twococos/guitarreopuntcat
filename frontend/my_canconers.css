@@ -2,31 +2,68 @@ body {
   overflow: auto;
 }
 
+/* ── Layout 3 columnes ─────────────────────────────────────── */
 #mc-main {
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 0;
-  min-height: calc(100vh - var(--header-h));
+  grid-template-columns: 220px 1fr 380px;
+  min-height: calc(100vh - var(--header-h) - 260px);
+  border-bottom: 2px solid var(--border);
 }
 
-/* ── Llista ────────────────────────────────────────────────── */
-#mc-list-section {
-  border-right: 1px solid var(--border);
+/* Forçar hidden per a tots els elements de la pàgina
+   (necessari quan l'element té display:flex/grid propi) */
+#mc-main [hidden],
+#mc-songs-section[hidden],
+#mc-options-section[hidden],
+#mc-placeholder[hidden],
+#mc-empty[hidden],
+#mc-songs-empty[hidden],
+#mc-title-edit[hidden],
+#mc-title-display[hidden],
+#share-enabled[hidden],
+#share-disabled[hidden],
+#proposals-empty[hidden],
+#proposals-badge[hidden] {
+  display: none !important;
+}
+
+#mc-list-section,
+#mc-songs-section,
+#mc-options-section {
   padding: 1.25rem;
-  background: var(--surface);
   overflow-y: auto;
 }
-.mc-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
+
+#mc-list-section {
+  border-right: 1px solid var(--border);
+  background: var(--surface);
 }
-.mc-toolbar h2 {
-  font-size: 1rem;
-  font-weight: 700;
+#mc-songs-section {
+  border-right: 1px solid var(--border);
+}
+#mc-options-section {
+  background: var(--surface);
 }
 
+/* Placeholder ocupa les 2 columnes de la dreta */
+#mc-placeholder {
+  grid-column: 2 / 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+/* ── Títols de secció ──────────────────────────────────────── */
+.mc-section-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin-bottom: 0.85rem;
+}
+
+/* ── Llista de cançoners ───────────────────────────────────── */
 #mc-list {
   list-style: none;
   display: flex;
@@ -34,14 +71,14 @@ body {
   gap: 0.4rem;
 }
 #mc-list li {
-  padding: 0.75rem 1rem;
+  padding: 0.7rem 0.9rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
+  background: var(--bg);
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
-  background: var(--bg);
 }
 #mc-list li:hover {
   border-color: var(--accent);
@@ -51,82 +88,22 @@ body {
   border-color: var(--accent);
   background: #fdf4f3;
 }
-#mc-list li .mc-title {
+#mc-list .mc-title {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
-#mc-list li .mc-info {
-  font-size: 0.78rem;
+#mc-list .mc-info {
+  font-size: 0.72rem;
   color: var(--muted);
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
-/* ── Detall ────────────────────────────────────────────────── */
-#mc-detail {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-.mc-detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-.mc-detail-header h2 {
-  font-size: 1.4rem;
-  font-weight: 700;
-}
-.mc-detail-header p {
-  font-size: 0.83rem;
-  color: var(--muted);
-  margin-top: 0.2rem;
-}
-.mc-detail-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+/* ── Capçalera de cançons ──────────────────────────────────── */
+.mc-songs-header {
+  margin-bottom: 0.85rem;
 }
 
-/* Compartir */
-#share-box {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.share-label {
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-.share-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-.share-row input {
-  flex: 1;
-  font-size: 0.82rem;
-  font-family: monospace;
-  background: var(--bg);
-  color: var(--muted);
-}
-.share-row button {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.82rem;
-  white-space: nowrap;
-}
-#share-box small {
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
-/* Llista de cançons del detall */
+/* ── Llista de cançons ─────────────────────────────────────── */
 #mc-songs-list {
   list-style: none;
   display: flex;
@@ -136,85 +113,272 @@ body {
 #mc-songs-list li {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.55rem 0.85rem;
+  gap: 0.65rem;
+  padding: 0.5rem 0.75rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  font-size: 0.88rem;
+  font-size: 0.85rem;
 }
-#mc-songs-list .mc-pos {
+.mc-pos {
   color: var(--muted);
   min-width: 1.4rem;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  flex-shrink: 0;
 }
-#mc-songs-list .mc-stitle {
+.mc-stitle {
   font-weight: 600;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-#mc-songs-list .mc-artist {
-  font-size: 0.78rem;
+.mc-artist {
+  font-size: 0.72rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.mc-key {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── Opcions del cançoner ──────────────────────────────────── */
+
+/* Títol editable */
+.mc-options-title-row {
+  margin-bottom: 1.25rem;
+}
+#mc-title-display {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.25rem;
+}
+#mc-title-display h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0.5;
+  transition: opacity 0.12s;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.btn-icon:hover {
+  opacity: 1;
+}
+
+#mc-title-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+#mc-title-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  outline: none;
+}
+#mc-detail-meta {
+  font-size: 0.75rem;
   color: var(--muted);
 }
-#mc-songs-list .mc-key {
-  font-family: monospace;
-  font-size: 0.8rem;
+
+/* Grups d'opcions */
+.mc-options-group {
+  margin-bottom: 1.25rem;
+}
+.mc-options-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+/* Botons d'opció (amplada completa, estil suau) */
+.btn-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 0.4rem;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+  text-align: left;
+}
+.btn-option:hover {
+  border-color: var(--accent);
+  background: #fdf4f3;
   color: var(--accent);
+}
+.btn-option-danger {
+  color: var(--accent);
+  border-color: #f0c8c4;
+}
+.btn-option-danger:hover {
+  background: #fdf4f3;
+  border-color: var(--accent);
+}
+
+/* Compartir */
+.share-row {
+  margin-bottom: 0.4rem;
+}
+.share-row input {
+  width: 100%;
+  font-size: 0.75rem;
+  font-family: monospace;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+  outline: none;
+}
+.share-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+#share-section small {
+  font-size: 0.7rem;
+  color: var(--muted);
+  display: block;
+}
+
+/* Botons petits d'utilitat */
+.btn-outline-sm {
+  padding: 0.32rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.btn-outline-sm:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #fdf4f3;
+}
+
+.btn-ghost-sm {
+  padding: 0.32rem 0.6rem;
+  font-size: 0.78rem;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: color 0.12s;
+}
+.btn-ghost-sm:hover {
+  color: var(--text);
+}
+
+.btn-sm-opt {
+  padding: 0.32rem 0.7rem !important;
+  font-size: 0.78rem !important;
+  width: auto !important;
+  margin-bottom: 0 !important;
 }
 
 /* ── Propostes ─────────────────────────────────────────────── */
 #proposals-section {
-  border-top: 2px solid var(--border);
-  padding: 1.5rem 1.5rem 2rem;
+  padding: 1.5rem 1.5rem 2.5rem;
 }
-#proposals-section h2 {
-  font-size: 1rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
+.proposals-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+.proposals-header h2 {
+  font-size: 1rem;
+  font-weight: 700;
 }
 #proposals-badge {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   background: var(--accent);
   color: #fff;
   border-radius: 99px;
-  padding: 1px 8px;
+  padding: 1px 7px;
   font-weight: 700;
 }
-
 #proposals-list {
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  max-width: 680px;
 }
 #proposals-list li {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.85rem;
   padding: 0.6rem 0.9rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  font-size: 0.85rem;
 }
-#proposals-list .p-title {
-  font-weight: 600;
+.p-info {
   flex: 1;
+  min-width: 0;
 }
-#proposals-list .p-artist {
+.p-title {
+  font-weight: 600;
+  font-size: 0.87rem;
+}
+.p-artist {
+  font-size: 0.73rem;
   color: var(--muted);
-  font-size: 0.78rem;
+  margin-top: 1px;
 }
-#proposals-list .p-status {
-  font-size: 0.72rem;
+.p-notes {
+  font-size: 0.71rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+.p-status {
+  font-size: 0.68rem;
   font-weight: 700;
   border-radius: 4px;
-  padding: 2px 8px;
+  padding: 2px 7px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 .status-pending {
   background: #fef3cd;
@@ -229,29 +393,15 @@ body {
   color: var(--accent);
 }
 
-.p-notes {
-  font-size: 0.75rem;
+/* ── Utilitaris ────────────────────────────────────────────── */
+.empty-state-sm {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.85rem;
   color: var(--muted);
-  font-style: italic;
-  margin-top: 2px;
 }
-
-/* ── Botons utilitaris ─────────────────────────────────────── */
 .btn-sm {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.82rem;
-  width: auto;
-}
-.btn-danger {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.82rem;
-  background: none;
-  color: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.btn-danger:hover {
-  background: #fdf4f3;
+  padding: 0.38rem 0.85rem !important;
+  font-size: 0.82rem !important;
+  width: auto !important;
 }

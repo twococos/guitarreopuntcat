@@ -11,6 +11,40 @@ const state = {
 const API = (path, opts) => fetch(`/api${path}`, opts).then((r) => r.json())
 const { transposeContent, transposeKey } = Transpose
 
+/* ── Botó "Nova cançó" segons rol ──────────────────────────── */
+function updateNewSongButton() {
+  const btn = document.getElementById("btn-new-song")
+  if (!btn) return
+  const user = Auth.getUser()
+  if (!user) {
+    btn.textContent = "+ Proposa una cançó"
+    btn.removeAttribute("href")
+    btn.addEventListener("click", (e) => {
+      e.preventDefault()
+      showProposeToast()
+    })
+  } else if (Auth.isAdmin()) {
+    btn.textContent = "+ Nova cançó"
+    btn.setAttribute("href", "/editor.html")
+  } else {
+    btn.textContent = "+ Proposa una cançó"
+    btn.setAttribute("href", "/editor.html")
+  }
+}
+
+function showProposeToast() {
+  const toast = document.getElementById("propose-login-toast")
+  toast.hidden = false
+}
+
+document.getElementById("propose-toast-close")?.addEventListener("click", () => {
+  document.getElementById("propose-login-toast").hidden = true
+})
+document.getElementById("propose-login-btn")?.addEventListener("click", () => {
+  Auth.createLoginPopup()
+  document.getElementById("propose-login-toast").hidden = true
+})
+
 /* ── Càrrega inicial ───────────────────────────────────────── */
 async function loadSongs() {
   const sort = document.getElementById("sort").value
@@ -101,13 +135,11 @@ function renderCanconer() {
   const ul = document.getElementById("canconer-list")
   const empty = document.getElementById("canconer-empty")
   const btn = document.getElementById("btn-generate")
-  const savedBtn = document.getElementById("btn-save-canconer")
 
   ul.innerHTML = ""
   const hasItems = state.canconer.length > 0
   empty.hidden = hasItems
   btn.disabled = !hasItems
-  savedBtn.disabled = !hasItems
   updateSaveButton()
 
   state.canconer.forEach(({ song, semitones }, i) => {
@@ -203,11 +235,7 @@ function updateSaveButton() {
     btn.textContent = "💾 Guardar cançoner"
     return
   }
-  if (!Auth.isLoggedIn()) {
-    btn.textContent = "🔒 Inicia sessió per guardar"
-  } else {
-    btn.textContent = "💾 Guardar cançoner"
-  }
+  btn.textContent = Auth.isLoggedIn() ? "💾 Guardar cançoner" : "🔒 Inicia sessió per guardar"
 }
 
 document.getElementById("btn-save-canconer").addEventListener("click", () => {
@@ -219,19 +247,56 @@ document.getElementById("btn-save-canconer").addEventListener("click", () => {
 })
 
 async function saveCanconer() {
-  if (!Auth.isLoggedIn()) {
-    Auth.login()
+  // Obtenir llista de cançoners de l'usuari per comprovar duplicats
+  let existingCanconers = []
+  try {
+    const r = await Auth.apiFetch("/canconers")
+    existingCanconers = await r.json()
+  } catch {}
+
+  const titleInput = document.getElementById("canconer-title").value.trim() || "El meu cançoner"
+  const songs = state.canconer.map(({ song, semitones }) => ({ id: song.id, semitones }))
+
+  // Comprovar si hi ha un altre cançoner amb el mateix nom (que no sigui el que estem editant)
+  const duplicate = existingCanconers.find(
+    (c) => c.title.toLowerCase() === titleInput.toLowerCase() && c.id !== state.savedCanconerId,
+  )
+
+  if (duplicate) {
+    // Preguntar si sobreescriu
+    showOverwriteToast(titleInput, duplicate.id, songs)
     return
   }
-  const payload = {
-    title: document.getElementById("canconer-title").value || "El meu cançoner",
-    songs: state.canconer.map(({ song, semitones }) => ({ id: song.id, semitones })),
-    id: state.savedCanconerId || undefined,
-  }
-  const res = await Auth.apiFetch("/canconers", {
-    method: "POST",
-    body: JSON.stringify(payload),
+
+  await doSave(titleInput, songs, state.savedCanconerId)
+}
+
+function showOverwriteToast(title, duplicateId, songs) {
+  // Eliminar toast anterior si n'hi ha
+  document.getElementById("overwrite-toast")?.remove()
+
+  const t = document.createElement("div")
+  t.id = "overwrite-toast"
+  t.className = "overwrite-toast"
+  t.innerHTML = `
+    <span>⚠️</span>
+    <p>Ja tens un cançoner anomenat <strong>"${title}"</strong>. Vols sobreescriure'l?</p>
+    <button id="ow-yes" class="btn-primary" style="width:auto;padding:.35rem .85rem;font-size:.82rem">Sobreescriu</button>
+    <button id="ow-no"  class="btn-ghost">Cancel·lar</button>`
+  document.body.appendChild(t)
+
+  document.getElementById("ow-yes").addEventListener("click", async () => {
+    t.remove()
+    await doSave(title, songs, duplicateId)
+    state.savedCanconerId = duplicateId
   })
+  document.getElementById("ow-no").addEventListener("click", () => t.remove())
+  setTimeout(() => t?.remove(), 8000)
+}
+
+async function doSave(title, songs, existingId) {
+  const payload = { title, songs, id: existingId || undefined }
+  const res = await Auth.apiFetch("/canconers", { method: "POST", body: JSON.stringify(payload) })
   if (res.ok) {
     const { id } = await res.json()
     state.savedCanconerId = id
@@ -239,6 +304,21 @@ async function saveCanconer() {
   } else {
     showToast("Error guardant el cançoner", true)
   }
+}
+
+async function setDefaultTitle() {
+  if (!Auth.isLoggedIn()) return
+  try {
+    const r = await Auth.apiFetch("/canconers")
+    const existing = await r.json()
+    const titles = new Set(existing.map((c) => c.title.toLowerCase()))
+    let title = "El meu cançoner"
+    let n = 2
+    while (titles.has(title.toLowerCase())) {
+      title = `El meu cançoner ${n++}`
+    }
+    document.getElementById("canconer-title").value = title
+  } catch {}
 }
 
 function showToast(msg, isError = false) {
@@ -254,6 +334,7 @@ function showToast(msg, isError = false) {
   Auth.captureTokenFromURL()
   await Auth.loadUser()
   Auth.renderUserWidget("user-widget")
+  updateNewSongButton()
   updateSaveButton()
 
   // Si venim de "Els meus cançoners" amb un cançoner per carregar
@@ -269,6 +350,9 @@ function showToast(msg, isError = false) {
       state.canconer.push({ song: full, semitones: s.semitones })
     }
     renderCanconer()
+  } else {
+    // Títol per defecte intel·ligent: evitar duplicats
+    await setDefaultTitle()
   }
 
   loadSongs()

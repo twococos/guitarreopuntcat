@@ -4,74 +4,102 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Els meus cançoners</title>
+    <link rel="stylesheet" href="song.css" />
     <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="my-canconers.css" />
+    <link rel="stylesheet" href="my_canconers.css" />
   </head>
   <body>
     <header>
       <a href="/" class="back-link">← Cançoner</a>
       <h1>📚 Els meus cançoners</h1>
-      <p class="subtitle"></p>
-      <div id="user-widget"></div>
+      <div class="header-actions">
+        <a href="/" class="btn-new-song">+ Nou cançoner</a>
+        <div id="user-widget"></div>
+      </div>
     </header>
 
     <main id="mc-main">
-      <!-- ── Llista de cançoners ──────────────────────────────── -->
+      <!-- ── Col·lumna 1: llista de cançoners ── -->
       <section id="mc-list-section">
-        <div class="mc-toolbar">
-          <h2>Guardats</h2>
-          <a href="/" class="btn-primary btn-sm">+ Crear nou</a>
-        </div>
+        <h2 class="mc-section-title">Guardats</h2>
         <ul id="mc-list"></ul>
         <div id="mc-empty" class="empty-state" hidden>
           <span>📭</span>
           <p>Encara no has guardat cap cançoner.</p>
-          <a href="/" class="btn-primary btn-sm" style="margin-top: 0.5rem">Crear el primer</a>
+          <a href="/" class="btn-primary btn-sm">Crear el primer</a>
         </div>
       </section>
 
-      <!-- ── Detall del cançoner seleccionat ─────────────────── -->
-      <section id="mc-detail" hidden>
-        <div class="mc-detail-header">
-          <div>
-            <h2 id="mc-detail-title"></h2>
-            <p id="mc-detail-meta"></p>
-          </div>
-          <div class="mc-detail-actions">
-            <button id="btn-load" class="btn-primary btn-sm">📂 Carregar al cançoner</button>
-            <button id="btn-share" class="btn-secondary btn-sm">🔗 Compartir</button>
-            <button id="btn-delete" class="btn-danger btn-sm">🗑 Eliminar</button>
-          </div>
+      <!-- ── Col·lumna 2: llista de cançons ── -->
+      <section id="mc-songs-section" hidden>
+        <div class="mc-songs-header">
+          <h2 id="mc-songs-title" class="mc-section-title">Cançons</h2>
         </div>
-
-        <!-- Compartir -->
-        <div id="share-box" hidden>
-          <p class="share-label">Enllaç per compartir:</p>
-          <div class="share-row">
-            <input id="share-url" type="text" readonly />
-            <button id="btn-copy">Copiar</button>
-            <button id="btn-revoke" class="btn-danger btn-sm">Revocar</button>
-          </div>
-          <small>Qualsevol persona amb aquest enllaç pot veure i descarregar el cançoner.</small>
-        </div>
-        <div id="share-disabled" hidden>
-          <button id="btn-enable-share" class="btn-secondary btn-sm">
-            Generar enllaç de compartició
-          </button>
-        </div>
-
-        <!-- Llista de cançons -->
         <ul id="mc-songs-list"></ul>
+        <div id="mc-songs-empty" class="empty-state-sm" hidden>
+          <p>Aquest cançoner no té cançons.</p>
+        </div>
       </section>
+
+      <!-- ── Col·lumna 3: opcions del cançoner ── -->
+      <section id="mc-options-section" hidden>
+        <!-- Títol editable -->
+        <div class="mc-options-title-row">
+          <div id="mc-title-display">
+            <h2 id="mc-detail-title"></h2>
+            <button id="btn-edit-title" class="btn-icon" title="Editar nom">✏️</button>
+          </div>
+          <div id="mc-title-edit" hidden>
+            <input type="text" id="mc-title-input" />
+            <button id="btn-save-title" class="btn-outline-sm">Guardar</button>
+            <button id="btn-cancel-title" class="btn-ghost-sm">Cancel·lar</button>
+          </div>
+          <p id="mc-detail-meta"></p>
+        </div>
+
+        <div class="mc-options-group">
+          <h3 class="mc-options-label">Accions</h3>
+          <button id="btn-load" class="btn-option">📂 Carregar al cançoner</button>
+          <button id="btn-delete" class="btn-option btn-option-danger">🗑 Eliminar cançoner</button>
+        </div>
+
+        <div class="mc-options-group">
+          <h3 class="mc-options-label">Compartir</h3>
+          <div id="share-enabled" hidden>
+            <div class="share-row">
+              <input id="share-url" type="text" readonly />
+            </div>
+            <div class="share-actions">
+              <button id="btn-copy" class="btn-outline-sm">📋 Copiar enllaç</button>
+              <button id="btn-revoke" class="btn-option btn-option-danger btn-sm-opt">
+                🚫 Revocar
+              </button>
+            </div>
+            <small>Qualsevol persona amb l'enllaç pot veure i descarregar el cançoner.</small>
+          </div>
+          <div id="share-disabled">
+            <button id="btn-enable-share" class="btn-option">
+              🔗 Generar enllaç de compartició
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Placeholder inicial -->
+      <div id="mc-placeholder" class="mc-placeholder empty-state">
+        <span>👈</span>
+        <p>Selecciona un cançoner per veure'l</p>
+      </div>
     </main>
 
-    <!-- ── Modal de propostes pròpies ──────────────────────────── -->
+    <!-- ── Propostes ── -->
     <div id="proposals-section">
-      <h2>Les meves propostes <span id="proposals-badge"></span></h2>
+      <div class="proposals-header">
+        <h2>Les meves propostes <span id="proposals-badge" hidden></span></h2>
+      </div>
       <ul id="proposals-list"></ul>
-      <div id="proposals-empty" class="empty-state" hidden>
-        <span>📝</span>
-        <p>No has fet cap proposta de cançó.</p>
+      <div id="proposals-empty" class="empty-state-sm" hidden>
+        <p>No has fet cap proposta de cançó encara.</p>
       </div>
     </div>
 

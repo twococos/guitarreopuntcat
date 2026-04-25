@@ -22,6 +22,29 @@ router.get("/", requireAuth, (req, res) => {
   res.json(canconers)
 })
 
+/* ── GET /api/canconers/shared/:token — cançoner públic ────── */
+/* IMPORTANT: ha d'anar ABANS de /:id per evitar que Express
+   interpreti "shared" com un id numèric */
+router.get("/shared/:token", (req, res) => {
+  const canconer = db.prepare("SELECT * FROM canconers WHERE share_token = ?").get(req.params.token)
+  if (!canconer) return res.status(404).json({ error: "Enllaç no vàlid" })
+
+  const songs = db
+    .prepare(
+      `
+    SELECT cs.semitones, cs.position, s.*
+    FROM canconer_songs cs
+    JOIN songs s ON s.id = cs.song_id
+    WHERE cs.canconer_id = ?
+    ORDER BY cs.position
+  `,
+    )
+    .all(canconer.id)
+
+  const owner = db.prepare("SELECT name FROM users WHERE id = ?").get(canconer.user_id)
+  res.json({ ...canconer, songs, owner_name: owner?.name })
+})
+
 /* ── GET /api/canconers/:id — detall d'un cançoner ─────────── */
 router.get("/:id", requireAuth, (req, res) => {
   const canconer = db
@@ -44,34 +67,13 @@ router.get("/:id", requireAuth, (req, res) => {
   res.json({ ...canconer, songs })
 })
 
-/* ── GET /api/canconers/shared/:token — cançoner públic ────── */
-router.get("/shared/:token", (req, res) => {
-  const canconer = db.prepare("SELECT * FROM canconers WHERE share_token = ?").get(req.params.token)
-  if (!canconer) return res.status(404).json({ error: "Enllaç no vàlid" })
-
-  const songs = db
-    .prepare(
-      `
-    SELECT cs.semitones, cs.position, s.*
-    FROM canconer_songs cs
-    JOIN songs s ON s.id = cs.song_id
-    WHERE cs.canconer_id = ?
-    ORDER BY cs.position
-  `,
-    )
-    .all(canconer.id)
-
-  const owner = db.prepare("SELECT name FROM users WHERE id = ?").get(canconer.user_id)
-  res.json({ ...canconer, songs, owner_name: owner?.name })
-})
-
-/* ── POST /api/canconers — crear o sobreescriure un cançoner── */
+/* ── POST /api/canconers — crear o actualitzar un cançoner ─── */
 router.post("/", requireAuth, (req, res) => {
   const { title = "El meu cançoner", songs = [], id: existingId } = req.body
 
-  // Validar que les cançons existeixin i no siguin esborranys
-  const placeholders = songs.map(() => "?").join(",")
+  // Validar que les cançons existeixin i no siguin esborranys (només públiques, draft=0)
   if (songs.length) {
+    const placeholders = songs.map(() => "?").join(",")
     const ids = songs.map((s) => s.id)
     const found = db
       .prepare(`SELECT id FROM songs WHERE id IN (${placeholders}) AND draft = 0`)
@@ -84,12 +86,12 @@ router.post("/", requireAuth, (req, res) => {
     let canconerId = existingId
 
     if (existingId) {
-      // Verificar que és del mateix usuari
+      // Verificar que pertany a l'usuari
       const existing = db
         .prepare("SELECT id FROM canconers WHERE id = ? AND user_id = ?")
         .get(existingId, req.user.id)
       if (!existing) throw new Error("No autoritzat")
-      db.prepare('UPDATE canconers SET title=?, updated_at=datetime("now") WHERE id=?').run(
+      db.prepare(`UPDATE canconers SET title = ?, updated_at = datetime('now') WHERE id = ?`).run(
         title,
         existingId,
       )
@@ -100,7 +102,7 @@ router.post("/", requireAuth, (req, res) => {
       canconerId = result.lastInsertRowid
     }
 
-    // Substituir les cançons
+    // Substituir cançons
     db.prepare("DELETE FROM canconer_songs WHERE canconer_id = ?").run(canconerId)
     const insertSong = db.prepare(
       "INSERT INTO canconer_songs (canconer_id, song_id, semitones, position) VALUES (?, ?, ?, ?)",
