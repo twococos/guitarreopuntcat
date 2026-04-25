@@ -1,17 +1,29 @@
 /* ── Estat global ──────────────────────────────────────────── */
 const state = {
-  songs: [], // llista completa de la BD
-  activeSong: null, // cançó oberta al detall (objecte complet)
-  semitones: 0, // transposició activa al detall
-  canconer: [], // [{song, semitones}]
+  songs: [], // llista DB
+  canconer: [], // [{ song, semitones }]
+  selectedIdx: null, // índex seleccionat al cançoner
+  previewActive: true,
   dragIdx: null,
+  savedCanconerId: null,
 }
 
-/* ── Helpers ───────────────────────────────────────────────── */
-const API = (path, opts) => fetch(`/api${path}`, opts).then((r) => r.json())
 const { transposeContent, transposeKey } = Transpose
+const API = (path, opts) => fetch(`/api${path}`, opts).then((r) => r.json())
 
-/* ── Botó "Nova cançó" segons rol ──────────────────────────── */
+/* ── Toggle vista prèvia ───────────────────────────────────── */
+const btnToggle = document.getElementById("btn-toggle-preview")
+btnToggle.classList.add("active")
+
+btnToggle.addEventListener("click", () => {
+  state.previewActive = !state.previewActive
+  btnToggle.classList.toggle("active", state.previewActive)
+  document.getElementById("main-layout").classList.toggle("no-preview", !state.previewActive)
+  document.getElementById("panel-detail").hidden = !state.previewActive
+  renderCanconer()
+})
+
+/* ── Botó nova cançó ───────────────────────────────────────── */
 function updateNewSongButton() {
   const btn = document.getElementById("btn-new-song")
   if (!btn) return
@@ -33,10 +45,8 @@ function updateNewSongButton() {
 }
 
 function showProposeToast() {
-  const toast = document.getElementById("propose-login-toast")
-  toast.hidden = false
+  document.getElementById("propose-login-toast").hidden = false
 }
-
 document.getElementById("propose-toast-close")?.addEventListener("click", () => {
   document.getElementById("propose-login-toast").hidden = true
 })
@@ -45,7 +55,7 @@ document.getElementById("propose-login-btn")?.addEventListener("click", () => {
   document.getElementById("propose-login-toast").hidden = true
 })
 
-/* ── Càrrega inicial ───────────────────────────────────────── */
+/* ── Càrrega de cançons DB ─────────────────────────────────── */
 async function loadSongs() {
   const sort = document.getElementById("sort").value
   const search = document.getElementById("search").value.trim()
@@ -55,114 +65,121 @@ async function loadSongs() {
   renderSongList()
 }
 
-/* ── Render: llista de cançons ─────────────────────────────── */
 function renderSongList() {
   const ul = document.getElementById("song-list")
   ul.innerHTML = ""
-  if (!state.songs.length) {
-    ul.innerHTML = '<li style="color:var(--muted);padding:.5rem">Cap cançó trobada</li>'
-    return
-  }
+  const inCanconer = new Set(state.canconer.map((e) => e.song.id))
+
   state.songs.forEach((s) => {
     const li = document.createElement("li")
-    if (state.activeSong?.id === s.id) li.classList.add("active")
+    const already = inCanconer.has(s.id)
+    if (already) li.classList.add("in-canconer")
     li.innerHTML = `
       <span class="song-key">${s.key}</span>
       <div class="song-name">${s.title}</div>
       <div class="song-info">${s.artist}</div>`
-    li.addEventListener("click", () => openSong(s.id))
+    if (!already) {
+      li.addEventListener("click", () => addToCanconer(s.id))
+    }
     ul.appendChild(li)
   })
 }
 
-/* ── Obrir cançó al detall ─────────────────────────────────── */
-async function openSong(id) {
-  const song = await API(`/songs/${id}`)
-  state.activeSong = song
-  state.semitones = 0
-  renderDetail()
-  renderSongList() // actualitza classe active
-}
-
-function renderDetail() {
-  const s = state.activeSong
-  if (!s) return
-
-  document.getElementById("detail-empty").hidden = true
-  document.getElementById("detail-content").hidden = false
-
-  document.getElementById("detail-title").textContent = s.title
-  document.getElementById("detail-meta").textContent =
-    `${s.artist} · To original: ${s.key}${s.capo ? ` · Cejilla: ${s.capo}` : ""}`
-
-  document.getElementById("transpose-value").textContent =
-    (state.semitones >= 0 ? "+" : "") + state.semitones
-  document.getElementById("display-key").textContent = `→ ${transposeKey(s.key, state.semitones)}`
-
-  document.getElementById("detail-body").innerHTML = transposeContent(s.content, state.semitones)
-
-  // Botó afegir: canvia si ja és al cançoner
-  const alreadyIn = state.canconer.some((e) => e.song.id === s.id)
-  const btn = document.getElementById("btn-add-to-canconer")
-  btn.textContent = alreadyIn ? "✓ Ja és al cançoner" : "+ Afegir al cançoner"
-  btn.disabled = alreadyIn
-}
-
-/* ── Transposició ──────────────────────────────────────────── */
-document.getElementById("btn-up").addEventListener("click", () => {
-  if (!state.activeSong) return
-  state.semitones = (state.semitones + 1 + 12) % 12
-  renderDetail()
-})
-
-document.getElementById("btn-down").addEventListener("click", () => {
-  if (!state.activeSong) return
-  state.semitones = (state.semitones - 1 + 12) % 12
-  renderDetail()
-})
-
 /* ── Afegir al cançoner ────────────────────────────────────── */
-document.getElementById("btn-add-to-canconer").addEventListener("click", () => {
-  if (!state.activeSong) return
-  if (state.canconer.some((e) => e.song.id === state.activeSong.id)) return
-  state.canconer.push({ song: state.activeSong, semitones: state.semitones })
-  renderDetail()
+async function addToCanconer(songId) {
+  // Carregar dades completes si no les tenim
+  let song = state.songs.find((s) => s.id === songId)
+  if (!song?.content) song = await API(`/songs/${songId}`)
+
+  state.canconer.push({ song, semitones: 0 })
+  // Seleccionar la cançó afegida
+  state.selectedIdx = state.canconer.length - 1
+  renderSongList()
   renderCanconer()
-})
+  renderDetail()
+}
 
 /* ── Render: cançoner ──────────────────────────────────────── */
 function renderCanconer() {
-  const ul = document.getElementById("canconer-list")
   const empty = document.getElementById("canconer-empty")
-  const btn = document.getElementById("btn-generate")
+  const list = document.getElementById("canconer-list")
+  const grid = document.getElementById("canconer-grid")
+  const btnSave = document.getElementById("btn-save-canconer")
+  const btnPDF = document.getElementById("btn-generate")
 
-  ul.innerHTML = ""
   const hasItems = state.canconer.length > 0
   empty.hidden = hasItems
-  btn.disabled = !hasItems
+  btnSave.disabled = !hasItems
+  btnPDF.disabled = !hasItems
   updateSaveButton()
 
+  if (state.previewActive) {
+    list.hidden = false
+    grid.hidden = true
+    renderList()
+  } else {
+    list.hidden = true
+    grid.hidden = false
+    renderGrid()
+  }
+}
+
+/* Mode llista (vista prèvia activa) */
+function renderList() {
+  const ul = document.getElementById("canconer-list")
+  ul.innerHTML = ""
+
   state.canconer.forEach(({ song, semitones }, i) => {
-    const displayKey = transposeKey(song.key, semitones)
+    const key = transposeKey(song.key, semitones)
     const li = document.createElement("li")
     li.draggable = true
-    li.dataset.idx = i
+    if (i === state.selectedIdx) li.classList.add("selected")
+
     li.innerHTML = `
       <span class="c-num">${i + 1}</span>
-      <div class="c-info">
-        <div class="c-title">${song.title}</div>
-        <div class="c-artist">${song.artist}</div>
+      <span class="c-title">${song.title}</span>
+      <span class="c-artist">${song.artist}</span>
+      <div class="c-transpose">
+        <button class="c-btn-down" title="−1 semitò">−</button>
+        <span class="c-key">${key}</span>
+        <button class="c-btn-up" title="+1 semitò">+</button>
       </div>
-      <span class="c-key">${displayKey}</span>
       <button class="c-remove" title="Treure">✕</button>`
 
-    li.querySelector(".c-remove").addEventListener("click", () => {
-      state.canconer.splice(i, 1)
+    // Seleccionar
+    li.addEventListener("click", (e) => {
+      if (e.target.closest(".c-transpose") || e.target.classList.contains("c-remove")) return
+      state.selectedIdx = i
       renderCanconer()
-      if (state.activeSong?.id === song.id) renderDetail()
+      renderDetail()
     })
 
-    // Drag & drop per reordenar
+    // Transposició inline
+    li.querySelector(".c-btn-up").addEventListener("click", (e) => {
+      e.stopPropagation()
+      state.canconer[i].semitones = (semitones + 1 + 12) % 12
+      if (state.selectedIdx === i) renderDetail()
+      renderCanconer()
+    })
+    li.querySelector(".c-btn-down").addEventListener("click", (e) => {
+      e.stopPropagation()
+      state.canconer[i].semitones = (semitones - 1 + 12) % 12
+      if (state.selectedIdx === i) renderDetail()
+      renderCanconer()
+    })
+
+    // Eliminar
+    li.querySelector(".c-remove").addEventListener("click", (e) => {
+      e.stopPropagation()
+      state.canconer.splice(i, 1)
+      if (state.selectedIdx >= state.canconer.length) state.selectedIdx = state.canconer.length - 1
+      if (state.canconer.length === 0) state.selectedIdx = null
+      renderSongList()
+      renderCanconer()
+      renderDetail()
+    })
+
+    // Drag & drop
     li.addEventListener("dragstart", () => {
       state.dragIdx = i
       li.classList.add("dragging")
@@ -178,6 +195,10 @@ function renderCanconer() {
       if (state.dragIdx === null || state.dragIdx === i) return
       const [moved] = state.canconer.splice(state.dragIdx, 1)
       state.canconer.splice(i, 0, moved)
+      // Actualitzar selectedIdx si cal
+      if (state.selectedIdx === state.dragIdx) state.selectedIdx = i
+      else if (state.selectedIdx > state.dragIdx && state.selectedIdx <= i) state.selectedIdx--
+      else if (state.selectedIdx < state.dragIdx && state.selectedIdx >= i) state.selectedIdx++
       state.dragIdx = null
       renderCanconer()
     })
@@ -186,12 +207,89 @@ function renderCanconer() {
   })
 }
 
+/* Mode grid — column-count omple verticalment */
+function renderGrid() {
+  const grid = document.getElementById("canconer-grid")
+  grid.innerHTML = ""
+  state.canconer.forEach(({ song, semitones }, i) => {
+    const key = transposeKey(song.key, semitones)
+    const div = document.createElement("div")
+    div.className = "cg-item"
+    if (i === state.selectedIdx) div.classList.add("selected")
+    div.innerHTML = `
+      <span class="cg-num">${i + 1}</span>
+      <span class="cg-title">${song.title}</span>
+      <span class="cg-artist">${song.artist}</span>
+      <div class="cg-transpose">
+        <button class="cg-btn-down">−</button>
+        <span class="cg-key">${key}</span>
+        <button class="cg-btn-up">+</button>
+      </div>`
+
+    div.addEventListener("click", (e) => {
+      if (e.target.closest(".cg-transpose")) return
+      state.selectedIdx = i
+      renderGrid()
+    })
+    div.querySelector(".cg-btn-up").addEventListener("click", (e) => {
+      e.stopPropagation()
+      state.canconer[i].semitones = (semitones + 1 + 12) % 12
+      renderGrid()
+    })
+    div.querySelector(".cg-btn-down").addEventListener("click", (e) => {
+      e.stopPropagation()
+      state.canconer[i].semitones = (semitones - 1 + 12) % 12
+      renderGrid()
+    })
+    grid.appendChild(div)
+  })
+}
+
+/* ── Vista prèvia del detall ───────────────────────────────── */
+function renderDetail() {
+  if (!state.previewActive) return
+  const emptyEl = document.getElementById("detail-empty")
+  const contentEl = document.getElementById("detail-content")
+
+  if (state.selectedIdx === null || !state.canconer[state.selectedIdx]) {
+    emptyEl.hidden = false
+    contentEl.hidden = true
+    return
+  }
+  const { song, semitones } = state.canconer[state.selectedIdx]
+  emptyEl.hidden = true
+  contentEl.hidden = false
+
+  document.getElementById("detail-title").textContent = song.title
+  document.getElementById("detail-meta").textContent =
+    `${song.artist} · To original: ${song.key}${song.capo ? ` · Cejilla: ${song.capo}` : ""}`
+  document.getElementById("transpose-value").textContent = (semitones >= 0 ? "+" : "") + semitones
+  document.getElementById("display-key").textContent = `→ ${transposeKey(song.key, semitones)}`
+  document.getElementById("detail-body").innerHTML = transposeContent(song.content, semitones)
+}
+
+/* Botons de transposició del detall */
+document.getElementById("btn-up").addEventListener("click", () => {
+  if (state.selectedIdx === null) return
+  const e = state.canconer[state.selectedIdx]
+  e.semitones = (e.semitones + 1 + 12) % 12
+  renderCanconer()
+  renderDetail()
+})
+document.getElementById("btn-down").addEventListener("click", () => {
+  if (state.selectedIdx === null) return
+  const e = state.canconer[state.selectedIdx]
+  e.semitones = (e.semitones - 1 + 12) % 12
+  renderCanconer()
+  renderDetail()
+})
+
 /* ── Generar PDF ───────────────────────────────────────────── */
 document.getElementById("btn-generate").addEventListener("click", async () => {
   const btn = document.getElementById("btn-generate")
   btn.disabled = true
-  btn.textContent = "⏳ Generant…"
-
+  const orig = btn.textContent
+  btn.textContent = "⏳"
   try {
     const payload = {
       title: document.getElementById("canconer-title").value || "El meu cançoner",
@@ -202,7 +300,7 @@ document.getElementById("btn-generate").addEventListener("click", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     })
-    if (!res.ok) throw new Error("Error del servidor")
+    if (!res.ok) throw new Error()
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -210,11 +308,12 @@ document.getElementById("btn-generate").addEventListener("click", async () => {
     a.download = "canconer.pdf"
     a.click()
     URL.revokeObjectURL(url)
-  } catch (err) {
-    alert("Error generant el PDF: " + err.message)
+  } catch {
+    alert("Error generant el PDF.")
   } finally {
     btn.disabled = false
-    btn.textContent = "📄 Generar PDF"
+    btn.textContent = orig
+    updateSaveButton()
   }
 })
 
@@ -229,13 +328,13 @@ document.getElementById("sort").addEventListener("change", loadSongs)
 /* ── Guardar cançoner ──────────────────────────────────────── */
 function updateSaveButton() {
   const btn = document.getElementById("btn-save-canconer")
-  const hasItems = state.canconer.length > 0
-  btn.disabled = !hasItems
-  if (!hasItems) {
-    btn.textContent = "💾 Guardar cançoner"
-    return
-  }
-  btn.textContent = Auth.isLoggedIn() ? "💾 Guardar cançoner" : "🔒 Inicia sessió per guardar"
+  const has = state.canconer.length > 0
+  btn.disabled = !has
+  btn.title = !has
+    ? "Afegeix cançons primer"
+    : Auth.isLoggedIn()
+      ? "Guardar cançoner"
+      : "Inicia sessió per guardar"
 }
 
 document.getElementById("btn-save-canconer").addEventListener("click", () => {
@@ -247,7 +346,6 @@ document.getElementById("btn-save-canconer").addEventListener("click", () => {
 })
 
 async function saveCanconer() {
-  // Obtenir llista de cançoners de l'usuari per comprovar duplicats
   let existingCanconers = []
   try {
     const r = await Auth.apiFetch("/canconers")
@@ -257,34 +355,27 @@ async function saveCanconer() {
   const titleInput = document.getElementById("canconer-title").value.trim() || "El meu cançoner"
   const songs = state.canconer.map(({ song, semitones }) => ({ id: song.id, semitones }))
 
-  // Comprovar si hi ha un altre cançoner amb el mateix nom (que no sigui el que estem editant)
   const duplicate = existingCanconers.find(
     (c) => c.title.toLowerCase() === titleInput.toLowerCase() && c.id !== state.savedCanconerId,
   )
-
   if (duplicate) {
-    // Preguntar si sobreescriu
     showOverwriteToast(titleInput, duplicate.id, songs)
     return
   }
-
   await doSave(titleInput, songs, state.savedCanconerId)
 }
 
 function showOverwriteToast(title, duplicateId, songs) {
-  // Eliminar toast anterior si n'hi ha
   document.getElementById("overwrite-toast")?.remove()
-
   const t = document.createElement("div")
   t.id = "overwrite-toast"
   t.className = "overwrite-toast"
   t.innerHTML = `
     <span>⚠️</span>
-    <p>Ja tens un cançoner anomenat <strong>"${title}"</strong>. Vols sobreescriure'l?</p>
-    <button id="ow-yes" class="btn-primary" style="width:auto;padding:.35rem .85rem;font-size:.82rem">Sobreescriu</button>
-    <button id="ow-no"  class="btn-ghost">Cancel·lar</button>`
+    <p>Ja tens un cançoner <strong>"${title}"</strong>. Vols sobreescriure'l?</p>
+    <button id="ow-yes" class="btn-primary btn-sm">Sobreescriu</button>
+    <button id="ow-no" class="btn-ghost">Cancel·lar</button>`
   document.body.appendChild(t)
-
   document.getElementById("ow-yes").addEventListener("click", async () => {
     t.remove()
     await doSave(title, songs, duplicateId)
@@ -314,9 +405,7 @@ async function setDefaultTitle() {
     const titles = new Set(existing.map((c) => c.title.toLowerCase()))
     let title = "El meu cançoner"
     let n = 2
-    while (titles.has(title.toLowerCase())) {
-      title = `El meu cançoner ${n++}`
-    }
+    while (titles.has(title.toLowerCase())) title = `El meu cançoner ${n++}`
     document.getElementById("canconer-title").value = title
   } catch {}
 }
@@ -337,23 +426,22 @@ function showToast(msg, isError = false) {
   updateNewSongButton()
   updateSaveButton()
 
-  // Si venim de "Els meus cançoners" amb un cançoner per carregar
   const saved = sessionStorage.getItem("load_canconer")
   if (saved) {
     sessionStorage.removeItem("load_canconer")
     const canconer = JSON.parse(saved)
     state.savedCanconerId = canconer.id
     document.getElementById("canconer-title").value = canconer.title
-    // Carregar cada cançó completa i afegir-la al cançoner
     for (const s of canconer.songs) {
       const full = await (await fetch(`/api/songs/${s.id}`)).json()
       state.canconer.push({ song: full, semitones: s.semitones })
     }
+    state.selectedIdx = state.canconer.length > 0 ? 0 : null
+    renderSongList()
     renderCanconer()
+    renderDetail()
   } else {
-    // Títol per defecte intel·ligent: evitar duplicats
     await setDefaultTitle()
   }
-
   loadSongs()
 })()
