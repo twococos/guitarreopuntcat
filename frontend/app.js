@@ -140,9 +140,9 @@ function renderList() {
       <span class="c-title">${song.title}</span>
       <span class="c-artist">${song.artist}</span>
       <div class="c-transpose">
-        <button class="c-btn-down" title="−1 semitò">−</button>
-        <span class="c-key">${key}</span>
-        <button class="c-btn-up" title="+1 semitò">+</button>
+        <button class="c-pm c-btn-down" title="−1 semitò">−</button>
+        <span class="c-key" title="Canviar tonalitat">${key}</span>
+        <button class="c-pm c-btn-up" title="+1 semitò">+</button>
       </div>
       <button class="c-remove" title="Treure">✕</button>`
 
@@ -154,7 +154,13 @@ function renderList() {
       renderDetail()
     })
 
-    // Transposició inline
+    // Clic sobre la tonalitat → menú
+    li.querySelector(".c-key").addEventListener("click", (e) => {
+      e.stopPropagation()
+      openKeyMenu(i, e.currentTarget)
+    })
+
+    // +/−
     li.querySelector(".c-btn-up").addEventListener("click", (e) => {
       e.stopPropagation()
       state.canconer[i].semitones = (semitones + 1 + 12) % 12
@@ -195,7 +201,6 @@ function renderList() {
       if (state.dragIdx === null || state.dragIdx === i) return
       const [moved] = state.canconer.splice(state.dragIdx, 1)
       state.canconer.splice(i, 0, moved)
-      // Actualitzar selectedIdx si cal
       if (state.selectedIdx === state.dragIdx) state.selectedIdx = i
       else if (state.selectedIdx > state.dragIdx && state.selectedIdx <= i) state.selectedIdx--
       else if (state.selectedIdx < state.dragIdx && state.selectedIdx >= i) state.selectedIdx++
@@ -221,15 +226,19 @@ function renderGrid() {
       <span class="cg-title">${song.title}</span>
       <span class="cg-artist">${song.artist}</span>
       <div class="cg-transpose">
-        <button class="cg-btn-down">−</button>
-        <span class="cg-key">${key}</span>
-        <button class="cg-btn-up">+</button>
+        <button class="cg-pm cg-btn-down">−</button>
+        <span class="cg-key" title="Canviar tonalitat">${key}</span>
+        <button class="cg-pm cg-btn-up">+</button>
       </div>`
 
     div.addEventListener("click", (e) => {
       if (e.target.closest(".cg-transpose")) return
       state.selectedIdx = i
       renderGrid()
+    })
+    div.querySelector(".cg-key").addEventListener("click", (e) => {
+      e.stopPropagation()
+      openKeyMenu(i, e.currentTarget)
     })
     div.querySelector(".cg-btn-up").addEventListener("click", (e) => {
       e.stopPropagation()
@@ -284,7 +293,64 @@ document.getElementById("btn-down").addEventListener("click", () => {
   renderDetail()
 })
 
-/* ── Generar PDF ───────────────────────────────────────────── */
+/* ── Menú de tonalitats ────────────────────────────────────── */
+const keyMenu = document.getElementById("key-menu")
+const keyMenuGrid = document.getElementById("key-menu-grid")
+let keyMenuTarget = null // { idx }
+
+const CHROMATIC = Transpose.CHROMATIC
+// Genera 12 tonalitats del mateix mode (major/menor) que la cançó original
+function keysForSong(originalKey) {
+  const isMinor = originalKey.endsWith("m") && originalKey !== "F" && originalKey !== "C"
+  return CHROMATIC.map((n) => (isMinor ? n + "m" : n))
+}
+
+function openKeyMenu(idx, anchorEl) {
+  keyMenuTarget = idx
+  const { song, semitones } = state.canconer[idx]
+  const currentKey = Transpose.transposeKey(song.key, semitones)
+  const keys = keysForSong(song.key)
+
+  keyMenuGrid.innerHTML = ""
+  keys.forEach((k) => {
+    const btn = document.createElement("button")
+    btn.textContent = k
+    if (k === currentKey) btn.classList.add("current")
+    btn.addEventListener("mousedown", (e) => {
+      e.preventDefault()
+      // Calcular quants semitons cal per arribar a aquesta tonalitat
+      const rootOrig = song.key.replace("m", "")
+      const rootTarget = k.replace("m", "")
+      const iOrig = CHROMATIC.indexOf(rootOrig)
+      const iTarget = CHROMATIC.indexOf(rootTarget)
+      state.canconer[idx].semitones = (iTarget - iOrig + 12) % 12
+      closeKeyMenu()
+      renderCanconer()
+      if (state.selectedIdx === idx) renderDetail()
+    })
+    keyMenuGrid.appendChild(btn)
+  })
+
+  // Posicionar el menú
+  keyMenu.hidden = false
+  const rect = anchorEl.getBoundingClientRect()
+  const mw = keyMenu.offsetWidth,
+    mh = keyMenu.offsetHeight
+  const vw = window.innerWidth,
+    vh = window.innerHeight
+  keyMenu.style.left = Math.min(rect.left, vw - mw - 8) + "px"
+  keyMenu.style.top = (rect.bottom + 4 + mh > vh ? rect.top - mh - 4 : rect.bottom + 4) + "px"
+}
+
+function closeKeyMenu() {
+  keyMenu.hidden = true
+  keyMenuTarget = null
+}
+document.addEventListener("click", closeKeyMenu)
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeKeyMenu()
+})
+keyMenu.addEventListener("click", (e) => e.stopPropagation())
 document.getElementById("btn-generate").addEventListener("click", async () => {
   const btn = document.getElementById("btn-generate")
   btn.disabled = true

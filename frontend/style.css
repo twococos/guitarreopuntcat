@@ -337,47 +337,64 @@ select:focus {
   white-space: nowrap;
 }
 
-/* Controls de to inline — visibles només en hover */
+/* Controls de to inline — +/− ocults en hover, to sempre visible */
 .c-transpose {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s;
 }
-#canconer-list li:hover .c-transpose,
-#canconer-list li.selected .c-transpose {
+#canconer-list li:hover .c-transpose .c-pm,
+#canconer-list li.selected .c-transpose .c-pm {
   opacity: 1;
 }
 
-.c-transpose button {
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
+.c-transpose .c-pm {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   border: 1px solid var(--border);
   background: var(--surface);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   cursor: pointer;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.1s;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    background 0.1s;
+  flex-shrink: 0;
 }
-.c-transpose button:hover {
+
+.c-transpose .c-pm:hover {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
 }
+
 .c-key {
   font-family: monospace;
   font-size: 0.72rem;
   color: var(--accent);
   font-weight: 700;
-  min-width: 2.2rem;
-  text-align: center;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid #f0c8c4;
+  background: #fdf4f3;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
+.c-key:hover {
+  border-color: var(--accent);
+  background: #fce8e6;
+}
+
 .c-remove {
   background: none;
   border: none;
@@ -396,6 +413,58 @@ select:focus {
 }
 .c-remove:hover {
   color: var(--accent);
+}
+
+/* Menú de tonalitats */
+#key-menu {
+  position: fixed;
+  z-index: 300;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem;
+  min-width: 200px;
+}
+#key-menu[hidden] {
+  display: none;
+}
+.key-menu-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 0.2rem 0.4rem 0.45rem;
+}
+.key-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.25rem;
+}
+.key-menu-grid button {
+  font-family: monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 2px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    color 0.1s;
+}
+.key-menu-grid button:hover {
+  background: #fdf4f3;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.key-menu-grid button.current {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
 /* Mode compacte — columnes verticals (column fill) */
@@ -463,35 +532,52 @@ select:focus {
   flex-shrink: 0;
 }
 
-/* Controls de to al grid — en hover */
+/* Mode grid — controls de to */
 .cg-transpose {
   display: flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s;
 }
-#canconer-grid .cg-item:hover .cg-transpose {
-  opacity: 1;
-}
-.cg-transpose button {
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
+.cg-transpose .cg-pm {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
   border: 1px solid var(--border);
   background: var(--surface);
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   cursor: pointer;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.1s;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    background 0.1s;
 }
-.cg-transpose button:hover {
+#canconer-grid .cg-item:hover .cg-transpose .cg-pm {
+  opacity: 1;
+}
+.cg-transpose .cg-pm:hover {
   background: var(--accent);
   color: #fff;
+  border-color: var(--accent);
+}
+.cg-key {
+  font-family: monospace;
+  font-size: 0.68rem;
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid #f0c8c4;
+  background: #fdf4f3;
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+.cg-key:hover {
   border-color: var(--accent);
 }
 
