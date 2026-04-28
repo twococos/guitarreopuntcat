@@ -41,13 +41,6 @@
             value="El meu cançoner"
           />
           <div class="canconer-header-actions">
-            <button
-              id="btn-toggle-preview"
-              class="btn-toggle-preview active"
-              title="Mostrar/amagar vista prèvia"
-            >
-              👁 Vista prèvia
-            </button>
             <button id="btn-save-canconer" class="btn-icon-action" disabled title="Guardar">
               💾 Guardar
             </button>
@@ -69,29 +62,54 @@
         <div id="canconer-grid" hidden></div>
       </section>
 
-      <!-- ── Col·lumna 3: vista prèvia ── -->
+      <!-- ── Col·lumna 3: panell lateral col·lapsable ── -->
       <section id="panel-detail">
-        <div id="detail-empty" class="empty-state">
-          <span>←</span>
-          <p>Selecciona una cançó del cançoner</p>
-        </div>
-        <div id="detail-content" hidden>
-          <div class="detail-header">
-            <div>
-              <h2 id="detail-title"></h2>
-              <p id="detail-meta"></p>
+        <!-- Botó de col·lapsar (sempre visible) -->
+        <button id="btn-collapse-panel" class="btn-collapse" title="Amagar/mostrar panell">
+          <span id="collapse-arrow">›</span>
+        </button>
+
+        <!-- Contingut del panell (pestanyes) -->
+        <div id="panel-detail-inner">
+          <!-- Pestanyes -->
+          <div class="detail-tabs">
+            <button class="detail-tab active" data-tab="preview">👁 Vista prèvia</button>
+            <button class="detail-tab" data-tab="options">⚙ Opcions</button>
+          </div>
+
+          <!-- Pestanya: Vista prèvia -->
+          <div id="tab-preview" class="tab-content active">
+            <div id="detail-empty" class="empty-state">
+              <span>←</span>
+              <p>Selecciona una cançó del cançoner</p>
             </div>
-            <div class="transpose-control">
-              <label>To</label>
-              <div class="transpose-buttons">
-                <button id="btn-down">−</button>
-                <span id="transpose-value">+0</span>
-                <button id="btn-up">+</button>
+            <div id="detail-content" hidden>
+              <div class="detail-header">
+                <div>
+                  <h2 id="detail-title"></h2>
+                  <p id="detail-meta"></p>
+                </div>
+                <div class="transpose-control">
+                  <label>To</label>
+                  <div class="transpose-buttons">
+                    <button id="btn-down">−</button>
+                    <span id="transpose-value">+0</span>
+                    <button id="btn-up">+</button>
+                  </div>
+                  <small id="display-key"></small>
+                </div>
               </div>
-              <small id="display-key"></small>
+              <div id="detail-body"></div>
             </div>
           </div>
-          <div id="detail-body"></div>
+
+          <!-- Pestanya: Opcions -->
+          <div id="tab-options" class="tab-content" hidden>
+            <div class="options-placeholder">
+              <span>⚙️</span>
+              <p>Les opcions del cançoner apareixeran aquí aviat.</p>
+            </div>
+          </div>
         </div>
       </section>
     </main>

@@ -108,7 +108,7 @@ header .subtitle {
   transition: grid-template-columns 0.2s ease;
 }
 #main-layout.no-preview {
-  grid-template-columns: var(--col-songs) 1fr 0px;
+  grid-template-columns: var(--col-songs) 1fr 28px;
 }
 #main-layout > section {
   overflow-y: auto;
@@ -227,23 +227,7 @@ select:focus {
   align-items: center;
 }
 
-.btn-toggle-preview {
-  padding: 0.32rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  color: var(--muted);
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-.btn-toggle-preview.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
+/* btn-toggle-preview eliminat — ara s'usa btn-collapse al panell lateral */
 
 .btn-icon-action {
   padding: 0.32rem 0.72rem;
@@ -582,16 +566,119 @@ select:focus {
 }
 
 /* ── Vista prèvia ──────────────────────────────────────────── */
+/* Panell lateral col·lapsable */
 #panel-detail {
   display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  position: relative;
+  padding: 0;
+  flex-shrink: 0;
+}
+#main-layout.no-preview #panel-detail-inner {
+  display: none;
+}
+#main-layout.no-preview {
+  grid-template-columns: var(--col-songs) 1fr 28px;
+}
+
+/* Botó de col·lapsar */
+.btn-collapse {
+  width: 28px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: none;
+  border-left: 1px solid var(--border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 1.1rem;
+  transition: background 0.15s, color 0.15s;
+  order: -1;
+}
+.btn-collapse:hover {
+  background: #fdf4f3;
+  color: var(--accent);
+}
+#collapse-arrow {
+  line-height: 1;
+  user-select: none;
+}
+
+/* Contingut interior del panell */
+#panel-detail-inner {
+  flex: 1;
+  display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1.1rem;
   overflow: hidden;
 }
-#main-layout.no-preview #panel-detail {
-  overflow: hidden;
-  padding: 0;
+
+/* Pestanyes */
+.detail-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.detail-tab {
+  flex: 1;
+  padding: 0.55rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.detail-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: var(--bg);
+}
+.detail-tab:hover:not(.active) {
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* Contingut de les pestanyes */
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.tab-content[hidden] {
+  display: none !important;
+}
+
+/* Tab vista prèvia */
+#tab-preview {
+  padding: 1.1rem;
+  gap: 1rem;
+}
+
+/* Tab opcions: placeholder */
+.options-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 0.75rem;
+  color: var(--muted);
+  padding: 2rem;
+  text-align: center;
+}
+.options-placeholder span {
+  font-size: 2rem;
+}
+.options-placeholder p {
+  font-size: 0.85rem;
 }
 
 .detail-header {

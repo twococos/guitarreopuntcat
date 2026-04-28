@@ -11,16 +11,28 @@ const state = {
 const { transposeContent, transposeKey } = Transpose
 const API = (path, opts) => fetch(`/api${path}`, opts).then((r) => r.json())
 
-/* ── Toggle vista prèvia ───────────────────────────────────── */
-const btnToggle = document.getElementById("btn-toggle-preview")
-btnToggle.classList.add("active")
+/* ── Col·lapsar panell lateral ─────────────────────────────── */
+const btnCollapse = document.getElementById("btn-collapse-panel")
+const collapseArrow = document.getElementById("collapse-arrow")
 
-btnToggle.addEventListener("click", () => {
+btnCollapse.addEventListener("click", () => {
   state.previewActive = !state.previewActive
-  btnToggle.classList.toggle("active", state.previewActive)
-  document.getElementById("main-layout").classList.toggle("no-preview", !state.previewActive)
-  document.getElementById("panel-detail").hidden = !state.previewActive
+  const layout = document.getElementById("main-layout")
+  const inner = document.getElementById("panel-detail-inner")
+  layout.classList.toggle("no-preview", !state.previewActive)
+  inner.hidden = !state.previewActive
+  collapseArrow.textContent = state.previewActive ? "›" : "‹"
   renderCanconer()
+})
+
+/* ── Pestanyes del panell lateral ──────────────────────────── */
+document.querySelectorAll(".detail-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".detail-tab").forEach((t) => t.classList.remove("active"))
+    document.querySelectorAll(".tab-content").forEach((c) => (c.hidden = true))
+    tab.classList.add("active")
+    document.getElementById(`tab-${tab.dataset.tab}`).hidden = false
+  })
 })
 
 /* ── Botó nova cançó ───────────────────────────────────────── */
