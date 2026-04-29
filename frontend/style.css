@@ -776,6 +776,149 @@ select:focus {
   font-size: 0.85rem;
 }
 
+/* ── Panell opcions ───────────────────────────────────────── */
+#tab-options {
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.options-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.options-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sort-control select {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.84rem;
+  padding: 0.38rem 0.6rem;
+}
+
+.btn-sort-extra {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  padding: 0;
+  line-height: 1;
+}
+.btn-sort-extra:hover {
+  border-color: var(--accent);
+  background: #fdf4f3;
+  color: var(--accent);
+}
+.btn-sort-extra[hidden] {
+  display: none !important;
+}
+
+/* ── Filtre de tonalitats ───────────────────────────────────────── */
+.options-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 0.25rem 0;
+}
+
+.key-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+
+.key-filter-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0.5rem 0.25rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, opacity 0.12s;
+  opacity: 0.42;
+}
+.key-filter-btn.active {
+  border-color: var(--accent);
+  background: #fdf4f3;
+  opacity: 1;
+}
+.key-filter-btn:hover {
+  border-color: var(--accent);
+  opacity: 0.85;
+}
+.key-filter-btn.active:hover {
+  opacity: 0.75;
+}
+
+.kf-major {
+  font-family: monospace;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+.key-filter-btn:not(.active) .kf-major {
+  color: var(--muted);
+}
+.kf-minor {
+  font-family: monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1;
+}
+.key-filter-btn.active .kf-minor {
+  color: #b5695f;
+}
+
+.key-filter-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: 0.1rem;
+}
+
+.btn-apply-keys {
+  align-self: flex-start;
+  padding: 0.42rem 1.1rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 0.15rem;
+}
+.btn-apply-keys:hover {
+  background: var(--accent-hv);
+}
+
 /* ── Toast ─────────────────────────────────────────────────── */
 .toast {
   position: fixed;

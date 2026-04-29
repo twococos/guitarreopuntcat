@@ -105,16 +105,39 @@
 
           <!-- Pestanya: Opcions -->
           <div id="tab-options" class="tab-content" hidden>
-            <div class="options-placeholder">
-              <span>⚙️</span>
-              <p>Les opcions del cançoner apareixeran aquí aviat.</p>
+            <div class="options-section">
+              <h3 class="options-section-title">Ordenació</h3>
+              <div class="sort-control">
+                <select id="canconer-sort">
+                  <option value="custom">Personalitzat</option>
+                  <option value="title">Per títol</option>
+                  <option value="artist">Per artista i títol</option>
+                  <option value="random">Al·leatori</option>
+                </select>
+                <button id="btn-sort-dir" class="btn-sort-extra" hidden title="Canviar ordre">
+                  <span id="sort-dir-icon">↑</span>
+                </button>
+                <button id="btn-sort-random" class="btn-sort-extra" hidden title="Tornar a aleatoritzar">
+                  🎲
+                </button>
+              </div>
+                        </div>
+
+              <div class="options-sep"></div>
+
+              <div class="options-section">
+                <h3 class="options-section-title">Tonalitats permeses</h3>
+                <div id="key-filter-grid" class="key-filter-grid"></div>
+                <p class="key-filter-hint">
+                  Les cançons en tonalitats desactivades es transposaran a la més propera en aplicar. Si reactiveu una tonalitat, les cançons que hi eren originalment recuperen el to original.
+                </p>
+                <button id="btn-apply-keys" class="btn-apply-keys">Aplicar</button>
+              </div>
             </div>
           </div>
         </div>
       </section>
-    </main>
-
-    <!-- Toast de sobreescriptura -->
+    </main> Toast de sobreescriptura -->
     <div id="propose-login-toast" class="propose-toast" hidden>
       <span>🔒</span>
       <p>Inicia sessió per poder proposar noves cançons.</p>

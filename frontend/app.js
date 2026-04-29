@@ -6,6 +6,8 @@ const state = {
   previewActive: true,
   dragIdx: null,
   savedCanconerId: null,
+  sortMode: 'custom', // 'custom' | 'title' | 'artist' | 'random'
+  sortAsc: true,      // per a 'title' i 'artist'
 }
 
 const { transposeContent, transposeKey } = Transpose
@@ -34,6 +36,227 @@ document.querySelectorAll(".detail-tab").forEach((tab) => {
     document.getElementById(`tab-${tab.dataset.tab}`).hidden = false
   })
 })
+
+/* ── Ordenació del cançoner ─────────────────────────── */
+function applyCancyonerSort(mode, asc) {
+  if (mode === 'custom' || state.canconer.length === 0) return
+
+  // Guardar quin és el seleccionat per restaurar-lo després
+  const selectedSong = state.selectedIdx !== null ? state.canconer[state.selectedIdx] : null
+
+  if (mode === 'title') {
+    state.canconer.sort((a, b) => {
+      const cmp = a.song.title.localeCompare(b.song.title, 'ca', { sensitivity: 'base' })
+      return asc ? cmp : -cmp
+    })
+  } else if (mode === 'artist') {
+    state.canconer.sort((a, b) => {
+      const cmpArtist = a.song.artist.localeCompare(b.song.artist, 'ca', { sensitivity: 'base' })
+      if (cmpArtist !== 0) return asc ? cmpArtist : -cmpArtist
+      const cmpTitle = a.song.title.localeCompare(b.song.title, 'ca', { sensitivity: 'base' })
+      return asc ? cmpTitle : -cmpTitle
+    })
+  } else if (mode === 'random') {
+    // Fisher-Yates shuffle
+    for (let i = state.canconer.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[state.canconer[i], state.canconer[j]] = [state.canconer[j], state.canconer[i]]
+    }
+  }
+
+  // Restaurar selectedIdx
+  if (selectedSong) {
+    state.selectedIdx = state.canconer.indexOf(selectedSong)
+  }
+}
+
+function updateSortUI() {
+  const sel = document.getElementById('canconer-sort')
+  const btnDir = document.getElementById('btn-sort-dir')
+  const btnRand = document.getElementById('btn-sort-random')
+  const dirIcon = document.getElementById('sort-dir-icon')
+
+  if (sel) sel.value = state.sortMode
+  if (btnDir) btnDir.hidden = !(state.sortMode === 'title' || state.sortMode === 'artist')
+  if (btnRand) btnRand.hidden = state.sortMode !== 'random'
+  if (dirIcon) dirIcon.textContent = state.sortAsc ? '↑' : '↓'
+}
+
+const sortSelect = document.getElementById('canconer-sort')
+if (sortSelect) {
+  sortSelect.addEventListener('change', () => {
+    const newMode = sortSelect.value
+    state.sortMode = newMode
+    if (newMode !== 'custom') {
+      applyCancyonerSort(newMode, state.sortAsc)
+      renderSongList()
+      renderCanconer()
+      renderDetail()
+    }
+    updateSortUI()
+  })
+}
+
+const btnSortDir = document.getElementById('btn-sort-dir')
+if (btnSortDir) {
+  btnSortDir.addEventListener('click', () => {
+    state.sortAsc = !state.sortAsc
+    applyCancyonerSort(state.sortMode, state.sortAsc)
+    updateSortUI()
+    renderSongList()
+    renderCanconer()
+    renderDetail()
+  })
+}
+
+const btnSortRandom = document.getElementById('btn-sort-random')
+if (btnSortRandom) {
+  btnSortRandom.addEventListener('click', () => {
+    applyCancyonerSort('random', state.sortAsc)
+    renderSongList()
+    renderCanconer()
+    renderDetail()
+  })
+}
+
+/* ── Filtre de tonalitats permeses ───────────────────────── */
+// Totes les 12 tonalitats majors (i implicitament els seus relatius menors)
+// CHROMATIC = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
+// Per a cada to major, el seu relatiu menor és el to 9 semitons per sobre (o 3 per sota)
+const ALL_MAJOR_KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
+// Relatiu menor de cada major: C->Am, C#->A#m, D->Bm, D#->Cm, E->C#m, F->Dm, F#->D#m, G->Em, G#->Fm, A->F#m, A#->Gm, B->G#m
+const RELATIVE_MINOR = {
+  'C':'Am','C#':'A#m','D':'Bm','D#':'Cm','E':'C#m','F':'Dm',
+  'F#':'D#m','G':'Em','G#':'Fm','A':'F#m','A#':'Gm','B':'G#m'
+}
+
+// Conjunt de tonalitats majors permeses (totes activades per defecte)
+// state.allowedKeys = Set de tonalitats MAJORS permeses
+// La tonalitat d'una cançó és permesa si la seva arrel major està a allowedKeys
+// (tant si la cançó és major com si és la menor relativa)
+state.allowedKeys = new Set(ALL_MAJOR_KEYS)
+
+// Donat un to (major o menor), retorna la seva arrel major equivalent
+function toMajorRoot(key) {
+  const root = key.replace('m', '')
+  // Si és menor, busquem el major del qual és relatiu
+  if (key.endsWith('m') && key !== 'F' && key !== 'C') {
+    // El relatiu major d'un menor: 3 semitons per sobre
+    const CHROM = Transpose.CHROMATIC
+    const idx = CHROM.indexOf(root)
+    if (idx !== -1) {
+      const majorIdx = (idx + 3) % 12
+      return CHROM[majorIdx]
+    }
+  }
+  return root // és major, retornem l'arrel directament
+}
+
+// Donat un to i el conjunt de permesos, troba el to permès més proper en semitons
+// Retorna quants semitons cal afegir (pot ser negatiu, usem el mínim distància circular)
+function nearestAllowedSemitones(currentKey, allowedMajors) {
+  const CHROM = Transpose.CHROMATIC
+  const currentRoot = currentKey.replace('m', '')
+  const isMinor = currentKey.endsWith('m') && currentKey !== 'F' && currentKey !== 'C'
+  const currentIdx = CHROM.indexOf(currentRoot)
+  if (currentIdx === -1) return 0
+
+  let bestDelta = null
+  let bestDist = Infinity
+
+  for (const major of allowedMajors) {
+    const majorIdx = CHROM.indexOf(major)
+    if (majorIdx === -1) continue
+
+    // Si la cançó és menor, la tonalitat permesa corresponent és el relatiu menor del major permès
+    // Per saber quants semitons cal, calculem la distància entre les arrels
+    const delta = (majorIdx - currentIdx + 12) % 12
+    // distància circular mínima
+    const dist = delta <= 6 ? delta : 12 - delta
+    if (dist < bestDist) {
+      bestDist = dist
+      bestDelta = delta <= 6 ? delta : delta - 12
+    }
+  }
+  return bestDelta ?? 0
+}
+
+function renderKeyFilterGrid() {
+  const grid = document.getElementById('key-filter-grid')
+  if (!grid) return
+  grid.innerHTML = ''
+  ALL_MAJOR_KEYS.forEach((key) => {
+    const btn = document.createElement('button')
+    btn.className = 'key-filter-btn' + (state.allowedKeys.has(key) ? ' active' : '')
+    btn.innerHTML = `<span class="kf-major">${key}</span><span class="kf-minor">${RELATIVE_MINOR[key]}</span>`
+    btn.title = `${key} major / ${RELATIVE_MINOR[key]}`
+    btn.addEventListener('click', () => {
+      if (state.allowedKeys.has(key)) {
+        // No podem deixar cap tonalitat activa
+        if (state.allowedKeys.size <= 1) return
+        state.allowedKeys.delete(key)
+      } else {
+        state.allowedKeys.add(key)
+      }
+      btn.classList.toggle('active', state.allowedKeys.has(key))
+    })
+    grid.appendChild(btn)
+  })
+}
+
+document.getElementById('btn-apply-keys')?.addEventListener('click', () => {
+  if (state.canconer.length === 0) return
+  const CHROM = Transpose.CHROMATIC
+  const allowed = state.allowedKeys
+
+  state.canconer.forEach((entry) => {
+    const originalKey = entry.song.key  // to original de la cançó a la BD
+    const originalMajorRoot = toMajorRoot(originalKey)
+
+    if (allowed.has(originalMajorRoot)) {
+      // El to original està permès: restaurem semitones = 0
+      entry.semitones = 0
+    } else {
+      // Cal transposar: calculem el to actual transposat
+      const currentRoot = CHROM[(CHROM.indexOf(originalKey.replace('m','')) + entry.semitones + 12) % 12]
+      const isMinor = originalKey.endsWith('m') && originalKey !== 'F' && originalKey !== 'C'
+      const currentKey = isMinor ? currentRoot + 'm' : currentRoot
+      const currentMajorRoot = toMajorRoot(currentKey)
+
+      if (allowed.has(currentMajorRoot)) {
+        // El to actual ja és permès, no cal fer res
+        return
+      }
+
+      // Busquem el to permès més proper partint del to ORIGINAL
+      const origRootIdx = CHROM.indexOf(originalKey.replace('m',''))
+      let bestDelta = 0
+      let bestDist = Infinity
+
+      for (const major of allowed) {
+        const majorIdx = CHROM.indexOf(major)
+        // Per cançons menors, la tonalitat resultant serà el relatiu menor del major permès
+        // Per cançons majors, la tonalitat resultant serà el major permès directament
+        // En tots dos casos, l'arrel de destino és el major permès
+        const delta = (majorIdx - origRootIdx + 12) % 12
+        const dist = delta <= 6 ? delta : 12 - delta
+        if (dist < bestDist) {
+          bestDist = dist
+          bestDelta = delta <= 6 ? delta : delta - 12
+          if (bestDelta < 0) bestDelta = (bestDelta + 12) % 12
+        }
+      }
+      entry.semitones = bestDelta
+    }
+  })
+
+  renderCanconer()
+  renderDetail()
+  showToast('Tonalitats aplicades!')
+})
+
+// Inicialitzar la graella en carregar
+renderKeyFilterGrid()
 
 /* ── Botó nova cançó ───────────────────────────────────────── */
 function updateNewSongButton() {
@@ -217,6 +440,9 @@ function renderList() {
       else if (state.selectedIdx > state.dragIdx && state.selectedIdx <= i) state.selectedIdx--
       else if (state.selectedIdx < state.dragIdx && state.selectedIdx >= i) state.selectedIdx++
       state.dragIdx = null
+      // El drag & drop marca l'ordre com a personalitzat
+      state.sortMode = 'custom'
+      updateSortUI()
       renderCanconer()
     })
 
