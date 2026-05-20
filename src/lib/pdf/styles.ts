@@ -5,29 +5,42 @@ import { join } from "node:path"
  * CSS injectat dins de l'HTML generat per al PDF.
  *
  * Combina:
- *   · src/styles/song.css     → estils dels tags <ch> i <sec>
- *                                (font única; també l'usa globals.css
- *                                via @import).
- *   · constants locals        → portada, índex i pàgina de cançó (només PDF)
+ *   · src/styles/song.css        → estils base del component
+ *   · src/styles/song-styles.css → variants d'estil del cançoner
+ *   · constants locals           → portada, índex i page-break (només PDF)
  *
  * Es llegeix amb fs.readFileSync al moment d'import perquè
  *   (1) no podem importar CSS al runtime de Node, i
- *   (2) volem una sola font de veritat per als tags semàntics.
+ *   (2) volem una sola font de veritat per al render de cançons.
+ *
+ * IMPORTANT: NO podem confiar en l'@import dins de song.css perquè
+ * Puppeteer injecta l'HTML via setContent() sense una base URL, i
+ * els @import relatius no es resolen. Per això concatenem els dos
+ * fitxers aquí manualment i fem strip de la línia @import.
  *
  * El `next.config.mjs` té `serverExternalPackages` per `puppeteer`,
  * així que aquesta lectura passa al servidor Node natiu.
  */
 
-const SONG_CSS = readFileSync(
+const SONG_CSS_RAW = readFileSync(
   join(process.cwd(), "src", "styles", "song.css"),
   "utf8",
 )
+
+const SONG_STYLES_CSS = readFileSync(
+  join(process.cwd(), "src", "styles", "song-styles.css"),
+  "utf8",
+)
+
+// Elimina la línia `@import "./song-styles.css";` per evitar
+// que el browser intenti carregar-la (i falli silenciosament).
+const SONG_CSS = SONG_CSS_RAW.replace(/@import\s+["'][^"']*song-styles\.css["']\s*;?/g, "")
 
 const PDF_BOOK_CSS = `
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: "Georgia", serif;
+  font-family: var(--song-title-font, "Georgia", serif);
   color: #222;
 }
 
@@ -40,25 +53,37 @@ body {
   text-align: center;
   page-break-after: always;
 }
-.cover h1 { font-size: 2.8rem; margin-bottom: 1rem; }
+.cover h1 {
+  font-family: var(--song-title-font, "Georgia", serif);
+  color: var(--accent);
+  font-size: 2.8rem;
+  margin-bottom: 1rem;
+}
 .cover p  { font-size: 1rem; color: #666; }
 
 .toc { page-break-after: always; padding-top: 2rem; }
-.toc h2 { font-size: 1.6rem; margin-bottom: 1.5rem; }
-.toc table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.toc h2 {
+  font-family: var(--song-title-font, "Georgia", serif);
+  color: var(--accent);
+  font-size: 1.6rem;
+  margin-bottom: 1.5rem;
+}
+.toc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  font-family: var(--song-body-font, "Courier New", monospace);
+}
 .toc td { padding: 6px 8px; border-bottom: 1px solid #eee; }
 .toc td:first-child { width: 2rem; color: #999; }
-.toc td:last-child  { width: 4rem; text-align: right; color: #555; }
-
-.song-page  { page-break-before: always; }
-.song-title { font-size: 1.8rem; margin-bottom: 0.3rem; }
-.song-meta  { font-size: 0.85rem; color: #777; margin-bottom: 1.5rem; }
-.song-content {
-  font-family: "Courier New", monospace;
-  font-size: 0.9rem;
-  line-height: 1.7;
-  white-space: pre-wrap;
+.toc td:last-child  {
+  width: 4rem;
+  text-align: right;
+  color: var(--accent);
+  font-weight: 700;
 }
+
+.song-page { page-break-before: always; padding-top: 1rem; }
 `
 
-export const PDF_STYLES = SONG_CSS + PDF_BOOK_CSS
+export const PDF_STYLES = SONG_CSS + SONG_STYLES_CSS + PDF_BOOK_CSS

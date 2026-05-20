@@ -1,11 +1,15 @@
 import { PDF_STYLES } from "./styles"
+import { renderSongHtml } from "@/components/song/SongView"
+import { transposeKey } from "@/lib/transpose"
+import type { CanconerStyle } from "@/lib/schemas/canconer"
 
 export interface PdfSong {
   title: string
   artist: string
-  displayKey: string
+  key: string
   capo: number | null
   content: string
+  semitones: number
 }
 
 function escHtml(s: string): string {
@@ -16,32 +20,50 @@ function escHtml(s: string): string {
  * Genera l'HTML complet del cançoner per Puppeteer.
  * Estructura: portada → índex → pàgina per cançó.
  *
- * IMPORTANT: el `content` ja conté tags `<ch>` i `<sec>` literals
- * provinents de la BD; **NO** s'han d'escapar. Per a la portada,
- * l'índex i les capçaleres sí s'escapen perquè poden contenir
- * caràcters especials.
+ * Cada cançó es renderitza amb `renderSongHtml()` (compartit amb
+ * el component React <SongView />) per garantir que el PDF i el
+ * frontend mai no es desincronitzen.
+ *
+ * L'atribut `data-style` viatja al `<body>` perquè els selectors
+ * `[data-style="X"]` de song-styles.css apliquin tant al component
+ * com a la portada i l'índex.
  */
-export function buildHtml(title: string, songs: PdfSong[]): string {
+export function buildHtml(
+  title: string,
+  style: CanconerStyle,
+  accentColor: string | null,
+  songs: PdfSong[],
+): string {
   const safeTitle = escHtml(title)
   const date = new Date().toLocaleDateString("ca-ES")
 
   const tocRows = songs
-    .map(
-      (s, i) =>
-        `<tr><td>${i + 1}</td><td>${escHtml(s.title)}</td><td>${escHtml(s.artist)}</td><td>${escHtml(s.displayKey)}</td></tr>`,
-    )
+    .map((s, i) => {
+      const displayKey = transposeKey(s.key, s.semitones)
+      return `<tr><td>${i + 1}</td><td>${escHtml(s.title)}</td><td>${escHtml(s.artist)}</td><td>${escHtml(displayKey)}</td></tr>`
+    })
     .join("")
 
   const pages = songs
     .map(
-      (s) => `
-    <section class="song-page">
-      <h2 class="song-title">${escHtml(s.title)}</h2>
-      <p class="song-meta">${escHtml(s.artist)} &nbsp;·&nbsp; To: ${escHtml(s.displayKey)}${s.capo ? ` &nbsp;·&nbsp; Cejilla: ${s.capo}` : ""}</p>
-      <div class="song-content">${s.content}</div>
-    </section>`,
+      (s, i) =>
+        `<section class="song-page">${renderSongHtml({
+          title: s.title,
+          artist: s.artist,
+          key: s.key,
+          content: s.content,
+          capo: s.capo,
+          semitones: s.semitones,
+          number: i + 1,
+          styleVariant: style,
+          accentColor,
+        })}</section>`,
     )
     .join("")
+
+  const bodyStyleAttr = accentColor
+    ? ` style="--accent: ${accentColor}"`
+    : ""
 
   return `<!DOCTYPE html>
 <html lang="ca">
@@ -49,7 +71,7 @@ export function buildHtml(title: string, songs: PdfSong[]): string {
 <meta charset="UTF-8">
 <style>${PDF_STYLES}</style>
 </head>
-<body>
+<body data-style="${style}"${bodyStyleAttr}>
 
   <div class="cover">
     <h1>${safeTitle}</h1>

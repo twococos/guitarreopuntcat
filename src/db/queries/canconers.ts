@@ -13,6 +13,8 @@ export async function listCanconersByUser(userId: number) {
       userId: schema.canconers.userId,
       title: schema.canconers.title,
       shareToken: schema.canconers.shareToken,
+      style: schema.canconers.style,
+      accentColor: schema.canconers.accentColor,
       createdAt: schema.canconers.createdAt,
       updatedAt: schema.canconers.updatedAt,
       song_count: sql<number>`COUNT(${schema.canconerSongs.id})`.as("song_count"),
@@ -82,6 +84,8 @@ export async function getCanconerByToken(token: string) {
       userId: schema.canconers.userId,
       title: schema.canconers.title,
       shareToken: schema.canconers.shareToken,
+      style: schema.canconers.style,
+      accentColor: schema.canconers.accentColor,
       createdAt: schema.canconers.createdAt,
       updatedAt: schema.canconers.updatedAt,
       ownerName: schema.users.name,
@@ -127,7 +131,7 @@ export async function getCanconerByToken(token: string) {
 // ─── POST /api/canconers ─────────────────────────────────────
 
 export async function saveOrUpdateCanconer(userId: number, data: CanconerSave) {
-  const { id, title, songs } = data
+  const { id, title, style, accent_color, songs } = data
 
   // Validate all songs exist and are public (draft=0)
   for (const s of songs) {
@@ -159,7 +163,12 @@ export async function saveOrUpdateCanconer(userId: number, data: CanconerSave) {
     db.transaction((tx) => {
       tx
         .update(schema.canconers)
-        .set({ title, updatedAt: new Date().toISOString().replace("T", " ").slice(0, 19) })
+        .set({
+          title,
+          style,
+          accentColor: accent_color,
+          updatedAt: new Date().toISOString().replace("T", " ").slice(0, 19),
+        })
         .where(eq(schema.canconers.id, id))
         .run()
 
@@ -186,7 +195,7 @@ export async function saveOrUpdateCanconer(userId: number, data: CanconerSave) {
     db.transaction((tx) => {
       const insertResult = tx
         .insert(schema.canconers)
-        .values({ userId, title })
+        .values({ userId, title, style, accentColor: accent_color })
         .run()
 
       newId = Number(insertResult.lastInsertRowid)

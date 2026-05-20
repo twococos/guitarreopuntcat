@@ -2,14 +2,23 @@
 import { useState } from "react"
 import { useSongbookStore, ALL_MAJOR_KEYS, RELATIVE_MINOR } from "@/hooks/useSongbook"
 import { useToastStore } from "@/hooks/useToasts"
-import { transposeKey, transposeContent } from "@/lib/transpose"
+import { SongView } from "@/components/song/SongView"
+import { AccentPicker } from "./AccentPicker"
+import {
+  CANCONER_STYLES,
+  STYLE_LABELS,
+  STYLE_DEFAULT_ACCENTS,
+  type CanconerStyle,
+} from "@/lib/schemas/canconer"
+import type { CSSProperties } from "react"
 
 /* ── PreviewTab ────────────────────────────────────────────── */
 
 function PreviewTab() {
   const canconer = useSongbookStore((s) => s.canconer)
   const selectedIdx = useSongbookStore((s) => s.selectedIdx)
-  const bumpSemitones = useSongbookStore((s) => s.bumpSemitones)
+  const canconerStyle = useSongbookStore((s) => s.canconerStyle)
+  const accentColor = useSongbookStore((s) => s.accentColor)
 
   const entry = selectedIdx != null ? canconer[selectedIdx] : undefined
 
@@ -22,41 +31,65 @@ function PreviewTab() {
     )
   }
 
-  const { song, semitones } = entry
-  const transposedKey = transposeKey(song.key, semitones)
-  const transposedContent = transposeContent(song.content, semitones)
+  const inlineStyle = accentColor
+    ? ({ "--accent": accentColor } as CSSProperties)
+    : undefined
 
   return (
     <div id="tab-preview" className="tab-content active">
-      <div id="detail-content">
-        <div className="detail-header">
-          <div>
-            <h2 id="detail-title">{song.title}</h2>
-            <p id="detail-meta">
-              {song.artist} · To original: {song.key}
-              {song.capo ? ` · Cejilla: ${song.capo}` : ""}
-            </p>
-          </div>
-          <div className="transpose-control">
-            <label>To</label>
-            <div className="transpose-buttons">
-              <button id="btn-down" onClick={() => bumpSemitones(selectedIdx!, -1)}>
-                −
-              </button>
-              <span id="transpose-value">
-                {(semitones >= 0 ? "+" : "") + semitones}
-              </span>
-              <button id="btn-up" onClick={() => bumpSemitones(selectedIdx!, 1)}>
-                +
-              </button>
-            </div>
-            <small id="display-key">→ {transposedKey}</small>
-          </div>
-        </div>
-        <div
-          id="detail-body"
-          dangerouslySetInnerHTML={{ __html: transposedContent }}
+      <div id="detail-content" data-style={canconerStyle} style={inlineStyle}>
+        <SongView
+          song={entry.song}
+          semitones={entry.semitones}
+          number={selectedIdx! + 1}
+          styleVariant={canconerStyle}
+          accentColor={accentColor}
         />
+      </div>
+    </div>
+  )
+}
+
+/* ── StyleSelect ────────────────────────────────────────── */
+
+function StyleSelect() {
+  const canconerStyle = useSongbookStore((s) => s.canconerStyle)
+  const setCanconerStyle = useSongbookStore((s) => s.setCanconerStyle)
+  const accentColor = useSongbookStore((s) => s.accentColor)
+  const setAccentColor = useSongbookStore((s) => s.setAccentColor)
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  const effectiveColor = accentColor ?? STYLE_DEFAULT_ACCENTS[canconerStyle]
+
+  return (
+    <div className="sort-control">
+      <select
+        id="canconer-style"
+        value={canconerStyle}
+        onChange={(e) => setCanconerStyle(e.target.value as CanconerStyle)}
+      >
+        {CANCONER_STYLES.map((s) => (
+          <option key={s} value={s}>
+            {STYLE_LABELS[s]}
+          </option>
+        ))}
+      </select>
+      <div className="accent-picker-wrapper">
+        <button
+          type="button"
+          className="accent-swatch"
+          style={{ background: effectiveColor }}
+          onClick={() => setPickerOpen((p) => !p)}
+          title="Color d'accent"
+          aria-label="Color d'accent"
+        />
+        {pickerOpen && (
+          <AccentPicker
+            value={accentColor}
+            onChange={(c) => setAccentColor(c)}
+            onClose={() => setPickerOpen(false)}
+          />
+        )}
       </div>
     </div>
   )
@@ -145,6 +178,11 @@ function OptionsTab() {
 
   return (
     <div id="tab-options" className="tab-content">
+      <div className="options-section">
+        <h3 className="options-section-title">Estil del cançoner</h3>
+        <StyleSelect />
+      </div>
+      <div className="options-sep" />
       <div className="options-section">
         <h3 className="options-section-title">Ordenació</h3>
         <SortControls />

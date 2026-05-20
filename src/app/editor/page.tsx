@@ -9,6 +9,7 @@ import { ChordPalette } from "@/components/editor/ChordPalette"
 import { ChordContextMenu } from "@/components/editor/ChordContextMenu"
 import { EditorToolbar } from "@/components/editor/EditorToolbar"
 import { ProposeInfoPopup } from "@/components/editor/ProposeInfoPopup"
+import { SongView } from "@/components/song/SongView"
 import { useEditorHistory } from "@/hooks/useEditorHistory"
 
 const DRAFT_KEY = "editor_draft"
@@ -359,8 +360,18 @@ export default function EditorPage() {
           {previewOn && (
             <div id="preview-panel">
               <h3>Vista prèvia</h3>
-              {/* eslint-disable-next-line react/no-danger */}
-              <div id="preview-body" dangerouslySetInnerHTML={{ __html: editor.value }} />
+              <div id="preview-body">
+                <SongView
+                  song={{
+                    title: meta.title,
+                    artist: meta.artist,
+                    key: meta.key,
+                    content: editor.value,
+                    capo: meta.capo,
+                  }}
+                  semitones={0}
+                />
+              </div>
             </div>
           )}
         </div>

@@ -1,0 +1,213 @@
+/* ════════════════════════════════════════════════════════════
+   song-styles.css — catàleg d'estils del cançoner
+   ───────────────────────────────────────────────────────────
+   Cadascuna de les 6 variants es defineix amb selectors
+   [data-style="X"]. S'apliquen a:
+     · <article class="song" data-style="X">         (sempre)
+     · <main id="shared-songs" data-style="X">       (cançoner compartit)
+     · <div id="shared-layout" data-style="X">       (sidebar inclosa)
+     · <body data-style="X">                         (PDF)
+
+   FONS BLANC OBLIGATORI: el cançoner s'imprimeix en paper.
+   No es defineix `background` en cap variant.
+
+   HOMOGENEÏTZACIÓ DE MIDES: tots els estils mantenen la mida
+   base de cos (--song-body-size, --song-body-line) excepte
+   "compact", que les redueix conscientment.
+
+   COLORS DERIVATS DE --accent: cada preset declara els seus
+   defaults, però --song-key-bg/border es deriven amb
+   color-mix() per propagar canvis d'accent automàticament.
+   ════════════════════════════════════════════════════════════ */
+
+
+/* ════════════════════════════════════════════════════════
+   classic — DEFAULT (els valors base de song.css ja són
+   aquests). Definim aquí els derivats del badge per
+   coherència amb la resta d'estils.
+   ════════════════════════════════════════════════════════ */
+
+[data-style="classic"] { --accent: #c0392b; }
+[data-style="minimal"] { --accent: #111111; --song-title-font: system-ui, -apple-system, "Segoe UI", sans-serif; }
+[data-style="bold"] { --accent: #2563eb; --song-title-font: "Impact", "Helvetica Neue", sans-serif; }
+[data-style="serif"] { --accent: #5d3a1f; --song-title-font: "Georgia", "Cambria", serif; }
+[data-style="handwritten"] { --accent: #1e3a5f; --song-title-font: "Bradley Hand", "Segoe Script", cursive; }
+[data-style="compact"] { --accent: #c0392b; }
+
+.song[data-style="classic"] {
+  --song-key-color: var(--accent);
+  --song-key-bg: color-mix(in srgb, var(--accent) 12%, white);
+  --song-key-border: color-mix(in srgb, var(--accent) 45%, white);
+}
+
+
+/* ════════════════════════════════════════════════════════
+   minimal — sans-serif sobri, badge sense fons, separadors
+   fins, acord en negre
+   ════════════════════════════════════════════════════════ */
+
+.song[data-style="minimal"] {
+  --song-body-font: ui-monospace, "SF Mono", "Consolas", monospace;
+  --song-key-color: var(--accent);
+  --song-key-bg: transparent;
+  --song-key-border: transparent;
+  --song-head-border: #d4d4d2;
+}
+
+.song[data-style="minimal"] .song-title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.song[data-style="minimal"] .song-key {
+  padding: 4px 0;
+}
+
+[data-style="minimal"] .cover h1,
+[data-style="minimal"] #shared-title {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-weight: 600;
+}
+
+
+/* ════════════════════════════════════════════════════════
+   bold — tipografia gruixuda, badge saturat amb text blanc
+   ════════════════════════════════════════════════════════ */
+
+.song[data-style="bold"] {
+  --song-body-font: "Consolas", "Courier New", monospace;
+  --song-key-color: #fff;
+  --song-key-bg: var(--accent);
+  --song-key-border: color-mix(in srgb, var(--accent) 70%, black);
+  --song-head-border: var(--accent);
+}
+
+.song[data-style="bold"] .song-title {
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.song[data-style="bold"] .song-number {
+  color: var(--accent);
+  font-family: "Impact", sans-serif;
+}
+
+[data-style="bold"] .cover h1,
+[data-style="bold"] #shared-title {
+  font-family: "Impact", "Helvetica Neue", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+
+/* ════════════════════════════════════════════════════════
+   serif — Georgia/Cambria, badge amb vora doble. Inspirat
+   en cançoners impresos clàssics
+   ════════════════════════════════════════════════════════ */
+
+.song[data-style="serif"] {
+  --song-body-font: "Cambria", "Georgia", serif;
+  --song-key-color: var(--accent);
+  --song-key-bg: #fff;
+  --song-key-border: var(--accent);
+  --song-head-border: var(--accent);
+}
+
+.song[data-style="serif"] .song-head {
+  border-bottom-style: double;
+  border-bottom-width: 4px;
+}
+
+.song[data-style="serif"] .song-key {
+  border-width: 2px;
+}
+
+.song[data-style="serif"] .song-title {
+  font-style: italic;
+  color: var(--accent);
+}
+
+[data-style="serif"] .cover h1,
+[data-style="serif"] #shared-title {
+  font-family: "Georgia", "Cambria", serif;
+  font-style: italic;
+  color: var(--accent);
+}
+
+
+/* ════════════════════════════════════════════════════════
+   handwritten — cursiva, aspecte de quadern
+   ════════════════════════════════════════════════════════ */
+
+.song[data-style="handwritten"] {
+  --song-body-font: "Bradley Hand", "Segoe Script", cursive;
+  --song-key-color: var(--accent);
+  --song-key-bg: #fff;
+  --song-key-border: var(--accent);
+  --song-head-border: color-mix(in srgb, var(--accent) 35%, white);
+}
+
+.song[data-style="handwritten"] .song-title {
+  color: var(--accent);
+}
+
+.song[data-style="handwritten"] .song-key {
+  border-radius: 14px;
+}
+
+.song[data-style="handwritten"] .song-number {
+  font-family: "Bradley Hand", "Segoe Script", cursive;
+  color: var(--accent);
+}
+
+[data-style="handwritten"] .cover h1,
+[data-style="handwritten"] #shared-title {
+  font-family: "Bradley Hand", "Segoe Script", cursive;
+  color: var(--accent);
+}
+
+
+/* ════════════════════════════════════════════════════════
+   compact — mateixa estètica que classic però mides reduïdes
+   per encabir més per pàgina al PDF
+   ════════════════════════════════════════════════════════ */
+
+.song[data-style="compact"] {
+  --song-body-size: 0.78rem;
+  --song-body-line: 1.55;
+  --song-key-color: var(--accent);
+  --song-key-bg: color-mix(in srgb, var(--accent) 12%, white);
+  --song-key-border: color-mix(in srgb, var(--accent) 45%, white);
+}
+
+.song[data-style="compact"] .song-head {
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.song[data-style="compact"] .song-number {
+  font-size: 1.6rem;
+}
+
+.song[data-style="compact"] .song-title {
+  font-size: 1.05rem;
+}
+
+.song[data-style="compact"] .song-artist {
+  font-size: 0.72rem;
+}
+
+.song[data-style="compact"] .song-key {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+.song[data-style="compact"] ch {
+  top: -10pt;
+  margin-top: 4pt;
+}
+
+.song[data-style="compact"] sec {
+  margin-top: 0.3em;
+  margin-bottom: 0.3em;
+}

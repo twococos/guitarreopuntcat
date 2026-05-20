@@ -7,6 +7,7 @@ import { UserWidget } from "@/components/UserWidget"
 import { ToastHost } from "@/components/Toast"
 import { useToastStore } from "@/hooks/useToasts"
 import { transposeKey } from "@/lib/transpose"
+import type { CanconerStyle } from "@/types/song"
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -14,6 +15,8 @@ interface CanconerListItem {
   id: number
   user_id: number
   title: string
+  style: CanconerStyle
+  accent_color: string | null
   share_token: string | null
   created_at: string | null
   updated_at: string | null
@@ -34,6 +37,8 @@ interface CanconerDetail {
   id: number
   user_id: number
   title: string
+  style: CanconerStyle
+  accent_color: string | null
   share_token: string | null
   created_at: string | null
   updated_at: string | null
@@ -127,6 +132,8 @@ export default function MyCançonersPage() {
       body: JSON.stringify({
         id: active.id,
         title: trimmed,
+        style: active.style,
+        accent_color: active.accent_color,
         songs: active.songs.map((s) => ({ id: s.id, semitones: s.semitones })),
       }),
     })

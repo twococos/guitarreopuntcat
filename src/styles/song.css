@@ -1,8 +1,8 @@
 /* ════════════════════════════════════════════════════════════
    song.css — estils de renderització de cançons
    ───────────────────────────────────────────────────────────
-   Aquest mòdul defineix l'aparença dels tags semàntics
-   <ch>...</ch> (acords) i <sec>...</sec> (seccions/títols).
+   FONT ÚNICA d'estilat del component <SongView /> i dels tags
+   semàntics <ch>...</ch> (acords) i <sec>...</sec> (seccions).
 
    S'usa a tots els llocs on es mostren cançons:
      · vista prèvia del cançoner (col 3)
@@ -11,15 +11,123 @@
      · PDF generat per Puppeteer (via src/lib/pdf/styles.ts)
 
    CANVIAR ALGUNA REGLA AQUÍ → es propaga a tots els llocs.
+   Les variants d'estil del cançoner viuen a song-styles.css.
    ════════════════════════════════════════════════════════════ */
+
+/* IMPORTANT: les @import-rules han d'anar abans de qualsevol
+   altra regla CSS. Al PDF (Puppeteer) l'@import no funciona
+   perquè el HTML s'injecta amb setContent() sense base URL —
+   per això src/lib/pdf/styles.ts concatena song-styles.css
+   manualment. */
+@import "./song-styles.css";
 
 /* Variables locals — perquè aquest fitxer sigui autosuficient
    en contextos que no tenen :root global (p.ex. PDF amb Puppeteer).
    Si el context global ja defineix --accent, aquest valor queda
-   sobreescrit silenciosament. */
+   sobreescrit silenciosament.
+
+   Tot el cançoner està pensat per imprimir-se en paper, així
+   que TOTS els estils tenen fons blanc. No es parametritza. */
 :root {
   --accent: #c0392b;
+  --muted: #888;
+  --border: #e5e5e3;
+  --song-body-font: "Courier New", monospace;
+  --song-title-font: "Georgia", serif;
+  --song-body-size: 0.9rem;
+  --song-body-line: 1.9;
+  --song-key-color: var(--accent);
+  --song-key-bg: #fdf4f3;
+  --song-key-border: #f0c8c4;
+  --song-head-border: var(--border);
 }
+
+/* ── Contenidor de la cançó ─────────────────────────────── */
+
+.song {
+  scroll-margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Capçalera: número + títol/artista + tonalitat ────── */
+
+.song-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 2px solid var(--song-head-border);
+  padding-bottom: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.song-number {
+  font-family: var(--song-title-font);
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1;
+  min-width: 1.5em;
+  align-self: center;
+}
+
+.song-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.song-title {
+  font-family: var(--song-title-font);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #222;
+}
+
+.song-artist {
+  font-family: var(--song-title-font);
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+.song-keys {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+}
+
+.song-key {
+  font-family: var(--song-body-font);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--song-key-color);
+  background: var(--song-key-bg);
+  border: 1px solid var(--song-key-border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  line-height: 1;
+}
+
+.song-key-original {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Cos: lletra + acords ──────────────────────────────── */
+
+.song-body {
+  font-family: var(--song-body-font);
+  font-size: var(--song-body-size);
+  line-height: var(--song-body-line);
+  white-space: pre-wrap;
+}
+
+/* ── Tags semàntics ────────────────────────────────────── */
 
 ch {
   position: relative;

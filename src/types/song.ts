@@ -1,6 +1,8 @@
 import type { Song, Canconer, CanconerSong, SongProposal, User } from "@/db/schema"
+import type { CanconerStyle } from "@/lib/schemas/canconer"
 
 export type { Song, Canconer, CanconerSong, SongProposal, User }
+export type { CanconerStyle }
 
 // Cançó tal com es mostra a la llista (sense `content`, més lleuger)
 export type SongSummary = Omit<Song, "content">
@@ -15,6 +17,8 @@ export interface CanconerEntry {
 export interface CanconerSavePayload {
   id?: number
   title: string
+  style: CanconerStyle
+  accent_color: string | null
   songs: Array<{
     id: number
     semitones: number
@@ -25,6 +29,8 @@ export interface CanconerSavePayload {
 export interface CanconerListItem {
   id: number
   title: string
+  style: CanconerStyle
+  accent_color: string | null
   created_at: string
   updated_at: string
   share_token: string | null

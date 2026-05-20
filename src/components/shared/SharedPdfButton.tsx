@@ -1,12 +1,15 @@
 "use client"
 import { useState } from "react"
+import type { CanconerStyle } from "@/types/song"
 
 interface Props {
   title: string
+  style: CanconerStyle
+  accentColor: string | null
   songs: Array<{ id: number; semitones: number }>
 }
 
-export function SharedPdfButton({ title, songs }: Props) {
+export function SharedPdfButton({ title, style, accentColor, songs }: Props) {
   const [loading, setLoading] = useState(false)
 
   async function handleClick() {
@@ -16,7 +19,7 @@ export function SharedPdfButton({ title, songs }: Props) {
       const res = await fetch("/api/pdf/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, songs }),
+        body: JSON.stringify({ title, style, accent_color: accentColor, songs }),
       })
       if (!res.ok) throw new Error("error")
       const blob = await res.blob()

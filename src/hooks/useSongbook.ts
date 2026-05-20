@@ -1,7 +1,7 @@
 "use client"
 import { create } from "zustand"
 import { CHROMATIC } from "@/lib/transpose"
-import type { Song, SongSummary } from "@/types/song"
+import type { Song, SongSummary, CanconerStyle } from "@/types/song"
 
 /* ── Constants compartides ───────────────────────────────── */
 
@@ -83,6 +83,8 @@ export interface SongbookState {
   /* ── Persistència ── */
   savedCanconerId: number | null
   canconerTitle: string
+  canconerStyle: CanconerStyle
+  accentColor: string | null
 
   /* ── Search/sort de la llista de cançons (col 1) ── */
   searchTerm: string
@@ -91,6 +93,8 @@ export interface SongbookState {
   /* ── Toast d'overwrite ── */
   overwriteToast: {
     title: string
+    style: CanconerStyle
+    accentColor: string | null
     duplicateId: number
     songs: Array<{ id: number; semitones: number }>
   } | null
@@ -123,6 +127,8 @@ export interface SongbookState {
   closeKeyMenu: () => void
 
   setCanconerTitle: (title: string) => void
+  setCanconerStyle: (style: CanconerStyle) => void
+  setAccentColor: (color: string | null) => void
 
   setOverwriteToast: (toast: SongbookState["overwriteToast"]) => void
 
@@ -130,6 +136,8 @@ export interface SongbookState {
   loadExistingCanconer: (data: {
     id: number
     title: string
+    style: CanconerStyle
+    accentColor: string | null
     entries: CanconerEntry[]
   }) => void
 
@@ -194,6 +202,8 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
   keyMenu: null,
   savedCanconerId: null,
   canconerTitle: "El meu cançoner",
+  canconerStyle: "classic",
+  accentColor: null,
   searchTerm: "",
   songSortBy: "title",
   overwriteToast: null,
@@ -394,14 +404,27 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
     set({ canconerTitle: title })
   },
 
+  setCanconerStyle(style) {
+    // En canviar de preset, reseteja l'accent a null perquè la cançó
+    // adopti el color default del nou preset. Si l'usuari vol un color
+    // custom, el torna a triar des del picker.
+    set({ canconerStyle: style, accentColor: null })
+  },
+
+  setAccentColor(color) {
+    set({ accentColor: color })
+  },
+
   setOverwriteToast(toast) {
     set({ overwriteToast: toast })
   },
 
-  loadExistingCanconer({ id, title, entries }) {
+  loadExistingCanconer({ id, title, style, accentColor, entries }) {
     set({
       savedCanconerId: id,
       canconerTitle: title,
+      canconerStyle: style,
+      accentColor: accentColor,
       canconer: entries,
       selectedIdx: entries.length > 0 ? 0 : null,
       sortMode: "custom",

@@ -46,6 +46,8 @@ export const canconers = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     title: text("title").notNull().default("El meu cançoner"),
     shareToken: text("share_token"),
+    style: text("style").notNull().default("classic"),
+    accentColor: text("accent_color"),
     createdAt: text("created_at").default(sql`(datetime('now'))`),
     updatedAt: text("updated_at").default(sql`(datetime('now'))`),
   },

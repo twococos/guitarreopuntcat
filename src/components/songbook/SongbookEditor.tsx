@@ -12,7 +12,7 @@ import { KeyMenu } from "./KeyMenu"
 import { OverwriteToast } from "./OverwriteToast"
 import { ProposeLoginToast } from "./ProposeLoginToast"
 import { NewSongButton } from "./NewSongButton"
-import type { CanconerListItem } from "@/types/song"
+import type { CanconerListItem, CanconerStyle } from "@/types/song"
 import type { Song } from "@/types/song"
 
 export function SongbookEditor() {
@@ -50,6 +50,8 @@ export function SongbookEditor() {
       const data = JSON.parse(raw) as {
         id: number
         title: string
+        style?: CanconerStyle
+        accent_color?: string | null
         songs: Array<{ id: number; semitones: number }>
       }
       const entries = await Promise.all(
@@ -59,7 +61,13 @@ export function SongbookEditor() {
           return { song, semitones }
         }),
       )
-      loadExistingCanconer({ id: data.id, title: data.title, entries })
+      loadExistingCanconer({
+        id: data.id,
+        title: data.title,
+        style: data.style ?? "classic",
+        accentColor: data.accent_color ?? null,
+        entries,
+      })
     } catch {
       // Ignore parse/fetch errors
     }

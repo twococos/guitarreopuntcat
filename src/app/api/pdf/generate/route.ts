@@ -2,9 +2,9 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { eq } from "drizzle-orm"
 import { db, schema } from "@/db/client"
-import { transposeContent, transposeKey } from "@/lib/transpose"
 import { buildHtml, type PdfSong } from "@/lib/pdf/buildHtml"
 import { generatePdf } from "@/lib/pdf/generate"
+import { canconerStyleSchema, accentColorSchema } from "@/lib/schemas/canconer"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -12,6 +12,8 @@ export const maxDuration = 60
 
 const pdfBodySchema = z.object({
   title: z.string().default("El meu cançoner"),
+  style: canconerStyleSchema,
+  accent_color: accentColorSchema,
   songs: z
     .array(
       z.object({
@@ -31,7 +33,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: msg ?? "Petició invàlida" }, { status: 400 })
   }
 
-  // Carregar cançons de la BD i aplicar transposició
+  // Carregar cançons de la BD. La transposició s'aplica al render
+  // (renderSongHtml) per coherència amb el component <SongView />.
   const pdfSongs: PdfSong[] = []
   for (const { id, semitones } of parsed.songs) {
     const song = db.select().from(schema.songs).where(eq(schema.songs.id, id)).get()
@@ -39,9 +42,10 @@ export async function POST(request: Request) {
     pdfSongs.push({
       title: song.title,
       artist: song.artist,
-      displayKey: transposeKey(song.key, semitones),
+      key: song.key,
       capo: song.capo,
-      content: transposeContent(song.content, semitones),
+      content: song.content,
+      semitones,
     })
   }
 
@@ -50,7 +54,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const html = buildHtml(parsed.title, pdfSongs)
+    const html = buildHtml(parsed.title, parsed.style, parsed.accent_color, pdfSongs)
     const pdfBuffer = await generatePdf(html)
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,

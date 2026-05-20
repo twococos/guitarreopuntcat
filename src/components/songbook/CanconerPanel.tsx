@@ -14,6 +14,8 @@ export function CanconerPanel() {
   const canconer = useSongbookStore((s) => s.canconer)
   const previewActive = useSongbookStore((s) => s.previewActive)
   const canconerTitle = useSongbookStore((s) => s.canconerTitle)
+  const canconerStyle = useSongbookStore((s) => s.canconerStyle)
+  const accentColor = useSongbookStore((s) => s.accentColor)
   const savedCanconerId = useSongbookStore((s) => s.savedCanconerId)
   const setCanconerTitle = useSongbookStore((s) => s.setCanconerTitle)
   const setOverwriteToast = useSongbookStore((s) => s.setOverwriteToast)
@@ -49,6 +51,8 @@ export function CanconerPanel() {
         if (duplicate) {
           setOverwriteToast({
             title: canconerTitle,
+            style: canconerStyle,
+            accentColor,
             duplicateId: duplicate.id,
             songs: canconer.map((e) => ({ id: e.song.id, semitones: e.semitones })),
           })
@@ -60,7 +64,13 @@ export function CanconerPanel() {
     }
 
     const songs = canconer.map((e) => ({ id: e.song.id, semitones: e.semitones }))
-    const newId = await saveCanconer(canconerTitle, songs, savedCanconerId)
+    const newId = await saveCanconer(
+      canconerTitle,
+      canconerStyle,
+      accentColor,
+      songs,
+      savedCanconerId,
+    )
     if (newId != null) {
       markSaved(newId)
       showToast("Cançoner guardat!")
@@ -78,6 +88,8 @@ export function CanconerPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: canconerTitle || "El meu cançoner",
+          style: canconerStyle,
+          accent_color: accentColor,
           songs: canconer.map((e) => ({ id: e.song.id, semitones: e.semitones })),
         }),
       })
