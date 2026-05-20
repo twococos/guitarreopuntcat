@@ -8,10 +8,18 @@ package-lock.json
 *.db-wal
 *.sqlite
 *.sqlite3
+data/*.db*
+backups/
 
 # Variables d'entorn
 .env
 .env.local
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
 
 # Altres
 .DS_Store

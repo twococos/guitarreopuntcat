@@ -1,0 +1,98 @@
+"use client"
+import { useCallback, useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
+import Link from "next/link"
+import { UserWidget } from "@/components/UserWidget"
+import { StatsCards } from "@/components/admin/StatsCards"
+import { ProposalsTab } from "@/components/admin/ProposalsTab"
+import { SongsTab } from "@/components/admin/SongsTab"
+import { UsersTab } from "@/components/admin/UsersTab"
+import { CanconersTab } from "@/components/admin/CanconersTab"
+
+type Tab = "stats" | "proposals" | "songs" | "users" | "canconers"
+
+interface Stats {
+  songs: number
+  drafts: number
+  users: number
+  canconers: number
+  pending: number
+}
+
+export default function AdminPage() {
+  const { data: session } = useSession()
+  const [tab, setTab] = useState<Tab>("stats")
+  const [pendingCount, setPendingCount] = useState(0)
+
+  const loadStats = useCallback(async () => {
+    const res = await fetch("/api/admin/stats")
+    if (!res.ok) return
+    const data = (await res.json()) as Stats
+    setPendingCount(data.pending)
+  }, [])
+
+  useEffect(() => {
+    loadStats()
+  }, [loadStats])
+
+  const user = session?.user
+
+  return (
+    <>
+      <header>
+        <Link href="/" className="back-link">
+          ← Cançoner
+        </Link>
+        <h1>⚙️ Panell d&apos;administració</h1>
+        <p className="subtitle" id="admin-welcome">
+          Benvingut, {user?.name}
+        </p>
+        <div className="header-actions">
+          <UserWidget />
+        </div>
+      </header>
+
+      <div id="admin-tabs">
+        <button
+          className={`tab ${tab === "stats" ? "active" : ""}`}
+          onClick={() => setTab("stats")}
+        >
+          📊 Resum
+        </button>
+        <button
+          className={`tab ${tab === "proposals" ? "active" : ""}`}
+          onClick={() => setTab("proposals")}
+        >
+          📝 Propostes{" "}
+          {pendingCount > 0 && <span id="pending-badge">{pendingCount}</span>}
+        </button>
+        <button
+          className={`tab ${tab === "songs" ? "active" : ""}`}
+          onClick={() => setTab("songs")}
+        >
+          🎵 Cançons
+        </button>
+        <button
+          className={`tab ${tab === "users" ? "active" : ""}`}
+          onClick={() => setTab("users")}
+        >
+          👥 Usuaris
+        </button>
+        <button
+          className={`tab ${tab === "canconers" ? "active" : ""}`}
+          onClick={() => setTab("canconers")}
+        >
+          📚 Cançoners
+        </button>
+      </div>
+
+      <div id="admin-content">
+        {tab === "stats" && <StatsCards />}
+        {tab === "proposals" && <ProposalsTab onChange={loadStats} />}
+        {tab === "songs" && <SongsTab />}
+        {tab === "users" && <UsersTab />}
+        {tab === "canconers" && <CanconersTab />}
+      </div>
+    </>
+  )
+}
