@@ -2,6 +2,7 @@
 import { create } from "zustand"
 import { CHROMATIC } from "@/lib/transpose"
 import type { Song, SongSummary, CanconerStyle } from "@/types/song"
+import { type PdfOptions, PDF_OPTIONS_DEFAULTS } from "@/lib/schemas/canconer"
 
 /* ── Constants compartides ───────────────────────────────── */
 
@@ -85,6 +86,7 @@ export interface SongbookState {
   canconerTitle: string
   canconerStyle: CanconerStyle
   accentColor: string | null
+  pdfOptions: PdfOptions
 
   /* ── Search/sort de la llista de cançons (col 1) ── */
   searchTerm: string
@@ -95,6 +97,7 @@ export interface SongbookState {
     title: string
     style: CanconerStyle
     accentColor: string | null
+    pdfOptions: PdfOptions
     duplicateId: number
     songs: Array<{ id: number; semitones: number }>
   } | null
@@ -130,6 +133,9 @@ export interface SongbookState {
   setCanconerStyle: (style: CanconerStyle) => void
   setAccentColor: (color: string | null) => void
 
+  setPdfOption: <K extends keyof PdfOptions>(key: K, value: PdfOptions[K]) => void
+  resetPdfOptions: () => void
+
   setOverwriteToast: (toast: SongbookState["overwriteToast"]) => void
 
   /** Substitueix tot el cançoner (per carregar un guardat existent). */
@@ -138,6 +144,7 @@ export interface SongbookState {
     title: string
     style: CanconerStyle
     accentColor: string | null
+    pdfOptions: PdfOptions | null
     entries: CanconerEntry[]
   }) => void
 
@@ -204,6 +211,7 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
   canconerTitle: "El meu cançoner",
   canconerStyle: "classic",
   accentColor: null,
+  pdfOptions: PDF_OPTIONS_DEFAULTS,
   searchTerm: "",
   songSortBy: "title",
   overwriteToast: null,
@@ -415,16 +423,25 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
     set({ accentColor: color })
   },
 
+  setPdfOption(key, value) {
+    set((s) => ({ pdfOptions: { ...s.pdfOptions, [key]: value } }))
+  },
+
+  resetPdfOptions() {
+    set({ pdfOptions: PDF_OPTIONS_DEFAULTS })
+  },
+
   setOverwriteToast(toast) {
     set({ overwriteToast: toast })
   },
 
-  loadExistingCanconer({ id, title, style, accentColor, entries }) {
+  loadExistingCanconer({ id, title, style, accentColor, pdfOptions, entries }) {
     set({
       savedCanconerId: id,
       canconerTitle: title,
       canconerStyle: style,
       accentColor: accentColor,
+      pdfOptions: pdfOptions ?? PDF_OPTIONS_DEFAULTS,
       canconer: entries,
       selectedIdx: entries.length > 0 ? 0 : null,
       sortMode: "custom",

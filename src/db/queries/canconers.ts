@@ -15,6 +15,7 @@ export async function listCanconersByUser(userId: number) {
       shareToken: schema.canconers.shareToken,
       style: schema.canconers.style,
       accentColor: schema.canconers.accentColor,
+      pdfOptions: schema.canconers.pdfOptions,
       createdAt: schema.canconers.createdAt,
       updatedAt: schema.canconers.updatedAt,
       song_count: sql<number>`COUNT(${schema.canconerSongs.id})`.as("song_count"),
@@ -86,6 +87,7 @@ export async function getCanconerByToken(token: string) {
       shareToken: schema.canconers.shareToken,
       style: schema.canconers.style,
       accentColor: schema.canconers.accentColor,
+      pdfOptions: schema.canconers.pdfOptions,
       createdAt: schema.canconers.createdAt,
       updatedAt: schema.canconers.updatedAt,
       ownerName: schema.users.name,
@@ -131,7 +133,7 @@ export async function getCanconerByToken(token: string) {
 // ─── POST /api/canconers ─────────────────────────────────────
 
 export async function saveOrUpdateCanconer(userId: number, data: CanconerSave) {
-  const { id, title, style, accent_color, songs } = data
+  const { id, title, style, accent_color, pdf_options, songs } = data
 
   // Validate all songs exist and are public (draft=0)
   for (const s of songs) {
@@ -167,6 +169,7 @@ export async function saveOrUpdateCanconer(userId: number, data: CanconerSave) {
           title,
           style,
           accentColor: accent_color,
+          pdfOptions: pdf_options,
           updatedAt: new Date().toISOString().replace("T", " ").slice(0, 19),
         })
         .where(eq(schema.canconers.id, id))
@@ -195,7 +198,7 @@ export async function saveOrUpdateCanconer(userId: number, data: CanconerSave) {
     db.transaction((tx) => {
       const insertResult = tx
         .insert(schema.canconers)
-        .values({ userId, title, style, accentColor: accent_color })
+        .values({ userId, title, style, accentColor: accent_color, pdfOptions: pdf_options })
         .run()
 
       newId = Number(insertResult.lastInsertRowid)

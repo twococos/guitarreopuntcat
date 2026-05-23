@@ -13,6 +13,7 @@ import { OverwriteToast } from "./OverwriteToast"
 import { ProposeLoginToast } from "./ProposeLoginToast"
 import { NewSongButton } from "./NewSongButton"
 import type { CanconerListItem, CanconerStyle } from "@/types/song"
+import type { PdfOptions } from "@/lib/schemas/canconer"
 import type { Song } from "@/types/song"
 
 export function SongbookEditor() {
@@ -52,6 +53,7 @@ export function SongbookEditor() {
         title: string
         style?: CanconerStyle
         accent_color?: string | null
+        pdf_options?: PdfOptions | null
         songs: Array<{ id: number; semitones: number }>
       }
       const entries = await Promise.all(
@@ -66,6 +68,7 @@ export function SongbookEditor() {
         title: data.title,
         style: data.style ?? "classic",
         accentColor: data.accent_color ?? null,
+        pdfOptions: data.pdf_options ?? null,
         entries,
       })
     } catch {

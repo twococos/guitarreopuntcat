@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm"
 import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import type { PdfOptions } from "@/lib/schemas/canconer"
 
 // ─── Cançons ────────────────────────────────────────────────
 export const songs = sqliteTable("songs", {
@@ -48,6 +49,7 @@ export const canconers = sqliteTable(
     shareToken: text("share_token"),
     style: text("style").notNull().default("classic"),
     accentColor: text("accent_color"),
+    pdfOptions: text("pdf_options", { mode: "json" }).$type<PdfOptions>(),
     createdAt: text("created_at").default(sql`(datetime('now'))`),
     updatedAt: text("updated_at").default(sql`(datetime('now'))`),
   },

@@ -2,7 +2,7 @@
  * Helpers de mapping camelCase (Drizzle) ↔ snake_case (API JSON).
  * El frontend antic espera snake_case, Drizzle retorna camelCase.
  */
-import type { CanconerStyle } from "@/lib/schemas/canconer"
+import type { CanconerStyle, PdfOptions } from "@/lib/schemas/canconer"
 
 export function toSnakeCase(obj: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {}
@@ -69,6 +69,7 @@ export function mapCanconer(c: {
   shareToken: string | null
   style: string
   accentColor: string | null
+  pdfOptions?: PdfOptions | null
   createdAt: string | null
   updatedAt: string | null
 }) {
@@ -79,6 +80,7 @@ export function mapCanconer(c: {
     share_token: c.shareToken,
     style: c.style as CanconerStyle,
     accent_color: c.accentColor,
+    pdf_options: c.pdfOptions ?? null,
     created_at: c.createdAt,
     updated_at: c.updatedAt,
   }

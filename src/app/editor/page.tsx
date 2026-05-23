@@ -9,8 +9,10 @@ import { ChordPalette } from "@/components/editor/ChordPalette"
 import { ChordContextMenu } from "@/components/editor/ChordContextMenu"
 import { EditorToolbar } from "@/components/editor/EditorToolbar"
 import { ProposeInfoPopup } from "@/components/editor/ProposeInfoPopup"
+import { NewSongStartPopup } from "@/components/editor/NewSongStartPopup"
 import { SongView } from "@/components/song/SongView"
 import { useEditorHistory } from "@/hooks/useEditorHistory"
+import type { ImportResult } from "@/lib/importers"
 
 const DRAFT_KEY = "editor_draft"
 const PROPOSE_INFO_KEY = "propose_info_accepted"
@@ -52,6 +54,7 @@ export default function EditorPage() {
   const [previewOn, setPreviewOn] = useState(false)
   const [status2, setStatus2] = useState({ msg: "", cls: "" })
   const [showProposeInfo, setShowProposeInfo] = useState(false)
+  const [showStartPopup, setShowStartPopup] = useState(false)
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -97,6 +100,7 @@ export default function EditorPage() {
         })
     } else {
       // Restore draft
+      let hasDraft = false
       if (typeof window !== "undefined") {
         const raw = sessionStorage.getItem(DRAFT_KEY)
         if (raw) {
@@ -113,6 +117,7 @@ export default function EditorPage() {
             if (d.content) {
               editor.reset(d.content)
             }
+            hasDraft = !!(d.title || d.artist || d.content)
           } catch {
             // ignore malformed draft
           }
@@ -126,6 +131,9 @@ export default function EditorPage() {
             setShowProposeInfo(true)
           }
         }
+      } else if (!hasDraft) {
+        // Admin sense draft pendent: mostra el popup d'inici (URL o manual)
+        setShowStartPopup(true)
       }
     }
     // editor.reset is stable (useCallback), isEdit and editId are derived from URL
@@ -155,6 +163,32 @@ export default function EditorPage() {
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
     }
   }, [isEdit, meta, editor.value])
+
+  // Reset complet de l'editor (després de guardar una cançó nova o enviar proposta)
+  const resetEditor = useCallback(() => {
+    setMeta(DEFAULT_META)
+    editor.reset("")
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(DRAFT_KEY)
+    }
+  }, [editor])
+
+  function handleImported(data: ImportResult) {
+    setMeta({
+      title: data.title,
+      artist: data.artist,
+      key: data.key,
+      capo: data.capo,
+      language: data.language,
+      tags: data.tags,
+    })
+    editor.reset(data.content)
+    setShowStartPopup(false)
+  }
+
+  function handleManual() {
+    setShowStartPopup(false)
+  }
 
   const setStatusMsg = useCallback((msg: string, cls: string) => {
     if (statusTimerRef.current) clearTimeout(statusTimerRef.current)
@@ -251,7 +285,8 @@ export default function EditorPage() {
           body: JSON.stringify(body),
         })
         if (!res.ok) throw new Error()
-        if (typeof window !== "undefined") sessionStorage.removeItem(DRAFT_KEY)
+        resetEditor()
+        setShowStartPopup(true)
         setStatusMsg("✓ Cançó guardada!", "ok")
       } else {
         res = await fetch("/api/proposals", {
@@ -260,7 +295,7 @@ export default function EditorPage() {
           body: JSON.stringify(body),
         })
         if (!res.ok) throw new Error()
-        if (typeof window !== "undefined") sessionStorage.removeItem(DRAFT_KEY)
+        resetEditor()
         setStatusMsg("✓ Proposta enviada! Un admin la revisarà aviat.", "ok")
       }
     } catch {
@@ -396,6 +431,10 @@ export default function EditorPage() {
             setShowProposeInfo(false)
           }}
         />
+      )}
+
+      {showStartPopup && (
+        <NewSongStartPopup onManual={handleManual} onImported={handleImported} />
       )}
     </>
   )

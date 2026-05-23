@@ -16,6 +16,7 @@ export function CanconerPanel() {
   const canconerTitle = useSongbookStore((s) => s.canconerTitle)
   const canconerStyle = useSongbookStore((s) => s.canconerStyle)
   const accentColor = useSongbookStore((s) => s.accentColor)
+  const pdfOptions = useSongbookStore((s) => s.pdfOptions)
   const savedCanconerId = useSongbookStore((s) => s.savedCanconerId)
   const setCanconerTitle = useSongbookStore((s) => s.setCanconerTitle)
   const setOverwriteToast = useSongbookStore((s) => s.setOverwriteToast)
@@ -53,6 +54,7 @@ export function CanconerPanel() {
             title: canconerTitle,
             style: canconerStyle,
             accentColor,
+            pdfOptions,
             duplicateId: duplicate.id,
             songs: canconer.map((e) => ({ id: e.song.id, semitones: e.semitones })),
           })
@@ -68,6 +70,7 @@ export function CanconerPanel() {
       canconerTitle,
       canconerStyle,
       accentColor,
+      pdfOptions,
       songs,
       savedCanconerId,
     )
@@ -90,6 +93,7 @@ export function CanconerPanel() {
           title: canconerTitle || "El meu cançoner",
           style: canconerStyle,
           accent_color: accentColor,
+          pdf_options: pdfOptions,
           songs: canconer.map((e) => ({ id: e.song.id, semitones: e.semitones })),
         }),
       })

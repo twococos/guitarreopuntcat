@@ -37,6 +37,7 @@ export default async function SharedPage({ params }: Props) {
           title={canconer.title}
           style={style}
           accentColor={accentColor}
+          pdfOptions={canconer.pdf_options ?? null}
           songs={canconer.songs.map((s) => ({ id: s.id, semitones: s.semitones }))}
         />
       </header>

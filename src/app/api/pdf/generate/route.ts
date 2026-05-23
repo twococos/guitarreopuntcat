@@ -4,7 +4,12 @@ import { eq } from "drizzle-orm"
 import { db, schema } from "@/db/client"
 import { buildHtml, type PdfSong } from "@/lib/pdf/buildHtml"
 import { generatePdf } from "@/lib/pdf/generate"
-import { canconerStyleSchema, accentColorSchema } from "@/lib/schemas/canconer"
+import {
+  canconerStyleSchema,
+  accentColorSchema,
+  pdfOptionsSchema,
+  PDF_OPTIONS_DEFAULTS,
+} from "@/lib/schemas/canconer"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -14,6 +19,7 @@ const pdfBodySchema = z.object({
   title: z.string().default("El meu cançoner"),
   style: canconerStyleSchema,
   accent_color: accentColorSchema,
+  pdf_options: pdfOptionsSchema.default(PDF_OPTIONS_DEFAULTS),
   songs: z
     .array(
       z.object({
@@ -54,8 +60,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const html = buildHtml(parsed.title, parsed.style, parsed.accent_color, pdfSongs)
-    const pdfBuffer = await generatePdf(html)
+    const html = buildHtml(parsed.title, parsed.style, parsed.accent_color, pdfSongs, parsed.pdf_options)
+    const pdfBuffer = await generatePdf(
+      html,
+      parsed.pdf_options,
+      parsed.title,
+      parsed.pdf_options.show_cover,
+      parsed.style,
+      parsed.accent_color,
+    )
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {

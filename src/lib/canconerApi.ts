@@ -1,4 +1,5 @@
 import type { CanconerStyle } from "@/types/song"
+import type { PdfOptions } from "@/lib/schemas/canconer"
 
 /**
  * Helper client per guardar un cançoner via POST /api/canconers.
@@ -8,6 +9,7 @@ export async function saveCanconer(
   title: string,
   style: CanconerStyle,
   accentColor: string | null,
+  pdfOptions: PdfOptions,
   songs: Array<{ id: number; semitones: number }>,
   existingId?: number | null,
 ): Promise<number | null> {
@@ -16,9 +18,10 @@ export async function saveCanconer(
       title: string
       style: CanconerStyle
       accent_color: string | null
+      pdf_options: PdfOptions
       songs: Array<{ id: number; semitones: number }>
       id?: number
-    } = { title, style, accent_color: accentColor, songs }
+    } = { title, style, accent_color: accentColor, pdf_options: pdfOptions, songs }
     if (existingId != null) body.id = existingId
 
     const res = await fetch("/api/canconers", {

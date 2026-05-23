@@ -895,6 +895,125 @@ select:focus {
   background: var(--accent-hv);
 }
 
+/* ── Format PDF (panell d'opcions) ─────────────────────────── */
+.options-subsection {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-top: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+.opt-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+  cursor: pointer;
+}
+.opt-row input[type="checkbox"] {
+  cursor: pointer;
+}
+.opt-row input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.opt-input-text {
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  background: var(--bg);
+  margin-bottom: 0.25rem;
+}
+.opt-input-text:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.opt-input-text:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.opt-select {
+  padding: 0.3rem 0.5rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.opt-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.opt-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.45;
+  margin-top: 0.15rem;
+  margin-bottom: 0.35rem;
+}
+.pdf-cols-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+}
+.pdf-cols-btn {
+  padding: 0.42rem 0.25rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.pdf-cols-btn:hover {
+  border-color: var(--accent);
+}
+.pdf-cols-btn.active {
+  border-color: var(--accent);
+  background: #fdf4f3;
+  color: var(--accent);
+}
+.pdf-margins-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+.opt-margin {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.opt-margin span {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.opt-margin input {
+  flex: 1;
+  width: 100%;
+  padding: 0.3rem 0.45rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 0.82rem;
+  color: var(--text);
+}
+.opt-margin input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* ── Toast ─────────────────────────────────────────────────── */
 .toast-host {
   position: fixed;
@@ -2414,3 +2533,172 @@ tbody tr:hover {
 
 /* Els estils de cada cançó al cançoner compartit els proporciona
    <SongView /> via src/styles/song.css. */
+
+/* ════════════════════════════════════════════════════════════
+   6. NEW-SONG-START POPUP — modal d'inici de cançó nova
+   ════════════════════════════════════════════════════════════ */
+
+#new-song-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.18s ease;
+}
+
+#new-song-box {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  width: min(500px, 92vw);
+  padding: 2.25rem 2rem 2rem;
+  animation: slideUp 0.2s ease;
+}
+
+#new-song-logo {
+  font-size: 3rem;
+  text-align: center;
+}
+
+#new-song-box h2 {
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0.5rem 0 1rem;
+}
+
+.new-song-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.new-song-section-title {
+  font-size: 0.85rem;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.url-input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.url-input:focus {
+  border-color: var(--accent);
+}
+
+.url-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.new-song-hint {
+  display: block;
+  margin: 0.4rem 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.btn-start {
+  width: 100%;
+  padding: 0.7rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.btn-start--idle {
+  background: #4caf5044;
+  color: #2e7d32;
+  cursor: not-allowed;
+}
+
+.btn-start--supported {
+  background: #2e7d32;
+  color: white;
+}
+
+.btn-start--supported:hover {
+  filter: brightness(1.1);
+}
+
+.btn-start--unsupported {
+  background: #c62828;
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.btn-start--loading {
+  background: #999;
+  color: white;
+  cursor: progress;
+}
+
+.import-error {
+  color: #c62828;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.new-song-divider {
+  text-align: center;
+  margin: 1.2rem 0;
+  color: #999;
+  position: relative;
+}
+
+.new-song-divider::before,
+.new-song-divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: #ddd;
+}
+
+.new-song-divider::before { left: 0; }
+.new-song-divider::after { right: 0; }
+
+.new-song-divider span {
+  background: var(--surface);
+  padding: 0 0.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.btn-manual {
+  width: 100%;
+  padding: 0.7rem;
+  background: transparent;
+  border: 1.5px solid var(--muted);
+  color: var(--muted);
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-manual:hover:not(:disabled) {
+  background: var(--muted);
+  color: white;
+}
+
+.btn-manual:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -55,6 +55,41 @@ export const accentColorSchema = z
   .nullable()
   .default(null)
 
+/* ── Opcions de generació de PDF ──────────────────────────── */
+
+export const FONT_SCALES = ["small", "normal", "large"] as const
+export type FontScale = (typeof FONT_SCALES)[number]
+
+export const FONT_SCALE_LABELS: Record<FontScale, string> = {
+  small: "Petita",
+  normal: "Normal",
+  large: "Gran",
+}
+
+export const FONT_SCALE_FACTORS: Record<FontScale, number> = {
+  small: 0.85,
+  normal: 1.0,
+  large: 1.15,
+}
+
+export const pdfOptionsSchema = z.object({
+  page_breaks: z.boolean().default(true),
+  columns: z.number().int().min(1).max(3).default(1),
+  show_index: z.boolean().default(true),
+  show_cover: z.boolean().default(true),
+  cover_subtitle: z.string().max(200).nullable().default(null),
+  book_format: z.boolean().default(false),
+  margin_top: z.number().min(0).max(50).default(20),
+  margin_right: z.number().min(0).max(50).default(18),
+  margin_bottom: z.number().min(0).max(50).default(20),
+  margin_left: z.number().min(0).max(50).default(18),
+  font_scale: z.enum(FONT_SCALES).default("normal"),
+})
+
+export type PdfOptions = z.infer<typeof pdfOptionsSchema>
+
+export const PDF_OPTIONS_DEFAULTS: PdfOptions = pdfOptionsSchema.parse({})
+
 /* ── Save ─────────────────────────────────────────────────── */
 
 export const canconerSaveSchema = z.object({
@@ -62,6 +97,7 @@ export const canconerSaveSchema = z.object({
   title: z.string().min(1).default("El meu cançoner"),
   style: canconerStyleSchema,
   accent_color: accentColorSchema,
+  pdf_options: pdfOptionsSchema.default(PDF_OPTIONS_DEFAULTS),
   songs: z.array(
     z.object({
       id: z.number().int(),

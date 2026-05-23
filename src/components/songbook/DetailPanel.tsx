@@ -8,7 +8,10 @@ import {
   CANCONER_STYLES,
   STYLE_LABELS,
   STYLE_DEFAULT_ACCENTS,
+  FONT_SCALES,
+  FONT_SCALE_LABELS,
   type CanconerStyle,
+  type FontScale,
 } from "@/lib/schemas/canconer"
 import type { CSSProperties } from "react"
 
@@ -163,6 +166,144 @@ function KeyFilterGrid() {
   )
 }
 
+/* ── PdfFormatSection ──────────────────────────────────────── */
+
+function PdfFormatSection() {
+  const opts = useSongbookStore((s) => s.pdfOptions)
+  const setOpt = useSongbookStore((s) => s.setPdfOption)
+
+  return (
+    <div className="options-section">
+      <h3 className="options-section-title">Format PDF</h3>
+
+      <h4 className="options-subsection">Portada</h4>
+      <label className="opt-row">
+        <input
+          type="checkbox"
+          checked={opts.show_cover}
+          onChange={(e) => setOpt("show_cover", e.target.checked)}
+        />
+        <span>Mostrar portada</span>
+      </label>
+      <input
+        type="text"
+        className="opt-input-text"
+        placeholder="Subtítol (opcional)"
+        disabled={!opts.show_cover}
+        value={opts.cover_subtitle ?? ""}
+        onChange={(e) => setOpt("cover_subtitle", e.target.value || null)}
+        maxLength={200}
+      />
+
+      <h4 className="options-subsection">Índex</h4>
+      <label className="opt-row">
+        <input
+          type="checkbox"
+          checked={opts.show_index}
+          onChange={(e) => setOpt("show_index", e.target.checked)}
+        />
+        <span>Mostrar índex</span>
+      </label>
+
+      <h4 className="options-subsection">Cos</h4>
+      <div className="pdf-cols-group">
+        {[1, 2, 3].map((n) => (
+          <button
+            key={n}
+            type="button"
+            className={`pdf-cols-btn${opts.columns === n ? " active" : ""}`}
+            onClick={() => setOpt("columns", n)}
+            title={`${n} ${n === 1 ? "columna" : "columnes"}`}
+          >
+            {n} {n === 1 ? "col" : "cols"}
+          </button>
+        ))}
+      </div>
+      <label className="opt-row">
+        <span>Mida lletra:</span>
+        <select
+          className="opt-select"
+          value={opts.font_scale}
+          onChange={(e) => setOpt("font_scale", e.target.value as FontScale)}
+        >
+          {FONT_SCALES.map((s) => (
+            <option key={s} value={s}>
+              {FONT_SCALE_LABELS[s]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="opt-row">
+        <input
+          type="checkbox"
+          checked={opts.page_breaks}
+          onChange={(e) => setOpt("page_breaks", e.target.checked)}
+        />
+        <span>Salt de pàgina entre cançons</span>
+      </label>
+
+      <h4 className="options-subsection">Format llibre</h4>
+      <label className="opt-row">
+        <input
+          type="checkbox"
+          checked={opts.book_format}
+          onChange={(e) => setOpt("book_format", e.target.checked)}
+        />
+        <span>Imprimir a doble cara</span>
+      </label>
+      <p className="opt-hint">
+        Alterna capçaleres i números de pàgina entre les pàgines senars (dreta) i parells
+        (esquerra), i afegeix una pàgina en blanc després de l&apos;índex si cal perquè la primera
+        cançó comenci a una pàgina senar.
+      </p>
+
+      <h4 className="options-subsection">Marges (mm)</h4>
+      <div className="pdf-margins-grid">
+        <label className="opt-margin">
+          <span>Capçalera</span>
+          <input
+            type="number"
+            min={0}
+            max={50}
+            value={opts.margin_top}
+            onChange={(e) => setOpt("margin_top", Number(e.target.value))}
+          />
+        </label>
+        <label className="opt-margin">
+          <span>Peu de pàgina</span>
+          <input
+            type="number"
+            min={0}
+            max={50}
+            value={opts.margin_bottom}
+            onChange={(e) => setOpt("margin_bottom", Number(e.target.value))}
+          />
+        </label>
+        <label className="opt-margin">
+          <span>Esquerra</span>
+          <input
+            type="number"
+            min={0}
+            max={50}
+            value={opts.margin_left}
+            onChange={(e) => setOpt("margin_left", Number(e.target.value))}
+          />
+        </label>
+        <label className="opt-margin">
+          <span>Dreta</span>
+          <input
+            type="number"
+            min={0}
+            max={50}
+            value={opts.margin_right}
+            onChange={(e) => setOpt("margin_right", Number(e.target.value))}
+          />
+        </label>
+      </div>
+    </div>
+  )
+}
+
 /* ── OptionsTab ────────────────────────────────────────────── */
 
 function OptionsTab() {
@@ -199,6 +340,8 @@ function OptionsTab() {
           Aplicar
         </button>
       </div>
+      <div className="options-sep" />
+      <PdfFormatSection />
     </div>
   )
 }

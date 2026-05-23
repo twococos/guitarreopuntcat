@@ -19,10 +19,10 @@ export function OverwriteToast() {
 
   if (!overwriteToast) return null
 
-  const { title, style, accentColor, duplicateId, songs } = overwriteToast
+  const { title, style, accentColor, pdfOptions, duplicateId, songs } = overwriteToast
 
   async function onYes() {
-    const newId = await saveCanconer(title, style, accentColor, songs, duplicateId)
+    const newId = await saveCanconer(title, style, accentColor, pdfOptions, songs, duplicateId)
     if (newId != null) {
       markSaved(newId)
       toast("Cançoner guardat!")

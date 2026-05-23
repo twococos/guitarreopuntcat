@@ -81,7 +81,8 @@ w:/VSC/guitarreopuntcat/
     │       ├── admin/users/[id]/route.ts       PATCH
     │       ├── admin/canconers/route.ts        GET
     │       ├── admin/canconers/[id]/route.ts   DELETE
-    │       └── pdf/generate/route.ts           POST → blob PDF
+    │       ├── pdf/generate/route.ts           POST → blob PDF
+    │       └── songs/import/route.ts           POST URL → ImportResult (admin)
     │
     ├── components/                            React components
     │   ├── AuthProvider.tsx                    Wrapper SessionProvider
@@ -105,7 +106,8 @@ w:/VSC/guitarreopuntcat/
     │   │   ├── ChordContextMenu.tsx            Menú clic dret amb posicionament viewport-aware
     │   │   ├── EditorToolbar.tsx               Botons Secció / Acord / Desfer / Refer + toggle preview
     │   │   ├── SongMetadataForm.tsx            Formulari controlat
-    │   │   └── ProposeInfoPopup.tsx            Popup informatiu primera proposta
+    │   │   ├── ProposeInfoPopup.tsx            Popup informatiu primera proposta
+    │   │   └── NewSongStartPopup.tsx           Popup modal admin: URL importable vs manual
     │   ├── admin/                             Components de /admin
     │   │   ├── StatsCards.tsx
     │   │   ├── ProposalsTab.tsx + ReviewModal.tsx
@@ -135,10 +137,15 @@ w:/VSC/guitarreopuntcat/
     │   │   ├── song.ts                          songInputSchema, songUpdateSchema, songQuerySchema
     │   │   ├── canconer.ts                      canconerSaveSchema, shareActionSchema
     │   │   └── proposal.ts                      proposalInputSchema, proposalReviewSchema
-    │   └── pdf/
-    │       ├── styles.ts                        Llegeix src/styles/song.css + constants per portada/índex
-    │       ├── buildHtml.ts                     Construeix HTML complet del PDF
-    │       └── generate.ts                      puppeteer.launch + page.pdf
+    │   ├── pdf/
+    │   │   ├── styles.ts                        Llegeix src/styles/song.css + constants per portada/índex
+    │   │   ├── buildHtml.ts                     Construeix HTML complet del PDF
+    │   │   └── generate.ts                      puppeteer.launch + page.pdf
+    │   └── importers/                           Importadors de cançons des d'URL (admin)
+    │       ├── types.ts                         Interfície Importer + ImportResult
+    │       ├── index.ts                         Registre central + findImporter/isSupportedUrl
+    │       ├── fetch.ts                         defaultFetch amb UA realista + timeout + límit mida
+    │       └── acordscatala.ts                  Parser per a www.acordscatala.cat
     │
     ├── hooks/                                  Custom hooks i stores Zustand
     │   ├── useSongbook.ts                       STORE PRINCIPAL de la pàgina /
@@ -243,6 +250,75 @@ Si afegeixes un endpoint nou, segueix la mateixa convenció.
 - **TypeScript estricte**: cap `any`. Si no saps el tipus, usa `unknown` i fes el narrowing.
 - **Cada Route Handler ha de tenir**: `export const runtime = "nodejs"` i `export const dynamic = "force-dynamic"`.
 - **Toasts**: usa `useToastStore().show(msg, { type?: "error" })` en lloc d'`alert()`.
+
+### 11. Importadors de cançons des d'URL
+
+L'editor té un mode "import des d'URL" per a admins: el popup `NewSongStartPopup` permet enganxar una URL d'una web d'acords suportada i pre-omple l'editor amb el contingut (lletra + acords + metadades) per a fer-hi els retocs finals abans de guardar.
+
+**Arquitectura:**
+
+- `src/lib/importers/types.ts` defineix la interfície `Importer`:
+  ```ts
+  interface Importer {
+    host: string
+    match: (url: URL) => boolean
+    fetch: (url: string) => Promise<string>
+    parse: (html: string, url: string) => ImportResult
+  }
+  interface ImportResult {
+    title: string; artist: string; key: string; capo: number
+    language: string; tags: string; content: string
+  }
+  ```
+- `src/lib/importers/index.ts` manté el registre `IMPORTERS: Importer[]` i exposa `findImporter`, `isSupportedUrl`, `SUPPORTED_HOSTS`.
+- `src/lib/importers/fetch.ts` exporta `defaultFetch` (UA realista de Chrome, timeout 10s, límit 2 MB). La majoria de parsers el reutilitzen.
+- `POST /api/songs/import` (admin-only) valida la URL amb Zod, fa dispatch a l'importador i retorna `ImportResult` en camelCase (no snake_case — no es persisteix res, només pre-omple l'editor).
+
+**Per afegir suport a una nova web:**
+
+1. Crear `src/lib/importers/<nomweb>.ts` exportant un `Importer`.
+2. Registrar-lo a `IMPORTERS` dins `index.ts`.
+3. Cap altre canvi: el popup llegeix `SUPPORTED_HOSTS` automàticament, i el client envia la URL a l'endpoint que ja en sap fer dispatch.
+
+**Format de sortida (`content`):**
+
+El parser ha de retornar text amb els tags `<sec>` i `<ch>` ja aplicats — el mateix format que guarda la BD (vegeu secció 1). Convencions:
+
+- Acords en notació anglesa (`C`, `D#`, `Am`, etc.) — si la font usa notació catalana/italiana (DO RE MI FA SOL LA SI) o bemolls, normalitza a anglesa amb sostinguts (`Bb` → `A#`) per coherència amb `ALL_KEYS` de `src/lib/transpose.ts`.
+- Posició dels acords: insereix `<ch>X</ch>` directament dins la línia de lletra a la columna correcta. La columna típicament es deriva del nombre d'espais entre acords en la línia d'acords original.
+- Seccions: emet `<sec>Estrofa 1</sec>`, `<sec>Tornada</sec>`, `<sec>Pont</sec>`, etc. segons les pistes que doni la pàgina (negreta, etiquetes, [Estrofa], capçaleres).
+- `key`: el millor estimador és **la primera arrel d'acord que apareixi**. Si és menor, afegeix `m`. Ha de ser un valor dins `ALL_KEYS`.
+- `language`: dedueix de la pàgina (URL `/ca/`, `/es/`, etc.) o `"ca"` per defecte si és catalana.
+- `tags`: deixa string buit si no hi ha informació clara.
+
+**Patrons habituals a vigilar:**
+
+- L'HTML del cos sovint és dins un `<pre>`. `node-html-parser` (la lib que usem) NO descendeix dins `<pre>` — el seu contingut arriba com a un únic text node amb les etiquetes internes encara presents com a text. Cal processar-les manualment amb regex o substituir-les per marcadors de control (`\x01`/`\x02` etc.) abans de tallar per línies.
+- Entitats HTML: les pàgines en català tenen molts `&agrave;` `&eacute;` `&ccedil;` `&middot;` `&#39;` etc. El `decode()` d'`acordscatala.ts` es pot reutilitzar/portar.
+- Salts de línia: normalitza CRLF → LF.
+- Acords amb transició ràpida (DO#→DO#sus2): es preserven com a token únic amb la fletxa al mig (l'usuari ja ho retocarà manualment si vol separar-los).
+
+**Exemple de referència — `acordscatala.ts`:**
+
+- Localitza `#canco h1` (títol), `h2.nom_grup` (artista), `.canco-container pre` (cos).
+- Substitueix `<u>` per marcadors `\x01`/`\x02` i `<strong>` per `\x03`/`\x04` abans de decodificar entitats.
+- Parteix per `\n` i analitza cada línia mantenint l'estat **chord-depth** i **strong-depth** entre línies (els tags poden estar oberts a una línia i tancar-se a la següent).
+- Decideix `inStrong` per **majoria de caràcters visibles** dins/fora `<strong>` (no només pel start), perquè a vegades una línia conté `</strong><u>…</u><strong>` (tanca, fa contingut fora, reobre).
+- Acordscatala usa **negreta = tornada** com a única pista de secció. Algoritme: emet `<sec>Estrofa 1</sec>` al primer bloc no-strong, `<sec>Tornada</sec>` quan s'entra a un bloc strong, `<sec>Estrofa N</sec>` quan se'n surt cap a contingut nou (N incremental).
+- Notació catalana → anglesa via taula (SOL→G, DO→C, RE→D, MI→E, FA→F, LA→A, SI→B), respectant `#`/`b` posteriors i convertint bemolls a sostinguts via FLAT_MAP.
+
+**Provar un parser nou en local sense passar pel servidor:**
+
+```bash
+# Baixa la mostra a un fitxer
+curl -s -A "Mozilla/5.0 ..." "https://exemple.com/cancó" -o /tmp/sample.html
+
+# Crea un script de prova ràpid (.tmp-test.ts) que importi el parser i el cridi
+# amb el HTML llegit, i executa amb:
+npx tsx .tmp-test.ts
+```
+
+Esborra els fitxers `.tmp-*` quan acabis.
 
 ## Forma de treballar (com fer noves sessions amb Claude)
 
