@@ -1389,13 +1389,36 @@ select:focus {
   width: auto !important;
 }
 
+.btn-danger {
+  background: #c0392b;
+  color: white;
+  border: 1px solid #c0392b;
+  padding: 0.45rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-danger:hover:not(:disabled) { background: #a93226; }
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  color: #666;
+  border: 1px solid var(--border, #e5e5e3);
+  padding: 0.45rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-ghost:hover:not(:disabled) { background: var(--bg, #f7f7f5); color: #333; }
+.btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ════════════════════════════════════════════════════════════
    2. EDITOR.CSS — pàgina /editor
    ════════════════════════════════════════════════════════════ */
 
 /* Override del body només per pàgines no-app (editor, admin, my-canconers, shared).
    Es fa amb selector específic perquè body de la pàgina principal usa overflow:hidden. */
-body:has(#editor-layout),
+body:has(.editor-page),
 body:has(#admin-tabs),
 body:has(#mc-main),
 body:has(#shared-layout) {
@@ -1415,61 +1438,6 @@ body:has(#shared-layout) {
 }
 
 /* ── Editor: layout sidebar + editor + prèvia ── */
-#editor-layout {
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  height: calc(100vh - var(--header-h));
-  overflow: hidden;
-}
-
-#meta-panel {
-  border-right: 1px solid var(--border);
-  padding: 1.25rem;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  background: var(--surface);
-}
-#meta-panel h2 {
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-#meta-panel hr {
-  border: none;
-  border-top: 1px solid var(--border);
-}
-#meta-panel label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text);
-}
-#meta-panel label small {
-  font-weight: 400;
-  color: var(--muted);
-}
-#meta-panel input[type="number"],
-#meta-panel select {
-  width: 100%;
-  padding: 0.45rem 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 0.88rem;
-  background: var(--surface);
-  color: var(--text);
-  outline: none;
-  appearance: auto;
-  transition: border-color 0.15s;
-}
-#meta-panel input[type="number"]:focus,
-#meta-panel select:focus {
-  border-color: var(--accent);
-}
 
 .required {
   color: var(--accent);
@@ -1478,27 +1446,6 @@ body:has(#shared-layout) {
   font-size: 0.78rem;
   color: var(--muted);
   line-height: 1.5;
-}
-
-#chord-palette {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-#chord-palette .chip {
-  font-size: 0.75rem;
-  font-family: monospace;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 2px 7px;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-#chord-palette .chip:hover {
-  background: #fdf4f3;
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 #save-status {
@@ -1514,133 +1461,9 @@ body:has(#shared-layout) {
   color: var(--accent);
 }
 
-#editor-main {
-  display: flex;
-  overflow: hidden;
-}
-
-#editor-section {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-  min-width: 0;
-}
-
-#editor-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.85rem;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-#editor-toolbar button {
-  padding: 0.3rem 0.7rem;
-  font-size: 0.82rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-#editor-toolbar button:hover {
-  background: #fdf4f3;
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.toolbar-sep {
-  width: 1px;
-  height: 20px;
-  background: var(--border);
-  margin: 0 0.2rem;
-}
-.toolbar-toggle {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.82rem;
-  font-weight: 400 !important;
-  cursor: pointer;
-}
-
-#editor-wrap {
-  position: relative;
-  flex: 1;
-  overflow: hidden;
-}
-#editor,
-#editor-highlight {
-  position: absolute;
-  inset: 0;
-  font-family: "Courier New", monospace;
-  font-size: 0.92rem;
-  line-height: 1.85;
-  padding: 1.25rem 1.5rem;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  tab-size: 2;
-  border: none;
-  outline: none;
-  resize: none;
-  overflow-y: auto;
-}
-#editor {
-  background: transparent;
-  color: transparent;
-  caret-color: var(--text);
-  z-index: 2;
-}
-#editor::selection {
-  background: rgba(192, 57, 43, 0.18);
-}
-#editor-highlight {
-  background: var(--bg);
-  color: var(--text);
-  pointer-events: none;
-  z-index: 1;
-}
-#editor-highlight .hl-ch {
-  color: var(--accent);
-  font-weight: 700;
-}
-#editor-highlight .hl-sec {
-  color: #2980b9;
-  font-weight: 700;
-  font-style: italic;
-}
-#editor-highlight .hl-tag {
-  color: #aaa;
-}
-
-#preview-panel {
-  width: 340px;
-  border-left: 1px solid var(--border);
-  background: var(--surface);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-#preview-panel h3 {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-#preview-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem 1.25rem;
-}
-
-/* ── Menú contextual ── */
-#chord-menu {
+/* ── Menú contextual (chord + section) ── */
+.chord-menu,
+.section-menu {
   position: fixed;
   z-index: 200;
   background: var(--surface);
@@ -1651,14 +1474,14 @@ body:has(#shared-layout) {
   padding: 0.4rem;
   font-size: 0.85rem;
 }
-#chord-menu-header {
+.chord-menu-header {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
   padding: 0.3rem 0.5rem 0.5rem;
 }
-#chord-menu-groups {
+.chord-menu-groups {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -2701,4 +2524,647 @@ tbody tr:hover {
 .btn-manual:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ════════════════════════════════════════════════════════════
+   EDITOR WYSIWYG (Fase 10 del refactor)
+   ──────────────────────────────────────────────────────────── */
+
+/* ── Pàgina /editor: layout en columna ─────────────────────── */
+.editor-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem;
+}
+.editor-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── SongHeader (capçalera editable) ────────────────────────── */
+.song-header-edit {
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Inputs de títol i artista — hereten l'estil visual dels equivalents
+   de song.css però són <input> controlats */
+.song-title-input {
+  font-family: var(--song-title-font, "Georgia", serif);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #222;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+  width: 100%;
+  background: transparent;
+}
+.song-artist-input {
+  font-family: var(--song-title-font, "Georgia", serif);
+  font-size: 0.82rem;
+  color: var(--muted, #888);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+  width: 100%;
+  background: transparent;
+  margin-top: 0.15rem;
+}
+.song-title-input:focus,
+.song-artist-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.12);
+}
+
+/* Estat buit: placeholder atenuat */
+.song-title--empty,
+.song-artist--empty {
+  color: #999;
+  font-style: italic;
+}
+
+/* Badge de tonalitat clicable (dins .song-key) */
+.key-badge {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.key-badge:hover {
+  background: #fae5e1;
+}
+
+/* Botó "Més opcions" */
+.more-options-toggle {
+  display: block;
+  margin-top: 0.75rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0.2rem 0;
+  font-size: 0.85rem;
+  color: #666;
+  transition: color 0.15s;
+}
+.more-options-toggle:hover {
+  color: var(--accent);
+}
+
+/* Fila inline amb cejilla, idioma i etiquetes (sempre visible sota el capçal) */
+.more-options-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: end;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border, #e5e5e3);
+}
+.more-options-field--inline {
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.more-options-field--grow {
+  flex: 1;
+  min-width: 12rem;
+}
+
+/* Panell expandible "Més opcions" (legacy, ja no s'usa però el deixem per
+   si algun altre formulari el necessita) */
+.more-options-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  background: var(--bg, #f7f7f5);
+  border-radius: 6px;
+  margin-top: 0.5rem;
+}
+
+/* Wrapper de cada camp del panell */
+.more-options-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.more-options-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text, #1a1a1a);
+}
+.more-options-input,
+.more-options-select {
+  padding: 0.38rem 0.6rem;
+  border: 1px solid var(--border, #e5e5e3);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  background: var(--surface, #fff);
+  color: var(--text, #1a1a1a);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.more-options-input:focus,
+.more-options-select:focus {
+  border-color: var(--accent);
+}
+
+/* ── EditorToolbar ──────────────────────────────────────────── */
+.editor-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: white;
+  border: 1px solid var(--border, #e5e5e3);
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+.editor-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.editor-toolbar-spacer {
+  flex: 1;
+}
+.editor-toolbar-hint {
+  font-size: 0.78rem;
+  color: var(--muted, #888);
+  white-space: nowrap;
+  font-style: italic;
+  padding: 0 0.3rem;
+}
+.editor-toolbar-sep {
+  width: 1px;
+  height: 1.5em;
+  background: var(--border, #e5e5e3);
+  margin: 0 0.3rem;
+}
+.toolbar-btn {
+  background: white;
+  border: 1px solid var(--border, #e5e5e3);
+  border-radius: 4px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #444;
+  transition: border-color 0.15s, color 0.15s;
+}
+.toolbar-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.toolbar-btn-primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.toolbar-btn-primary:hover:not(:disabled) {
+  background: var(--accent-hv, #a93226);
+  color: white;
+}
+
+/* ── WysiwygEditor ──────────────────────────────────────────── */
+.wysiwyg-editor-wrap {
+  position: relative;
+  border: 1px solid var(--border, #e5e5e3);
+  border-radius: 6px;
+  background: white;
+  min-height: 400px;
+}
+
+.wysiwyg-editor {
+  padding: 1.5rem 2rem;
+  font-family: var(--song-body-font, "Courier New", monospace);
+  font-size: var(--song-body-size, 0.9rem);
+  line-height: var(--song-body-line, 1.9);
+  outline: none;
+  white-space: pre-wrap;
+  min-height: 400px;
+}
+
+/* Blocs interns */
+div[data-block="lyric"] {
+  display: block;
+  position: relative;
+  padding-top: 12pt;
+}
+div[data-block="section"] {
+  display: block;
+  user-select: none;
+}
+div[data-block="empty"] {
+  display: block;
+  min-height: 1em;
+}
+
+/* Text del bloc de secció */
+.wsec {
+  font-weight: 1000;
+  cursor: grab;
+  user-select: none;
+}
+.wsec::before {
+  content: "— ";
+}
+.wsec::after {
+  content: " —";
+}
+.wsec:active {
+  cursor: grabbing;
+}
+div[data-block="section"]:hover .wsec {
+  background: rgba(192, 57, 43, 0.1);
+}
+
+/* Acords flotants (equivalents als <ch> de song.css) */
+.wch {
+  position: relative;
+  display: inline-block;
+  top: -12pt;
+  width: 0;
+  height: 0pt;
+  margin-top: 5pt;
+  font-weight: 1000;
+  color: var(--accent);
+  cursor: grab;
+  user-select: none;
+}
+.wch:active {
+  cursor: grabbing;
+}
+.wch:hover {
+  background: rgba(192, 57, 43, 0.1);
+}
+/* Marca visual de l'acord/secció que s'està modificant al menú contextual.
+   El .wch és width:0/height:0 (no afecta el flow), així que la caixa s'ha
+   de pintar al .wch-label intern (que sí té dimensions reals del text). */
+.wch--editing > .wch-label {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.wsec--editing {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Placeholder */
+.wysiwyg-placeholder {
+  position: absolute;
+  top: 1.5rem;
+  left: 2rem;
+  color: #aaa;
+  pointer-events: none;
+  font-family: var(--song-body-font, "Courier New", monospace);
+  font-size: var(--song-body-size, 0.9rem);
+  line-height: var(--song-body-line, 1.9);
+  white-space: pre-wrap;
+}
+
+/* Drag & drop visuals */
+.wysiwyg-drag-ghost {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--accent);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  color: var(--accent);
+  font-family: var(--song-body-font, monospace);
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.wysiwyg-drop-indicator {
+  position: fixed;
+  background: var(--accent);
+  z-index: 9998;
+  pointer-events: none;
+  border-radius: 2px;
+  /* Variant chord: línia vertical */
+  width: 2px;
+  height: 1.5em;
+}
+.wysiwyg-drop-indicator.section {
+  /* Variant section: línia horitzontal */
+  height: 2px;
+  width: 100%;
+}
+.wysiwyg-drop-indicator.invalid {
+  background: #999;
+  opacity: 0.3;
+}
+
+/* ── ConfirmToast ────────────────────────────────────────────── */
+.confirm-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius, 8px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 0.87rem;
+  z-index: 999;
+  max-width: 520px;
+  min-width: 300px;
+}
+.confirm-toast-message {
+  margin: 0;
+  font-weight: 500;
+  color: var(--text, #1a1a1a);
+  line-height: 1.5;
+}
+.confirm-toast-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* ── KeyPicker (popover de selecció de tonalitat) ───────────── */
+.key-picker {
+  position: fixed;
+  z-index: 1000;
+  background: white;
+  border: 1px solid var(--border, #e5e5e3);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.key-picker-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.key-picker-section-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.key-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.25rem;
+}
+.key-picker-cell {
+  background: white;
+  border: 1px solid var(--border, #e5e5e3);
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  font-family: var(--song-body-font, monospace);
+  font-weight: 600;
+  min-width: 3rem;
+  text-align: center;
+  transition: border-color 0.12s, color 0.12s;
+}
+.key-picker-cell:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.key-picker-cell.selected {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+/* ── SectionContextMenu ──────────────────────────────────────── */
+.section-menu {
+  position: fixed;
+  z-index: 200;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e5e3);
+  border-radius: var(--radius, 8px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  padding: 0.4rem;
+  font-size: 0.85rem;
+}
+.section-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  color: var(--text, #1a1a1a);
+  transition: background 0.1s;
+}
+.section-menu-item:hover {
+  background: var(--bg, #f7f7f5);
+}
+.section-menu-delete-btn {
+  margin-top: 0.5rem;
+  background: #fee;
+  color: #c0392b;
+  border: 1px solid #fcc;
+  border-radius: 4px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+  font-size: 0.85rem;
+  transition: background 0.12s;
+}
+.section-menu-delete-btn:hover {
+  background: #fdd;
+}
+
+/* ── ChordContextMenu (nous elements) ───────────────────────── */
+/* Nota: reutilitza #chord-menu, #chord-menu-header, .chord-group-label,
+   .chord-group-items, .chord-menu-sep, .chord-menu-action existents.
+   Aquí s'afegeixen els nous selectors específics del refactor. */
+
+.chord-function-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  padding: 0.25rem 0.4rem;
+}
+.chord-function-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.chord-modifier-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem 0.4rem;
+  border-top: 1px solid var(--border, #e5e5e3);
+}
+.chord-modifier-chip {
+  padding: 0.2rem 0.5rem;
+  background: var(--bg, #f7f7f5);
+  border: 1px solid var(--border, #e5e5e3);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: monospace;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.chord-modifier-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.chord-modifier-chip.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.chord-menu-current {
+  padding: 0.5rem;
+  background: var(--bg, #f7f7f5);
+  border-radius: 4px;
+  font-weight: 600;
+  margin: 0 0.4rem 0.5rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+.chord-menu-delete-btn {
+  margin-top: 0.5rem;
+  background: #fee;
+  color: #c0392b;
+  border: 1px solid #fcc;
+  border-radius: 4px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+  font-size: 0.85rem;
+  transition: background 0.12s;
+}
+.chord-menu-delete-btn:hover {
+  background: #fdd;
+}
+
+/* ── Menú d'acords compacte (3-col grid) ───────────────────────── */
+
+.chord-menu-compact {
+  min-width: 0;
+  width: auto;
+  padding: 0.5rem;
+}
+.chord-menu-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #888;
+  margin: 0.4rem 0 0.2rem;
+  text-transform: uppercase;
+}
+.chord-menu-section-label:first-child {
+  margin-top: 0;
+}
+.chord-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(3.2rem, 1fr));
+  gap: 0.25rem;
+}
+.chord-menu-chord-btn {
+  padding: 0.3rem 0.4rem;
+  background: var(--bg, #f7f7f5);
+  border: 1px solid var(--border, #e5e5e3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.chord-menu-chord-btn:hover {
+  background: #fae5e1;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.chord-menu-compact .chord-modifier-chip {
+  border-radius: 4px;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.4rem;
+  text-align: center;
+}
+
+/* ── Tipus de secció marcat com a actiu (mode modify) ──────────── */
+.section-menu-item.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.section-menu-item.active:hover {
+  background: var(--accent);
+  color: white;
+}
+
+/* ── Editor desactivat (sense tonalitat) ───────────────────────── */
+.wysiwyg-editor-wrap--disabled .wysiwyg-editor {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  user-select: none;
+}
+.wysiwyg-placeholder--disabled {
+  color: #888;
+  font-style: italic;
+}
+
+/* ── Tonalitat sense seleccionar (badge en estat buit) ─────────── */
+.key-badge--empty {
+  font-style: italic;
+  color: #777;
+  font-weight: normal;
+  border-style: dashed;
+}
+
+/* ── Requadre faint per indicar editables (títol/artista) ──────── */
+/* Mostrem sempre la vora dashed faint perquè l'usuari vegi que són
+   editables sense haver-hi de passar pel damunt. */
+.song-title--editable,
+.song-artist--editable {
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  margin: -0.1rem -0.4rem;
+  cursor: text;
+  transition: border-color 0.15s, background 0.15s;
+}
+.song-title--editable:hover,
+.song-artist--editable:hover {
+  border-color: var(--border, #cfcfcd);
+  background: rgba(0, 0, 0, 0.02);
+}
+.song-title--editable:focus-visible,
+.song-artist--editable:focus-visible {
+  border-color: var(--accent);
+  outline: none;
 }

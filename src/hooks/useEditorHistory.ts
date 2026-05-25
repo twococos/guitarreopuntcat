@@ -11,14 +11,14 @@ import { useCallback, useRef, useState } from "react"
  *   l'aplica i empila; si no, empila el valor actual.
  * - `undo`/`redo` retrocedeixen/avancen.
  *
- * Patró d'ús al ChordEditor:
- *   - cada `onChange` del textarea fa `setValue(newVal)` + `scheduleCommit()`
+ * Patró d'ús al WysiwygEditor:
+ *   - cada `onChange` del contentEditable fa `setValue(newVal)` + `scheduleCommit()`
  *     (que fa `commit()` després d'un debounce, p. ex. 400ms).
- *   - cada inserció via menú/paleta fa `commit(insertResult)` directament
+ *   - cada inserció via menú fa `commit(insertResult)` directament
  *     (és una acció discreta, l'usuari espera poder desfer cada inserció).
  *
- * Pivot per a la sincronització amb textarea: quan undo/redo s'apliquen,
- * el `value` retornat ja conté el valor antic; el textarea (controlat per
+ * Pivot per a la sincronització amb l'editor: quan undo/redo s'apliquen,
+ * el `value` retornat ja conté el valor antic; l'editor (controlat per
  * `value`) es refresca automàticament.
  */
 export function useEditorHistory(initial: string) {

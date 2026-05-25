@@ -16,369 +16,236 @@ L'app és en català. Tots els missatges d'UI, comentaris del codi i commits s'e
 
 ## Stack tècnic
 
-| Capa | Tecnologia | Versió aproximada |
-|---|---|---|
-| Framework | Next.js (App Router) | 15 |
-| UI | React | 19 |
-| Llenguatge | TypeScript estricte | 5.6 |
-| BD | better-sqlite3 (local, fitxer únic) | 11 |
-| ORM | Drizzle | 0.36 |
-| Auth | NextAuth v5 (Auth.js) amb provider Google, estratègia JWT | 5.0.0-beta.25 |
-| Estat global client | Zustand | 5 |
-| Drag-drop | @dnd-kit (core + sortable + utilities) | 6/8 |
-| Validació | Zod | 3.23 |
-| PDF | Puppeteer (Chromium headless) | 22 |
-| Estilat | CSS global a `src/app/globals.css` + `src/styles/song.css` aïllat | — |
+| Capa | Tecnologia |
+|---|---|
+| Framework | Next.js 15 (App Router) |
+| UI | React 19 |
+| Llenguatge | TypeScript estricte 5.6 |
+| BD | better-sqlite3 (fitxer únic) + Drizzle ORM 0.36 |
+| Auth | NextAuth v5 (Google, estratègia JWT) |
+| Estat global client | Zustand 5 |
+| Drag-drop (cançoner) | @dnd-kit |
+| Validació | Zod |
+| PDF | Puppeteer (Chromium headless) |
+| Estilat | CSS global a `src/app/globals.css` + `src/styles/song.css` aïllat |
 
 **Decisions importants:**
 - Cap CSS-in-JS, cap Tailwind. CSS global tradicional amb variables (`--accent`, `--bg`, etc.).
-- Les sessions NextAuth són **JWT** (no taules de BD). El callback `signIn` crea/actualitza l'usuari a la taula `users` existent.
-- La BD viu al fitxer `data/canconer.db` (no entra al git via `.gitignore`).
-- Hostatge previst: **servidor propi (VPS)**. Per això pots usar `puppeteer` complet (no `puppeteer-core` + `@sparticuz/chromium`).
+- Sessions NextAuth són **JWT** (no taules de BD). El callback `signIn` crea/actualitza l'usuari a `users`.
+- BD viu a `data/canconer.db` (no entra a git).
+- Hostatge previst: **VPS propi**. Per això pots usar `puppeteer` complet (no `puppeteer-core`).
+- `tsconfig.json` té `"ignoreDeprecations": "6.0"` intencionalment. **No el toquis.**
 
-## Estructura de directoris
+## Estructura de directoris (resum)
 
 ```
-w:/VSC/guitarreopuntcat/
-├── .env                        Vars d'entorn (NextAuth + Google OAuth + DB_PATH)
-├── .env.example                Plantilla buida
-├── .gitignore                  Inclou node_modules, .next, *.db, data/, backups/
-├── PROJECT_CONTEXT.md          ← AQUEST FITXER
-├── data/canconer.db            BD SQLite (no entra a git)
-├── backups/                    Snapshots manuals de la BD (no entra a git)
-├── public/img/                 Estàtics: google.svg, etc.
-├── drizzle.config.ts           Config de drizzle-kit (per migracions futures)
-├── next.config.mjs             Config Next.js (serverExternalPackages per Puppeteer + better-sqlite3)
-├── next-env.d.ts               Tipus de Next (no editar manualment)
-├── package.json                Stack net post-tall (sense legacy)
-├── tsconfig.json               TypeScript estricte amb paths "@/*" → "./src/*"
-└── src/
-    ├── app/                                   App Router
-    │   ├── layout.tsx                          Layout arrel amb AuthProvider + suppressHydrationWarning
-    │   ├── globals.css                         Tots els estils globals (≈2.500 línies)
-    │   ├── page.tsx                            Server component que renderitza <SongbookEditor />
-    │   ├── editor/page.tsx                     Pàgina /editor (crear/editar cançons)
-    │   ├── my-canconers/page.tsx               Pàgina /my-canconers
-    │   ├── admin/
-    │   │   ├── layout.tsx                      Gate server: redirect si !admin
-    │   │   └── page.tsx                        Dashboard amb pestanyes
-    │   ├── c/[token]/page.tsx                  Vista pública compartida (server component)
-    │   └── api/                                Route Handlers
-    │       ├── auth/[...nextauth]/route.ts     NextAuth handler
-    │       ├── health/route.ts                 Diagnòstic (compta files BD)
-    │       ├── health-protected/route.ts       Prova de requireAuth
-    │       ├── songs/route.ts                  GET/POST cançons
-    │       ├── songs/[id]/route.ts             GET/PUT/DELETE
-    │       ├── canconers/route.ts              GET/POST cançoners (auth)
-    │       ├── canconers/[id]/route.ts         GET/DELETE
-    │       ├── canconers/[id]/share/route.ts   POST enable/disable share token
-    │       ├── canconers/shared/[token]/route.ts  GET públic (path fix)
-    │       ├── proposals/route.ts              GET/POST
-    │       ├── proposals/[id]/route.ts         PATCH (admin)
-    │       ├── proposals/pending-count/route.ts  GET (admin)
-    │       ├── admin/stats/route.ts            GET
-    │       ├── admin/users/route.ts            GET
-    │       ├── admin/users/[id]/route.ts       PATCH
-    │       ├── admin/canconers/route.ts        GET
-    │       ├── admin/canconers/[id]/route.ts   DELETE
-    │       ├── pdf/generate/route.ts           POST → blob PDF
-    │       └── songs/import/route.ts           POST URL → ImportResult (admin)
-    │
-    ├── components/                            React components
-    │   ├── AuthProvider.tsx                    Wrapper SessionProvider
-    │   ├── LoginPopup.tsx                      Popup Google
-    │   ├── UserWidget.tsx                      Avatar + dropdown
-    │   ├── Toast.tsx                           <ToastHost />
-    │   ├── songbook/                          Components de la pàgina principal /
-    │   │   ├── SongbookEditor.tsx              Root client (orquestrador, monta/desmonta tot)
-    │   │   ├── NewSongButton.tsx               Botó adaptatiu segons rol
-    │   │   ├── SongList.tsx                    Col 1 (cerca + llista BD)
-    │   │   ├── CanconerPanel.tsx               Col 2 (header + save + PDF + llista/grid)
-    │   │   ├── CanconerList.tsx                Vista llista amb @dnd-kit/sortable
-    │   │   ├── CanconerGrid.tsx                Vista compacta (sense drag-drop)
-    │   │   ├── DetailPanel.tsx                 Col 3 (pestanyes Preview / Opcions)
-    │   │   ├── KeyMenu.tsx                     Popover de selecció de tonalitat
-    │   │   ├── OverwriteToast.tsx              Toast confirmació sobreescriure
-    │   │   └── ProposeLoginToast.tsx           Toast convidant a logar-se
-    │   ├── editor/                            Components de /editor
-    │   │   ├── ChordEditor.tsx                 Textarea + highlight overlay (sincronitzats)
-    │   │   ├── ChordPalette.tsx                Chips acords del to
-    │   │   ├── ChordContextMenu.tsx            Menú clic dret amb posicionament viewport-aware
-    │   │   ├── EditorToolbar.tsx               Botons Secció / Acord / Desfer / Refer + toggle preview
-    │   │   ├── SongMetadataForm.tsx            Formulari controlat
-    │   │   ├── ProposeInfoPopup.tsx            Popup informatiu primera proposta
-    │   │   └── NewSongStartPopup.tsx           Popup modal admin: URL importable vs manual
-    │   ├── admin/                             Components de /admin
-    │   │   ├── StatsCards.tsx
-    │   │   ├── ProposalsTab.tsx + ReviewModal.tsx
-    │   │   ├── SongsTab.tsx
-    │   │   ├── UsersTab.tsx
-    │   │   └── CanconersTab.tsx
-    │   └── shared/                            Components de /c/[token]
-    │       ├── SharedIndex.tsx                 Scroll-spy amb IntersectionObserver
-    │       └── SharedPdfButton.tsx
-    │
-    ├── db/                                    Capa de dades
-    │   ├── client.ts                            Singleton better-sqlite3 + drizzle wrapper
-    │   ├── schema.ts                            5 taules: songs, users, canconers, canconerSongs, songProposals
-    │   └── queries/
-    │       ├── songs.ts                         listSongs, getSongById, createSong, updateSong, deleteSong
-    │       ├── canconers.ts                     listMine, getById, getByToken, save/upsert, delete, toggleShare
-    │       ├── proposals.ts                     listProposals, createProposal, reviewProposal, pendingCount
-    │       ├── admin.ts                         stats, users, updateUser, allCanconers, deleteCanconer
-    │       └── utils.ts                         Helpers mapping camelCase→snake_case per al JSON de resposta
-    │
-    ├── lib/                                   Lògica server + utilitats
-    │   ├── auth.ts                              Config NextAuth + callbacks signIn/jwt/session
-    │   ├── session.ts                           getSessionUser, requireAuth, requireAdmin
-    │   ├── transpose.ts                         Motor de transposició (port de l'original)
-    │   ├── canconerApi.ts                       Helper client per a save (usat per page i toast)
-    │   ├── schemas/                             Schemas Zod per validació API
-    │   │   ├── song.ts                          songInputSchema, songUpdateSchema, songQuerySchema
-    │   │   ├── canconer.ts                      canconerSaveSchema, shareActionSchema
-    │   │   └── proposal.ts                      proposalInputSchema, proposalReviewSchema
-    │   ├── pdf/
-    │   │   ├── styles.ts                        Llegeix src/styles/song.css + constants per portada/índex
-    │   │   ├── buildHtml.ts                     Construeix HTML complet del PDF
-    │   │   └── generate.ts                      puppeteer.launch + page.pdf
-    │   └── importers/                           Importadors de cançons des d'URL (admin)
-    │       ├── types.ts                         Interfície Importer + ImportResult
-    │       ├── index.ts                         Registre central + findImporter/isSupportedUrl
-    │       ├── fetch.ts                         defaultFetch amb UA realista + timeout + límit mida
-    │       └── acordscatala.ts                  Parser per a www.acordscatala.cat
-    │
-    ├── hooks/                                  Custom hooks i stores Zustand
-    │   ├── useSongbook.ts                       STORE PRINCIPAL de la pàgina /
-    │   │                                        (vegeu sota "Estat client")
-    │   ├── useToasts.ts                         Cua de toasts globals
-    │   ├── useUi.ts                             Booleans simples (popups visibles)
-    │   └── useEditorHistory.ts                  Undo/redo amb stack + debounce
-    │
-    ├── styles/
-    │   └── song.css                             ⚠ FONT ÚNICA dels estils <ch>/<sec>.
-    │                                            Reutilitzat per globals.css i src/lib/pdf/styles.ts.
-    │                                            Conté :root { --accent } perquè el PDF tingui la variable.
-    │
-    └── types/
-        ├── song.ts                              Tipus compartits: SongSummary, CanconerEntry, etc.
-        └── next-auth.d.ts                       Augmenta Session.user amb id, role, active
+src/
+├── app/
+│   ├── globals.css                         Tots els estils globals (≈3.000 línies)
+│   ├── page.tsx                            Pàgina principal
+│   ├── editor/page.tsx                     Pàgina /editor (crear/editar cançons, WYSIWYG)
+│   ├── my-canconers/page.tsx
+│   ├── admin/{layout,page}.tsx             Gate server-side admin + dashboard
+│   ├── c/[token]/page.tsx                  Vista pública compartida
+│   └── api/                                Route Handlers (songs, canconers, proposals, admin, pdf, import)
+│
+├── components/
+│   ├── songbook/                           Components de /
+│   ├── editor/                             Components de /editor (vegeu §1 sota)
+│   ├── admin/                              StatsCards, ProposalsTab, SongsTab, UsersTab, CanconersTab
+│   └── shared/                             SharedIndex (scroll-spy), SharedPdfButton
+│
+├── db/
+│   ├── client.ts                           Singleton better-sqlite3 + drizzle
+│   ├── schema.ts                           5 taules: songs, users, canconers, canconerSongs, songProposals
+│   └── queries/                            Una sublib per taula + utils.ts (camelCase→snake_case)
+│
+├── lib/
+│   ├── auth.ts                             Config NextAuth (signIn/jwt/session callbacks)
+│   ├── session.ts                          getSessionUser, requireAuth, requireAdmin
+│   ├── transpose.ts                        Motor de transposició
+│   ├── editor/                             Lògica WYSIWYG: model.ts, sections.ts, chordFunctions.ts
+│   ├── schemas/                            Schemas Zod per validació API
+│   ├── pdf/                                styles.ts + buildHtml.ts + generate.ts
+│   └── importers/                          Importadors URL → ImportResult (admin)
+│
+├── hooks/
+│   ├── useSongbook.ts                      STORE PRINCIPAL Zustand de la pàgina /
+│   ├── useToasts.ts                        Cua de toasts globals
+│   ├── useUi.ts                            Booleans simples (popups)
+│   └── useEditorHistory.ts                 Undo/redo amb stack + debounce
+│
+├── styles/song.css                         ⚠ FONT ÚNICA dels estils <ch>/<sec> (vegeu §3).
+└── types/                                  SongSummary, CanconerEntry, etc.
 ```
 
 ## Coses importants per situar-te
 
-### 1. Format de les cançons
+### 1. Editor de cançons WYSIWYG (`/editor`)
 
-Les cançons són HTML amb dos tags semàntics:
+L'editor és **WYSIWYG amb model intern**: l'usuari no veu els tags `<ch>` ni `<sec>`; els veu renderitzats. La BD però **conserva el format `<ch>X</ch>` i `<sec>X</sec>`** sense canvis.
+
+**Components a `src/components/editor/`:**
+- `WysiwygEditor.tsx` — el core. ContentEditable amb model `Doc/Block/Inline` intern, sync DOM↔model bidireccional, listener natiu `beforeinput` (React 19 no propaga aquest event de forma fiable a contentEditable a Firefox).
+- `SongHeader.tsx` — capçalera amb títol/artista inline-editables (requadre dashed faint indica que són editables) + badge de tonalitat que obre `KeyPicker`.
+- `KeyPicker.tsx` — popover 6×4 (3 files majors + 3 files menors) per a triar tonalitat.
+- `SectionContextMenu.tsx` — menú amb tipus de secció. Modes `insert` i `modify` (modify té botó eliminar a dalt + tipus actual marcat).
+- `ChordContextMenu.tsx` — menú compacte 3-col: ACORDS DEL TO + CROMÀTICS + MODIFICADOR. Sempre hi ha un modificador actiu (`-` per defecte = cap modificador). Clicar un modificador NO tanca el menú.
+- `EditorToolbar.tsx` — sticky, amb botons Secció / Acord / Desfer / Refer / Reset / Guardar.
+- `ConfirmToast.tsx` — toast de confirmació per a Reset i Guardar.
+
+**Lògica a `src/lib/editor/`:**
+- `model.ts` — `parse(raw)`/`serialize(doc)` round-trippable. Tipus `Doc = { blocks: Block[] }`, `Block = section|lyric|empty`, `Inline = text|chord`.
+- `sections.ts` — `SECTION_TYPES` (Estrofa, Tornada, Pre-tornada, Pont, Solo, Instrumental, Interludi, Intro, Outro), `nextSectionName` (només Estrofa s'autonumera), `renumberEstrofas`.
+- `chordFunctions.ts` — `chordsByFunction(key)` retorna `{tonic, subdominant, dominant, chromatic}` segons funció tonal; `CHORD_MODIFIERS` + `applyModifier` + `stripModifier`.
+
+**Convencions del ratolí:**
+- Clic esquerre: selecció normal de text.
+- Clic mig: obre menú de seccions (mode modify si sobre secció, insert altrament).
+- Clic dret: obre menú d'acords (mode modify si sobre acord) o menú modificar secció (si sobre secció).
+- Obrir un menú **tanca** automàticament l'altre.
+- Drag-and-drop d'acords/seccions amb threshold 5px.
+
+**Estat desactivat:** mentre no s'ha seleccionat tonalitat, l'editor es renderitza amb `disabledReason` que el mostra atenuat i amb missatge "Selecciona la tonalitat per a començar la cançó".
+
+### 2. Format de les cançons (BD)
 
 ```html
 <sec>Estrofa 1</sec>
 <ch>Am</ch>En un lloc de la <ch>F</ch>Manxa de quin <ch>C</ch>nom no vull...
 ```
 
-- `<ch>X</ch>`: acord. Es renderitza posicionat per damunt de la lletra (CSS `position:relative; top:-12pt;`).
-- `<sec>X</sec>`: títol de secció (— Estrofa —).
+- `<ch>X</ch>`: acord. Renderitzat per damunt de la lletra (CSS `position:relative; top:-12pt;`).
+- `<sec>X</sec>`: títol de secció.
 
-Aquest format es PRESERVA tal qual a la BD i NO s'ha de tocar. La transposició només manipula el contingut dels tags `<ch>`.
+Aquest format es **PRESERVA tal qual a la BD i NO s'ha de tocar**. La transposició només manipula el contingut de `<ch>`.
 
-### 2. Estils de cançó: una sola font
+### 3. Estils de cançó: una sola font
 
-L'arxiu `src/styles/song.css` és la **font única** d'estilat dels tags `<ch>` i `<sec>`. Es reutilitza a:
-
+`src/styles/song.css` és la **font única** d'estilat dels tags `<ch>` i `<sec>`. Reutilitzat a:
 - `src/app/globals.css` via `@import "../styles/song.css"`.
 - `src/lib/pdf/styles.ts` via `readFileSync()` al moment d'import.
 
-Si l'usuari diu "canvia el color dels acords", el canvi va al `song.css` i es propaga a tots els llocs (vista prèvia, /c/[token], PDF).
+Si l'usuari demana "canvia el color dels acords", el canvi va a `song.css` i es propaga a vista prèvia, /c/[token] i PDF. **No el toquis** llevat que el canvi sigui semànticament del format de sortida.
 
-### 3. Estat client de la pàgina principal
+### 4. Estat client de la pàgina principal
 
-`src/hooks/useSongbook.ts` és un store Zustand que conté **tota la lògica de la pàgina /**. Camps clau:
+`src/hooks/useSongbook.ts` és el store Zustand amb tota la lògica de `/`. Camps: `songs`, `canconer`, `selectedIdx`, `allowedKeys: Set<string>`, `previewActive`, etc. Actions: `addToCanconer`, `reorder`, `setSemitones`, `applyAllowedKeys`, etc.
 
-- `songs`: llista cançons de la BD (col 1).
-- `canconer`: array de `{ song, semitones }` (col 2).
-- `selectedIdx`: índex seleccionat (col 3 preview).
-- `allowedKeys: Set<string>`: tonalitats majors permeses.
-- `previewActive: boolean`: col·lapsable col 3.
-- Actions: `addToCanconer, removeFromCanconer, reorder, setSemitones, bumpSemitones, sortMode, applyAllowedKeys, openKeyMenu, ...`.
-
-**Patró de consum**: usar selectors fins per evitar re-renders massius:
-
+**Consum**: usa selectors fins per evitar re-renders massius.
 ```tsx
 const songs = useSongbookStore((s) => s.songs)         // ✅
-const addToCanconer = useSongbookStore((s) => s.addToCanconer)  // ✅
-// EVITAR: const store = useSongbookStore()  ❌ re-render a cada canvi
+// EVITAR: const store = useSongbookStore()  ❌
 ```
 
-### 4. Tonalitats permeses i relació major/menor
+### 5. Tonalitats permeses i relació major/menor
 
-L'app filtra cançons per tonalitats permeses. Cada botó del filtre representa una **tonalitat major** i el seu **relatiu menor** (C ⇄ Am, G ⇄ Em, etc.). El mapping és a la constant `RELATIVE_MINOR` a `useSongbook.ts`.
+Cada botó del filtre representa una **tonalitat major + el seu relatiu menor** (C ⇄ Am). El mapping és a `RELATIVE_MINOR` a `useSongbook.ts`. `toMajorRoot(key)` retorna l'arrel major equivalent. `applyAllowedKeys()` busca el major permès més proper a l'**arrel major equivalent** (no a l'arrel literal) — evita un bug subtil amb menors.
 
-La funció `toMajorRoot(key)` retorna l'arrel major equivalent de qualsevol to (Am → C, F#m → A, etc.). La lògica de `applyAllowedKeys()` busca el major permès més proper a l'**arrel major equivalent** de la cançó (no a l'arrel literal). Això evita un bug subtil amb els relatius menors (vegeu commit que ho va corregir).
+### 6. Drag-drop amb @dnd-kit (cançoner)
 
-### 5. Drag-drop amb @dnd-kit
+A `CanconerList.tsx`, `PointerSensor` té `activationConstraint: { distance: 5 }`. Sense això, qualsevol click curt activa el drag i bloqueja l'`onClick`. 5px és el threshold mínim.
 
-A `CanconerList.tsx`, el `PointerSensor` està configurat amb `activationConstraint: { distance: 5 }`. Això **és essencial**: sense això, qualsevol click curt activa el drag i no es propaga al `onClick` (els elements no es poden seleccionar). 5px és el threshold mínim per iniciar drag.
+### 7. NextAuth: estratègia JWT
 
-### 6. NextAuth: estratègia JWT
+- No usem cap adapter de BD (no `account`/`session`/`verificationToken`).
+- Callback `signIn` crea/actualitza l'usuari a la taula `users`.
+- Callback `session` enriqueix amb `id`, `role`, `active` llegits de la BD a cada request.
+- `getSessionUser()` retorna `null` si l'usuari està desactivat.
 
-- No usem cap adapter de BD (no taules `account`, `session`, `verificationToken`).
-- El callback `signIn` crea/actualitza l'usuari a la nostra taula `users` existent (compatible amb les dades antigues).
-- El callback `session` enriqueix la sessió amb `id`, `role`, `active` llegits de la BD a cada request.
-- `getSessionUser()` retorna `null` si l'usuari ha estat desactivat (filtra per `active`).
+### 8. PDF
 
-### 7. PDF: bloqueja el procés
+Puppeteer llança Chromium per cada PDF (no hi ha pool). Trigada típica: ~7s per 3 cançons.
 
-Puppeteer llança Chromium per cada PDF (no hi ha pool). Trigada típica: ~7 segons per a 3 cançons. Per millorar caldria mantenir un browser obert entre requests, però per al volum esperat no cal.
+### 9. Auth gate per pàgina
 
-### 8. Auth gate per pàgina
+- `/` → pública.
+- `/editor`, `/my-canconers` → gate al client (`useSession` + redirect).
+- `/admin` → gate al **server** (`src/app/admin/layout.tsx`).
+- `/c/[token]` → pública.
 
-- `/` → pública (mostra "Inicia sessió" si no hi ha user, no bloqueja l'editor).
-- `/editor` → gate al client (`useSession` + `router.replace("/")` si !user).
-- `/my-canconers` → gate al client igual.
-- `/admin` → gate al **server** (`src/app/admin/layout.tsx` → `redirect("/")` si !admin). Més segur perquè ningú veu el HTML.
-- `/c/[token]` → pública (sense gate).
+### 10. API: snake_case al JSON
 
-### 9. API: snake_case al JSON
+Drizzle retorna camelCase (`createdAt`); el frontend espera snake_case (`created_at`). Els helpers de `src/db/queries/utils.ts` fan el mapping. Si afegeixes un endpoint nou, segueix la mateixa convenció.
 
-Drizzle retorna objectes JS amb camelCase (`createdAt`, `userId`, etc.). El **frontend espera snake_case** (`created_at`, `user_id`, etc.) per compatibilitat amb el format antic. Els helpers de `src/db/queries/utils.ts` fan el mapping abans de respondre.
+### 11. Convencions generals
 
-Si afegeixes un endpoint nou, segueix la mateixa convenció.
+- **Català a tot**: UI, comentaris, commits, missatges d'error.
+- **TypeScript estricte**: cap `any`. Si no saps el tipus, usa `unknown` i fes narrowing.
+- **Cada Route Handler**: `export const runtime = "nodejs"` i `export const dynamic = "force-dynamic"`.
+- **Toasts**: `useToastStore.getState().show(msg, { type?: "error" })` — no `alert()`.
+- **Cap emoji al codi** llevat dels que ja existeixen a la UI.
 
-### 10. Variables i convencions
+### 12. Importadors de cançons des d'URL (admin)
 
-- **Catalá a tot**: missatges UI, comentaris (quan els hi posis), commits, error messages.
-- **Cap emoji al codi** llevat dels que ja existeixen a la UI (preserva'ls).
-- **TypeScript estricte**: cap `any`. Si no saps el tipus, usa `unknown` i fes el narrowing.
-- **Cada Route Handler ha de tenir**: `export const runtime = "nodejs"` i `export const dynamic = "force-dynamic"`.
-- **Toasts**: usa `useToastStore().show(msg, { type?: "error" })` en lloc d'`alert()`.
-
-### 11. Importadors de cançons des d'URL
-
-L'editor té un mode "import des d'URL" per a admins: el popup `NewSongStartPopup` permet enganxar una URL d'una web d'acords suportada i pre-omple l'editor amb el contingut (lletra + acords + metadades) per a fer-hi els retocs finals abans de guardar.
+L'editor té un mode "import URL" per a admins: `NewSongStartPopup` enganxa una URL i pre-omple l'editor amb lletra + acords + metadades.
 
 **Arquitectura:**
+- `src/lib/importers/types.ts` — interfície `Importer { host, match, fetch, parse }` + `ImportResult { title, artist, key, capo, language, tags, content }`.
+- `src/lib/importers/index.ts` — registre `IMPORTERS: Importer[]` + `findImporter`, `isSupportedUrl`, `SUPPORTED_HOSTS`.
+- `src/lib/importers/fetch.ts` — `defaultFetch` (UA realista Chrome, timeout 10s, límit 2 MB).
+- `POST /api/songs/import` (admin-only) valida URL amb Zod i fa dispatch.
 
-- `src/lib/importers/types.ts` defineix la interfície `Importer`:
-  ```ts
-  interface Importer {
-    host: string
-    match: (url: URL) => boolean
-    fetch: (url: string) => Promise<string>
-    parse: (html: string, url: string) => ImportResult
-  }
-  interface ImportResult {
-    title: string; artist: string; key: string; capo: number
-    language: string; tags: string; content: string
-  }
-  ```
-- `src/lib/importers/index.ts` manté el registre `IMPORTERS: Importer[]` i exposa `findImporter`, `isSupportedUrl`, `SUPPORTED_HOSTS`.
-- `src/lib/importers/fetch.ts` exporta `defaultFetch` (UA realista de Chrome, timeout 10s, límit 2 MB). La majoria de parsers el reutilitzen.
-- `POST /api/songs/import` (admin-only) valida la URL amb Zod, fa dispatch a l'importador i retorna `ImportResult` en camelCase (no snake_case — no es persisteix res, només pre-omple l'editor).
-
-**Per afegir suport a una nova web:**
-
-1. Crear `src/lib/importers/<nomweb>.ts` exportant un `Importer`.
-2. Registrar-lo a `IMPORTERS` dins `index.ts`.
-3. Cap altre canvi: el popup llegeix `SUPPORTED_HOSTS` automàticament, i el client envia la URL a l'endpoint que ja en sap fer dispatch.
+**Per afegir suport a una nova web:** crea `src/lib/importers/<nomweb>.ts` exportant un `Importer` i registra'l a `IMPORTERS`. La resta funciona automàticament.
 
 **Format de sortida (`content`):**
+- Acords en notació anglesa (`C`, `D#`, `Am`). Si la font usa catalana/italiana o bemolls, normalitza a anglesa amb sostinguts (`Bb` → `A#`).
+- Insereix `<ch>X</ch>` dins la línia de lletra a la columna correcta (derivada del nombre d'espais entre acords).
+- Seccions: emet `<sec>Estrofa N</sec>`, `<sec>Tornada</sec>`, etc. segons pistes (negreta, etiquetes, capçaleres).
+- `key`: la primera arrel d'acord; afegeix `m` si menor.
+- `language`: dedueix de la URL (`/ca/`, `/es/`) o `"ca"` per defecte.
 
-El parser ha de retornar text amb els tags `<sec>` i `<ch>` ja aplicats — el mateix format que guarda la BD (vegeu secció 1). Convencions:
+**Patrons a vigilar:**
+- HTML del cos sovint dins `<pre>`. `node-html-parser` NO descendeix dins `<pre>` — processa amb regex o marcadors `\x01`/`\x02` abans de tallar per línies.
+- Entitats HTML (`&agrave;`, `&ccedil;`, `&#39;`): reutilitza el `decode()` d'`acordscatala.ts`.
+- Normalitza CRLF → LF.
 
-- Acords en notació anglesa (`C`, `D#`, `Am`, etc.) — si la font usa notació catalana/italiana (DO RE MI FA SOL LA SI) o bemolls, normalitza a anglesa amb sostinguts (`Bb` → `A#`) per coherència amb `ALL_KEYS` de `src/lib/transpose.ts`.
-- Posició dels acords: insereix `<ch>X</ch>` directament dins la línia de lletra a la columna correcta. La columna típicament es deriva del nombre d'espais entre acords en la línia d'acords original.
-- Seccions: emet `<sec>Estrofa 1</sec>`, `<sec>Tornada</sec>`, `<sec>Pont</sec>`, etc. segons les pistes que doni la pàgina (negreta, etiquetes, [Estrofa], capçaleres).
-- `key`: el millor estimador és **la primera arrel d'acord que apareixi**. Si és menor, afegeix `m`. Ha de ser un valor dins `ALL_KEYS`.
-- `language`: dedueix de la pàgina (URL `/ca/`, `/es/`, etc.) o `"ca"` per defecte si és catalana.
-- `tags`: deixa string buit si no hi ha informació clara.
+Vegeu `acordscatala.ts` com a exemple de referència (parsing en català amb negreta=tornada, conversió SOL→G, DO→C, etc.).
 
-**Patrons habituals a vigilar:**
+**Provar un parser nou en local:** baixa una mostra amb `curl`, escriu un `.tmp-test.ts` que importi el parser i l'executi via `npx tsx`. Esborra `.tmp-*` quan acabis.
 
-- L'HTML del cos sovint és dins un `<pre>`. `node-html-parser` (la lib que usem) NO descendeix dins `<pre>` — el seu contingut arriba com a un únic text node amb les etiquetes internes encara presents com a text. Cal processar-les manualment amb regex o substituir-les per marcadors de control (`\x01`/`\x02` etc.) abans de tallar per línies.
-- Entitats HTML: les pàgines en català tenen molts `&agrave;` `&eacute;` `&ccedil;` `&middot;` `&#39;` etc. El `decode()` d'`acordscatala.ts` es pot reutilitzar/portar.
-- Salts de línia: normalitza CRLF → LF.
-- Acords amb transició ràpida (DO#→DO#sus2): es preserven com a token únic amb la fletxa al mig (l'usuari ja ho retocarà manualment si vol separar-los).
-
-**Exemple de referència — `acordscatala.ts`:**
-
-- Localitza `#canco h1` (títol), `h2.nom_grup` (artista), `.canco-container pre` (cos).
-- Substitueix `<u>` per marcadors `\x01`/`\x02` i `<strong>` per `\x03`/`\x04` abans de decodificar entitats.
-- Parteix per `\n` i analitza cada línia mantenint l'estat **chord-depth** i **strong-depth** entre línies (els tags poden estar oberts a una línia i tancar-se a la següent).
-- Decideix `inStrong` per **majoria de caràcters visibles** dins/fora `<strong>` (no només pel start), perquè a vegades una línia conté `</strong><u>…</u><strong>` (tanca, fa contingut fora, reobre).
-- Acordscatala usa **negreta = tornada** com a única pista de secció. Algoritme: emet `<sec>Estrofa 1</sec>` al primer bloc no-strong, `<sec>Tornada</sec>` quan s'entra a un bloc strong, `<sec>Estrofa N</sec>` quan se'n surt cap a contingut nou (N incremental).
-- Notació catalana → anglesa via taula (SOL→G, DO→C, RE→D, MI→E, FA→F, LA→A, SI→B), respectant `#`/`b` posteriors i convertint bemolls a sostinguts via FLAT_MAP.
-
-**Provar un parser nou en local sense passar pel servidor:**
-
-```bash
-# Baixa la mostra a un fitxer
-curl -s -A "Mozilla/5.0 ..." "https://exemple.com/cancó" -o /tmp/sample.html
-
-# Crea un script de prova ràpid (.tmp-test.ts) que importi el parser i el cridi
-# amb el HTML llegit, i executa amb:
-npx tsx .tmp-test.ts
-```
-
-Esborra els fitxers `.tmp-*` quan acabis.
-
-## Forma de treballar (com fer noves sessions amb Claude)
+## Forma de treballar amb Claude
 
 ### Quan obris una sessió nova
 
-1. **Comparteix aquest fitxer** o digues a Claude que el llegeixi: `"llegeix PROJECT_CONTEXT.md per situar-te"`.
-2. Descriu la tasca específica que vols fer.
-3. Si la tasca és gran (afegir una secció nova, refactor important), demana primer un **pla en plan mode**. Si és petita (canviar un text, fix d'un bug concret), Claude pot anar directe a l'edició.
+1. Comparteix aquest fitxer: `"llegeix PROJECT_CONTEXT.md per situar-te"`.
+2. Descriu la tasca.
+3. Si la tasca és gran, demana primer un **pla en plan mode**. Si és petita, ves directe.
 
-### Patró que va funcionar bé a la migració
+### Patró que va funcionar bé
 
-| Tipus de tasca | Qui ho fa | Per què |
-|---|---|---|
-| Arquitectura, decisions de tipus, store Zustand, lògica subtil | Opus (el model que té sessió principal) | Decisions amb impacte llarg |
-| Implementació de components React, Route Handlers, queries Drizzle | **Sub-agent Sonnet** amb brief detallat | Estalvi de crèdits per feina volumosa |
-| Refactors mecànics (renomenar, port literal d'un mòdul a TS) | **Sub-agent Haiku** | Encara més estalvi |
+| Tipus de tasca | Qui ho fa |
+|---|---|
+| Arquitectura, lògica subtil, decisions de tipus | Opus (sessió principal) |
+| Components React, Route Handlers, queries Drizzle | Sub-agent Sonnet amb brief detallat |
+| Refactors mecànics (renomenar, port literal) | Sub-agent Haiku |
 
-**Com llançar un sub-agent**: usa l'eina `Agent` amb `subagent_type: "general-purpose"` i `model: "sonnet"` o `"haiku"`. El prompt ha de ser **autosuficient** (l'agent no veu la conversa, comença de zero). Inclou:
-- Què existeix ja al codi i no s'ha de tocar.
-- Quin contracte (props, retorn) ha de complir el que crea.
-- Quina convenció seguir (snake_case JSON, runtime nodejs, etc.).
-- Què cal verificar al final (`tsc --noEmit`, smoke test concret).
-
-**Exemple del prompt que va funcionar per a la Fase 4** (capa de dades):
-> "Estàs implementant la Fase 4 [...]. Path arrel: w:/VSC/guitarreopuntcat/. Esquema Drizzle: src/db/schema.ts (ja existeix, NO el toquis). Helpers de sessió: src/lib/session.ts amb signatura `requireAuth(): Promise<{ user } | NextResponse>`. [...] Crea 5 fitxers de queries i els Route Handlers corresponents. Per cada handler: [llista del shape JSON exacte]. [...] Al final: tsc --noEmit ha de passar. Reporta fitxers creats i decisions preses."
+**Sub-agent**: `Agent` amb `subagent_type: "general-purpose"` i `model: "sonnet"|"haiku"`. El prompt ha de ser **autosuficient** (l'agent no veu la conversa). Inclou:
+- Què existeix i no s'ha de tocar.
+- Contracte (props/retorn) del que crea.
+- Convencions (snake_case JSON, runtime nodejs, etc.).
+- Verificació final (`tsc --noEmit`, smoke test).
+- **No tocar `tsconfig.json`** (té `ignoreDeprecations: "6.0"`).
+- **No tocar `src/styles/song.css`** llevat que sigui sobre el format de sortida.
 
 ### Eines útils
 
-- **TodoWrite**: si tens una tasca amb 3+ passos, fes-ne una llista. Es manté entre torns i mostra el progrés.
-- **AskUserQuestion**: per decisions on convé alinear-se abans d'actuar (ex: "vols X o Y?").
-- **Plan mode** (`ExitPlanMode`): per a tasques grans on convé escriure el pla a un fitxer abans de tocar codi.
-- **Bash en background** (`run_in_background: true`): per `npm install`, `npx next dev`, etc. — així no bloqueges la sessió.
+- **TodoWrite**: per tasques amb 3+ passos.
+- **AskUserQuestion**: per decisions on convé alinear-se abans d'actuar.
+- **Plan mode** (`ExitPlanMode`): per a tasques grans on convé escriure pla a un fitxer.
+- **Bash background** (`run_in_background: true`): per `npx next dev`, `npm install`, etc.
 
-### Trucs específics d'aquest projecte
+### Trucs específics
 
-- **Si veus errors estranys després de canvis estructurals** (esborrar carpetes, canviar package.json...): mata processos node + esborra `.next/` + arrenca de nou.
-  ```bash
-  taskkill //F //IM node.exe
-  rm -rf .next
-  npx next dev
-  ```
-- **Si reinstal·les dependències**: `rm -rf node_modules package-lock.json && npm install`. Cal recompilar el binari natiu de `better-sqlite3`.
-- **Per provar PDFs**: `curl -X POST http://localhost:3000/api/pdf/generate -H "Content-Type: application/json" -d '{"songs":[{"id":1,"semitones":0}]}'` (cal ser admin o el JSON shape correcte).
-- **Per fer reset de dades**: és un fitxer SQLite a `data/canconer.db`. Pots inspeccionar-lo amb `sqlite3 data/canconer.db ".tables"` o amb DB Browser for SQLite. Els backups van a `backups/`.
+- **Errors estranys després de canvis estructurals**: `taskkill //F //IM node.exe`, `rm -rf .next`, `npx next dev`.
+- **Reinstal·lar deps**: `rm -rf node_modules package-lock.json && npm install` (recompila `better-sqlite3`).
+- **Provar PDF**: `curl -X POST http://localhost:3000/api/pdf/generate -H "Content-Type: application/json" -d '{"songs":[{"id":1,"semitones":0}]}'`.
+- **Inspeccionar BD**: `sqlite3 data/canconer.db ".tables"` o DB Browser for SQLite. Backups a `backups/`.
 
 ### Què no esborrar mai
 
-- `node_modules/` (necessari per executar)
-- `data/canconer.db` (les dades dels usuaris reals)
-- `.env` (credencials)
-- `package-lock.json` (lock de versions)
+- `node_modules/`, `data/canconer.db`, `.env`, `package-lock.json`.
 
 ### Què és segur esborrar
 
-- `.next/` (es regenera amb `npx next dev`)
-- `tsconfig.tsbuildinfo` (cache de TS, es regenera)
-- `backups/*.db` antics (manualment, quan ja no els necessites)
-
-## Historial de la migració
-
-El projecte va passar d'Express + vanilla JS + better-sqlite3 a aquest stack en 10 fases planificades. El pla complet (amb context històric) era a `C:\Users\aimar\.claude\plans\aquest-projecte-s-una-golden-bunny.md`. Pots esborrar-lo si no el necessites — la documentació viva és aquest fitxer.
-
-Si vols tornar a fer una migració similar o reescriure una part gran, repeteix el patró: fase de exploració → pla → implementació amb sub-agents → verificació al navegador → cleanup.
+- `.next/` (es regenera), `tsconfig.tsbuildinfo` (cache TS), `backups/*.db` antics.

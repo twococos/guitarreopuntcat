@@ -1,14 +1,26 @@
 "use client"
+import type { ReactNode } from "react"
 
-interface ToolbarProps {
+interface EditorToolbarProps {
   onInsertSection: () => void
   onInsertChord: () => void
   onUndo: () => void
   onRedo: () => void
   canUndo: boolean
   canRedo: boolean
-  previewOn: boolean
-  onTogglePreview: (on: boolean) => void
+  /** Text del botó de guardar (varia segons rol/mode: "Guardar cançó", "Guardar canvis", "Enviar proposta") */
+  saveLabel: string
+  /** Callback quan l'usuari clica Guardar/Proposar. El pare ha de demanar confirmació via toast. */
+  onSave: () => void
+  /** Callback quan l'usuari clica Reset. El pare ha de demanar confirmació via toast. */
+  onReset: () => void
+  /** Si està en disabled state mentre es guarda */
+  saving?: boolean
+  /**
+   * Si està set, tots els botons (excepte Reset) es mostren desactivats.
+   * S'usa mentre no s'ha seleccionat la tonalitat de la cançó.
+   */
+  disabledReason?: string
 }
 
 export function EditorToolbar({
@@ -18,33 +30,81 @@ export function EditorToolbar({
   onRedo,
   canUndo,
   canRedo,
-  previewOn,
-  onTogglePreview,
-}: ToolbarProps) {
+  saveLabel,
+  onSave,
+  onReset,
+  saving = false,
+  disabledReason,
+}: EditorToolbarProps): ReactNode {
+  const blocked = !!disabledReason
   return (
-    <div id="editor-toolbar">
-      <button title="Inserir títol de secció" onClick={onInsertSection}>
-        § Secció
-      </button>
-      <button title="Inserir acord buit" onClick={onInsertChord}>
-        ♩ Acord
-      </button>
-      <span className="toolbar-sep" />
-      <button title="Desfer (Ctrl+Z)" onClick={onUndo} disabled={!canUndo}>
-        ↩ Desfer
-      </button>
-      <button title="Refer (Ctrl+Y)" onClick={onRedo} disabled={!canRedo}>
-        ↪ Refer
-      </button>
-      <span className="toolbar-sep" />
-      <label className="toolbar-toggle">
-        <input
-          type="checkbox"
-          checked={previewOn}
-          onChange={(e) => onTogglePreview(e.target.checked)}
-        />
-        Vista prèvia
-      </label>
+    <div className="editor-toolbar">
+      <div className="editor-toolbar-group">
+        <button
+          type="button"
+          className="toolbar-btn"
+          title="Inserir títol de secció (o clic mig sobre la lletra)"
+          onClick={onInsertSection}
+          disabled={blocked}
+        >
+          § Secció
+        </button>
+        <button
+          type="button"
+          className="toolbar-btn"
+          title="Inserir acord (o clic dret sobre la lletra)"
+          onClick={onInsertChord}
+          disabled={blocked}
+        >
+          ♩ Acord
+        </button>
+        <span className="editor-toolbar-sep" />
+        <button
+          type="button"
+          className="toolbar-btn"
+          title="Desfer (Ctrl+Z)"
+          onClick={onUndo}
+          disabled={blocked || !canUndo}
+        >
+          ↩ Desfer
+        </button>
+        <button
+          type="button"
+          className="toolbar-btn"
+          title="Refer (Ctrl+Y)"
+          onClick={onRedo}
+          disabled={blocked || !canRedo}
+        >
+          ↪ Refer
+        </button>
+        <span className="editor-toolbar-sep" />
+        <span className="editor-toolbar-hint" title="Drecera ratolí">
+          clic mig → secció · clic dret → acord
+        </span>
+      </div>
+
+      <span className="editor-toolbar-spacer" />
+
+      <div className="editor-toolbar-group">
+        <button
+          type="button"
+          className="toolbar-btn"
+          title="Restablir tot el contingut"
+          onClick={onReset}
+          disabled={saving}
+        >
+          ⟳ Reset
+        </button>
+        <button
+          type="button"
+          className="toolbar-btn toolbar-btn-primary"
+          title={saveLabel}
+          onClick={onSave}
+          disabled={blocked || saving}
+        >
+          💾 {saveLabel}
+        </button>
+      </div>
     </div>
   )
 }

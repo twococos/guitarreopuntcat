@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npx tsx *)",
+      "Bash(npx next *)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(node -e ' *)",
+      "Bash(tasklist *)",
+      "Bash(cd /mnt/w/VSC/guitarreopuntcat && npx tsc --noEmit 2>&1)",
+      "Read(//mnt/w/VSC/**)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/editor)"
+    ]
+  }
+}

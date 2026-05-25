@@ -3,15 +3,20 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { UserWidget } from "@/components/UserWidget"
-import { ChordEditor, type ChordEditorHandle } from "@/components/editor/ChordEditor"
-import { SongMetadataForm, type SongMetadata } from "@/components/editor/SongMetadataForm"
-import { ChordPalette } from "@/components/editor/ChordPalette"
-import { ChordContextMenu } from "@/components/editor/ChordContextMenu"
+import {
+  WysiwygEditor,
+  type WysiwygEditorHandle,
+} from "@/components/editor/WysiwygEditor"
+import {
+  SongHeader,
+  type SongMetadata,
+} from "@/components/editor/SongHeader"
 import { EditorToolbar } from "@/components/editor/EditorToolbar"
+import { ConfirmToast } from "@/components/editor/ConfirmToast"
 import { ProposeInfoPopup } from "@/components/editor/ProposeInfoPopup"
 import { NewSongStartPopup } from "@/components/editor/NewSongStartPopup"
-import { SongView } from "@/components/song/SongView"
 import { useEditorHistory } from "@/hooks/useEditorHistory"
+import { useToastStore } from "@/hooks/useToasts"
 import type { ImportResult } from "@/lib/importers"
 
 const DRAFT_KEY = "editor_draft"
@@ -30,11 +35,13 @@ interface DraftData {
 const DEFAULT_META: SongMetadata = {
   title: "",
   artist: "",
-  key: "Am",
+  key: "",
   capo: 0,
   language: "ca",
   tags: "",
 }
+
+type ConfirmKind = "reset" | "save"
 
 export default function EditorPage() {
   const router = useRouter()
@@ -47,15 +54,14 @@ export default function EditorPage() {
   const isAdmin = session?.user?.role === "admin"
 
   const editor = useEditorHistory("")
-  const editorRef = useRef<ChordEditorHandle>(null)
+  const editorRef = useRef<WysiwygEditorHandle>(null)
 
   const [meta, setMeta] = useState<SongMetadata>(DEFAULT_META)
-  const [menu, setMenu] = useState({ open: false, x: 0, y: 0 })
-  const [previewOn, setPreviewOn] = useState(false)
-  const [status2, setStatus2] = useState({ msg: "", cls: "" })
   const [showProposeInfo, setShowProposeInfo] = useState(false)
   const [showStartPopup, setShowStartPopup] = useState(false)
-  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [confirm, setConfirm] = useState<{ kind: ConfirmKind } | null>(null)
+  const [saving, setSaving] = useState(false)
+
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Auth gate
@@ -95,7 +101,9 @@ export default function EditorPage() {
           editor.reset(song.content)
         })
         .catch(() => {
-          alert("No s'ha pogut carregar la cançó.")
+          useToastStore.getState().show("No s'ha pogut carregar la cançó.", {
+            type: "error",
+          })
           router.replace("/")
         })
     } else {
@@ -109,7 +117,7 @@ export default function EditorPage() {
             setMeta({
               title: d.title ?? "",
               artist: d.artist ?? "",
-              key: d.key ?? "Am",
+              key: d.key ?? "",
               capo: d.capo ?? 0,
               language: d.language ?? "ca",
               tags: d.tags ?? "",
@@ -164,7 +172,7 @@ export default function EditorPage() {
     }
   }, [isEdit, meta, editor.value])
 
-  // Reset complet de l'editor (després de guardar una cançó nova o enviar proposta)
+  // Reset complet de l'editor (després de guardar/proposar o per acció manual)
   const resetEditor = useCallback(() => {
     setMeta(DEFAULT_META)
     editor.reset("")
@@ -190,80 +198,21 @@ export default function EditorPage() {
     setShowStartPopup(false)
   }
 
-  const setStatusMsg = useCallback((msg: string, cls: string) => {
-    if (statusTimerRef.current) clearTimeout(statusTimerRef.current)
-    setStatus2({ msg, cls })
-    statusTimerRef.current = setTimeout(() => {
-      setStatus2({ msg: "", cls: "" })
-      statusTimerRef.current = null
-    }, 5000)
-  }, [])
-
-  // Cleanup status timer on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
-      if (statusTimerRef.current) clearTimeout(statusTimerRef.current)
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
     }
   }, [])
 
-  // Editor handlers
-  function handleEditorChange(next: string) {
-    editor.setValue(next)
-    editor.scheduleCommit(next)
-  }
-
-  function handleEditorCommit(next: string) {
-    editor.commit(next)
-  }
-
-  // Context menu
-  function openMenu(x: number, y: number) {
-    setMenu({ open: true, x, y })
-  }
-
-  function closeMenu() {
-    setMenu((m) => ({ ...m, open: false }))
-  }
-
-  // Insertions via palette / toolbar / context menu
-  function onInsertChordChip(chord: string) {
-    editorRef.current?.insertAtCursor(`<ch>${chord}</ch>`)
-  }
-
-  function onMenuInsertSection() {
-    editorRef.current?.insertSection()
-  }
-
-  function onMenuInsertChord(chord: string) {
-    editorRef.current?.insertAtCursor(`<ch>${chord}</ch>`)
-  }
-
-  function onToolbarInsertSection() {
-    editorRef.current?.insertSection()
-  }
-
-  function onToolbarInsertChord() {
-    editorRef.current?.insertEmptyChord()
-  }
-
-  // Save handler
-  async function handleSave() {
-    const title = meta.title.trim()
-    const artist = meta.artist.trim()
-    const content = editor.value.trim()
-
-    if (!title || !artist || !content) {
-      setStatusMsg("⚠ Títol, artista i contingut són obligatoris.", "err")
-      return
-    }
-
+  // Lògica de desat (sense validació: ja la fa handleToolbarSave)
+  const doSave = useCallback(async () => {
     const body = {
-      title,
-      artist,
+      title: meta.title.trim(),
+      artist: meta.artist.trim(),
       key: meta.key,
       capo: meta.capo,
-      content,
+      content: editor.value.trim(),
       language: meta.language,
       tags: meta.tags.trim(),
     }
@@ -277,7 +226,7 @@ export default function EditorPage() {
           body: JSON.stringify(body),
         })
         if (!res.ok) throw new Error()
-        setStatusMsg("✓ Cançó actualitzada!", "ok")
+        useToastStore.getState().show("Cançó actualitzada!", { type: "success" })
       } else if (isAdmin) {
         res = await fetch("/api/songs", {
           method: "POST",
@@ -287,7 +236,7 @@ export default function EditorPage() {
         if (!res.ok) throw new Error()
         resetEditor()
         setShowStartPopup(true)
-        setStatusMsg("✓ Cançó guardada!", "ok")
+        useToastStore.getState().show("Cançó guardada!", { type: "success" })
       } else {
         res = await fetch("/api/proposals", {
           method: "POST",
@@ -296,14 +245,77 @@ export default function EditorPage() {
         })
         if (!res.ok) throw new Error()
         resetEditor()
-        setStatusMsg("✓ Proposta enviada! Un admin la revisarà aviat.", "ok")
+        useToastStore
+          .getState()
+          .show("Proposta enviada! Un admin la revisarà aviat.", {
+            type: "success",
+          })
       }
     } catch {
-      setStatusMsg("✕ Error en guardar.", "err")
+      useToastStore.getState().show("Error en guardar.", { type: "error" })
     }
+  }, [meta, editor.value, isEdit, editId, isAdmin, resetEditor])
+
+  // ── Handlers de toolbar ──────────────────────────────────────
+
+  function handleToolbarReset() {
+    setConfirm({ kind: "reset" })
   }
 
-  // Derive titles and button text
+  function handleToolbarSave() {
+    // Validació prèvia abans d'obrir el toast de confirmació
+    if (
+      !meta.title.trim() ||
+      !meta.artist.trim() ||
+      !editor.value.trim()
+    ) {
+      useToastStore
+        .getState()
+        .show("Títol, artista i contingut són obligatoris.", { type: "error" })
+      return
+    }
+    setConfirm({ kind: "save" })
+  }
+
+  function handleToolbarInsertSection() {
+    editorRef.current?.openSectionMenuAtCursor()
+  }
+
+  function handleToolbarInsertChord() {
+    editorRef.current?.openChordMenuAtCursor()
+  }
+
+  // ── Handlers del ConfirmToast ────────────────────────────────
+
+  async function handleConfirmConfirm() {
+    if (confirm?.kind === "reset") {
+      resetEditor()
+      if (isAdmin && !isEdit) {
+        setShowStartPopup(true)
+      }
+      setConfirm(null)
+      useToastStore.getState().show("Progrés esborrat.")
+      return
+    }
+    if (confirm?.kind === "save") {
+      setSaving(true)
+      try {
+        await doSave()
+      } finally {
+        setSaving(false)
+        setConfirm(null)
+      }
+      return
+    }
+    setConfirm(null)
+  }
+
+  function handleConfirmCancel() {
+    setConfirm(null)
+  }
+
+  // ── Derive titles and button text ────────────────────────────
+
   let pageTitle: string
   let pageSubtitle: string
   let saveButtonText: string
@@ -311,16 +323,41 @@ export default function EditorPage() {
   if (isEdit) {
     pageTitle = "✏️ Editar cançó"
     pageSubtitle = "Modifica i guarda els canvis"
-    saveButtonText = "💾 Guardar canvis"
+    saveButtonText = "Guardar canvis"
   } else {
     pageTitle = "✏️ Nova cançó"
-    pageSubtitle = "Escriu la lletra, clic dret per inserir acords"
-    saveButtonText = isAdmin ? "💾 Guardar cançó" : "📤 Enviar proposta"
+    pageSubtitle = "Escriu la lletra de la cançó"
+    saveButtonText = isAdmin ? "Guardar cançó" : "Enviar proposta"
   }
 
-  const placeholder = `Escriu aquí la lletra de la cançó.\nClic dret per inserir acords.\n\nExemple:\n<sec>Estrofa 1</sec>\n<ch>Am</ch> En un lloc de la <ch>F</ch> Manxa...`
+  // Missatge i etiquetes del ConfirmToast segons l'acció
+  let confirmMessage = ""
+  let confirmActionLabel = ""
+  let confirmVariant: "primary" | "danger" = "primary"
+  if (confirm?.kind === "reset") {
+    confirmMessage =
+      "Esborrar tot el progrés? Es perdran títol, artista i contingut."
+    confirmActionLabel = "Sí, esborrar"
+    confirmVariant = "danger"
+  } else if (confirm?.kind === "save") {
+    if (isEdit) {
+      confirmMessage = "Actualitzar la cançó a la base de dades pública?"
+      confirmActionLabel = "Sí, actualitzar"
+    } else if (isAdmin) {
+      confirmMessage = "Guardar la cançó a la base de dades pública?"
+      confirmActionLabel = "Sí, guardar"
+    } else {
+      confirmMessage = "Enviar la proposta perquè un admin la revisi?"
+      confirmActionLabel = "Sí, enviar"
+    }
+    confirmVariant = "primary"
+  }
 
-  // Loading state
+  const placeholder = `Escriu aquí la lletra de la cançó.
+Clic dret per inserir acords, clic mig per inserir seccions.`
+
+  // ── Estats de càrrega / no autenticat ────────────────────────
+
   if (status === "loading") {
     return (
       <div id="editor-loading" aria-busy="true" style={{ padding: "2rem" }}>
@@ -348,78 +385,55 @@ export default function EditorPage() {
         </div>
       </header>
 
-      <div id="editor-layout">
-        <aside id="meta-panel">
-          <h2>Metadades</h2>
-          <SongMetadataForm value={meta} onChange={setMeta} />
-          <hr />
-          <h2>Acords del to</h2>
-          <p className="hint">
-            Clic dret a l&apos;editor per inserir-ne un.
-            <br />
-            Referència ràpida:
-          </p>
-          <ChordPalette chordKey={meta.key} onInsert={onInsertChordChip} />
-          <hr />
-          <button id="btn-save" className="btn-primary" onClick={handleSave}>
-            {saveButtonText}
-          </button>
-          <p id="save-status" className={status2.cls}>
-            {status2.msg}
-          </p>
-        </aside>
-
-        <div id="editor-main">
-          <div id="editor-section">
-            <EditorToolbar
-              onInsertSection={onToolbarInsertSection}
-              onInsertChord={onToolbarInsertChord}
-              onUndo={editor.undo}
-              onRedo={editor.redo}
-              canUndo={editor.canUndo}
-              canRedo={editor.canRedo}
-              previewOn={previewOn}
-              onTogglePreview={setPreviewOn}
-            />
-            <ChordEditor
-              ref={editorRef}
-              value={editor.value}
-              onChange={handleEditorChange}
-              onCommit={handleEditorCommit}
-              onUndo={editor.undo}
-              onRedo={editor.redo}
-              onContextMenuOpen={openMenu}
-              placeholder={placeholder}
-            />
-          </div>
-          {previewOn && (
-            <div id="preview-panel">
-              <h3>Vista prèvia</h3>
-              <div id="preview-body">
-                <SongView
-                  song={{
-                    title: meta.title,
-                    artist: meta.artist,
-                    key: meta.key,
-                    content: editor.value,
-                    capo: meta.capo,
-                  }}
-                  semitones={0}
-                />
-              </div>
-            </div>
-          )}
+      <main className="editor-page">
+        <div className="editor-stack">
+          <SongHeader value={meta} onChange={setMeta} />
+          <EditorToolbar
+            onInsertSection={handleToolbarInsertSection}
+            onInsertChord={handleToolbarInsertChord}
+            onUndo={editor.undo}
+            onRedo={editor.redo}
+            canUndo={editor.canUndo}
+            canRedo={editor.canRedo}
+            saveLabel={saveButtonText}
+            onSave={handleToolbarSave}
+            onReset={handleToolbarReset}
+            saving={saving}
+            disabledReason={
+              !meta.key
+                ? "Selecciona la tonalitat per a començar la cançó"
+                : undefined
+            }
+          />
+          <WysiwygEditor
+            ref={editorRef}
+            value={editor.value}
+            onChange={(v) => {
+              editor.setValue(v)
+              editor.scheduleCommit(v)
+            }}
+            onCommit={editor.commit}
+            onUndo={editor.undo}
+            onRedo={editor.redo}
+            chordKey={meta.key}
+            placeholder={placeholder}
+            disabledReason={
+              !meta.key
+                ? "Selecciona la tonalitat per a començar la cançó"
+                : undefined
+            }
+          />
         </div>
-      </div>
+      </main>
 
-      <ChordContextMenu
-        open={menu.open}
-        x={menu.x}
-        y={menu.y}
-        chordKey={meta.key}
-        onInsertSection={onMenuInsertSection}
-        onInsertChord={onMenuInsertChord}
-        onClose={closeMenu}
+      <ConfirmToast
+        open={confirm !== null}
+        message={confirmMessage}
+        confirmLabel={confirmActionLabel}
+        cancelLabel="Cancel·lar"
+        confirmVariant={confirmVariant}
+        onConfirm={handleConfirmConfirm}
+        onCancel={handleConfirmCancel}
       />
 
       {showProposeInfo && (
@@ -434,7 +448,10 @@ export default function EditorPage() {
       )}
 
       {showStartPopup && (
-        <NewSongStartPopup onManual={handleManual} onImported={handleImported} />
+        <NewSongStartPopup
+          onManual={handleManual}
+          onImported={handleImported}
+        />
       )}
     </>
   )
