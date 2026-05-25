@@ -1591,6 +1591,61 @@ body:has(#shared-layout) {
   margin: 0 auto;
 }
 
+/* ── Popup de rebuig de proposta ─────────────────────────── */
+#reject-proposal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.18s ease;
+}
+#reject-proposal-box {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  width: min(480px, 92vw);
+  padding: 1.75rem 1.75rem 1.5rem;
+  animation: slideUp 0.2s ease;
+}
+#reject-proposal-box h2 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+#reject-proposal-box > p {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+.reject-reason-input {
+  width: 100%;
+  resize: vertical;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.9rem;
+  background: var(--bg);
+  color: inherit;
+  margin-bottom: 1rem;
+}
+.reject-reason-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.reject-proposal-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+.reject-proposal-actions .btn-manual,
+.reject-proposal-actions .btn-reject {
+  flex: 1;
+}
+
 /* ════════════════════════════════════════════════════════════
    3. ADMIN.CSS — pàgina /admin
    ════════════════════════════════════════════════════════════ */
@@ -2730,6 +2785,24 @@ tbody tr:hover {
   border-color: var(--accent);
 }
 .toolbar-btn-primary:hover:not(:disabled) {
+  background: var(--accent-hv, #a93226);
+  color: white;
+}
+.toolbar-btn-approve {
+  background: #27ae60;
+  color: white;
+  border-color: #27ae60;
+}
+.toolbar-btn-approve:hover:not(:disabled) {
+  background: #1e8449;
+  color: white;
+}
+.toolbar-btn-reject {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.toolbar-btn-reject:hover:not(:disabled) {
   background: var(--accent-hv, #a93226);
   color: white;
 }

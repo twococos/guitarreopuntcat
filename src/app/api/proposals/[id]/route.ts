@@ -30,7 +30,13 @@ export async function PATCH(
       )
     }
 
-    const result = await reviewProposal(id, user.id, parsed.data.status, parsed.data.notes)
+    const result = await reviewProposal(
+      id,
+      user.id,
+      parsed.data.status,
+      parsed.data.notes,
+      parsed.data.status === "approved" ? parsed.data.songUpdate : undefined,
+    )
 
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: result.status })

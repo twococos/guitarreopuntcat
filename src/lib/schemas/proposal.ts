@@ -15,6 +15,7 @@ export type ProposalInput = z.infer<typeof proposalInputSchema>
 export const proposalReviewSchema = z.object({
   status: z.enum(["approved", "rejected"]),
   notes: z.string().default(""),
+  songUpdate: proposalInputSchema.optional(),
 })
 
 export type ProposalReview = z.infer<typeof proposalReviewSchema>

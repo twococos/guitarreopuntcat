@@ -1,6 +1,7 @@
 "use client"
 import { useCallback, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { UserWidget } from "@/components/UserWidget"
 import { StatsCards } from "@/components/admin/StatsCards"
@@ -10,6 +11,8 @@ import { UsersTab } from "@/components/admin/UsersTab"
 import { CanconersTab } from "@/components/admin/CanconersTab"
 
 type Tab = "stats" | "proposals" | "songs" | "users" | "canconers"
+
+const VALID_TABS: Tab[] = ["stats", "proposals", "songs", "users", "canconers"]
 
 interface Stats {
   songs: number
@@ -21,7 +24,12 @@ interface Stats {
 
 export default function AdminPage() {
   const { data: session } = useSession()
-  const [tab, setTab] = useState<Tab>("stats")
+  const searchParams = useSearchParams()
+  const initialTab = (() => {
+    const t = searchParams.get("tab")
+    return t && (VALID_TABS as string[]).includes(t) ? (t as Tab) : "stats"
+  })()
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [pendingCount, setPendingCount] = useState(0)
 
   const loadStats = useCallback(async () => {

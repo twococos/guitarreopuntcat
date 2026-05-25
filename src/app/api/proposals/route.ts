@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/session"
 import { proposalInputSchema } from "@/lib/schemas/proposal"
 import { listProposals, createProposal } from "@/db/queries/proposals"
+import { cleanupContent } from "@/lib/importers/cleanupContent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -32,7 +33,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Falten camps obligatoris" }, { status: 400 })
     }
 
-    const result = await createProposal(user.id, parsed.data)
+    const input = { ...parsed.data, content: cleanupContent(parsed.data.content) }
+    const result = await createProposal(user.id, input)
     return NextResponse.json(result, { status: 201 })
   } catch (err) {
     console.error("[POST /api/proposals]", err)

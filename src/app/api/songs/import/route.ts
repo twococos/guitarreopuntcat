@@ -4,6 +4,8 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { requireAuth } from "@/lib/session"
 import { findImporter } from "@/lib/importers/registry.server"
+import { normalizeSectionTitles } from "@/lib/importers/normalizeSections"
+import { cleanupContent } from "@/lib/importers/cleanupContent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -60,6 +62,13 @@ export async function POST(req: Request): Promise<NextResponse> {
       { status: 500 },
     )
   }
+
+  // Normalitza els noms de seccions cap als tipus permesos (Estrofa, Tornada,
+  // Pont, Outro…) i renumera les estrofes en ordre d'aparició. Després
+  // col·lapsa línies en blanc i garanteix un mínim d'espai entre acords
+  // consecutius a línies només-acords.
+  const normalized = normalizeSectionTitles(result.content)
+  result = { ...result, content: cleanupContent(normalized) }
 
   return NextResponse.json(result)
 }

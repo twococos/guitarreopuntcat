@@ -15,6 +15,7 @@ import { EditorToolbar } from "@/components/editor/EditorToolbar"
 import { ConfirmToast } from "@/components/editor/ConfirmToast"
 import { ProposeInfoPopup } from "@/components/editor/ProposeInfoPopup"
 import { NewSongStartPopup } from "@/components/editor/NewSongStartPopup"
+import { RejectProposalPopup } from "@/components/editor/RejectProposalPopup"
 import { useEditorHistory } from "@/hooks/useEditorHistory"
 import { useToastStore } from "@/hooks/useToasts"
 import type { ImportResult } from "@/lib/importers"
@@ -41,7 +42,13 @@ const DEFAULT_META: SongMetadata = {
   tags: "",
 }
 
-type ConfirmKind = "reset" | "save"
+type ConfirmKind = "reset" | "save" | "accept"
+
+interface ProposalMeta {
+  id: number
+  songId: number
+  proposerName: string
+}
 
 export default function EditorPage() {
   const router = useRouter()
@@ -51,6 +58,10 @@ export default function EditorPage() {
   const editId = searchParams.get("id")
   const isEdit = !!editId
 
+  const proposalIdRaw = searchParams.get("proposal")
+  const proposalId = proposalIdRaw ? Number(proposalIdRaw) : null
+  const isReview = proposalId !== null && Number.isFinite(proposalId)
+
   const isAdmin = session?.user?.role === "admin"
 
   const editor = useEditorHistory("")
@@ -59,6 +70,8 @@ export default function EditorPage() {
   const [meta, setMeta] = useState<SongMetadata>(DEFAULT_META)
   const [showProposeInfo, setShowProposeInfo] = useState(false)
   const [showStartPopup, setShowStartPopup] = useState(false)
+  const [showRejectPopup, setShowRejectPopup] = useState(false)
+  const [proposalMeta, setProposalMeta] = useState<ProposalMeta | null>(null)
   const [confirm, setConfirm] = useState<{ kind: ConfirmKind } | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -71,9 +84,81 @@ export default function EditorPage() {
     }
   }, [status, router])
 
-  // Load song for edit mode OR restore draft for create mode
+  // Gate admin per a mode revisió
   useEffect(() => {
     if (status !== "authenticated") return
+    if (isReview && !isAdmin) {
+      useToastStore.getState().show("Cal ser administrador per a revisar propostes.", {
+        type: "error",
+      })
+      router.replace("/")
+    }
+  }, [status, isReview, isAdmin, router])
+
+  // Load song for edit mode OR restore draft for create mode OR load proposal for review
+  useEffect(() => {
+    if (status !== "authenticated") return
+
+    if (isReview && proposalId !== null) {
+      if (!isAdmin) return
+      ;(async () => {
+        try {
+          const propsRes = await fetch("/api/proposals")
+          if (!propsRes.ok) throw new Error()
+          const proposals = (await propsRes.json()) as Array<{
+            id: number
+            song_id: number
+            status: string
+            proposer_name: string
+          }>
+          const p = proposals.find((x) => x.id === proposalId)
+          if (!p) {
+            useToastStore.getState().show("Proposta no trobada.", { type: "error" })
+            router.replace("/admin?tab=proposals")
+            return
+          }
+          if (p.status !== "pending") {
+            useToastStore.getState().show("Aquesta proposta ja ha estat revisada.", {
+              type: "error",
+            })
+            router.replace("/admin?tab=proposals")
+            return
+          }
+          setProposalMeta({
+            id: p.id,
+            songId: p.song_id,
+            proposerName: p.proposer_name,
+          })
+
+          const songRes = await fetch(`/api/songs/${p.song_id}`)
+          if (!songRes.ok) throw new Error()
+          const song = (await songRes.json()) as {
+            title: string
+            artist: string
+            key: string
+            capo: number
+            language: string
+            tags: string
+            content: string
+          }
+          setMeta({
+            title: song.title,
+            artist: song.artist,
+            key: song.key,
+            capo: song.capo ?? 0,
+            language: song.language ?? "ca",
+            tags: song.tags ?? "",
+          })
+          editor.reset(song.content)
+        } catch {
+          useToastStore.getState().show("No s'ha pogut carregar la proposta.", {
+            type: "error",
+          })
+          router.replace("/admin?tab=proposals")
+        }
+      })()
+      return
+    }
 
     if (isEdit && editId) {
       fetch(`/api/songs/${editId}`)
@@ -146,11 +231,11 @@ export default function EditorPage() {
     }
     // editor.reset is stable (useCallback), isEdit and editId are derived from URL
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, isEdit, editId, isAdmin])
+  }, [status, isEdit, editId, isAdmin, isReview, proposalId])
 
   // Auto-save draft (create mode only) with debounce
   useEffect(() => {
-    if (isEdit) return
+    if (isEdit || isReview) return
     if (typeof window === "undefined") return
 
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
@@ -256,6 +341,60 @@ export default function EditorPage() {
     }
   }, [meta, editor.value, isEdit, editId, isAdmin, resetEditor])
 
+  // ── Accions de revisió de propostes ─────────────────────────
+
+  const doAccept = useCallback(async () => {
+    if (!proposalMeta) return
+    const body = {
+      status: "approved" as const,
+      notes: "",
+      songUpdate: {
+        title: meta.title.trim(),
+        artist: meta.artist.trim(),
+        key: meta.key,
+        capo: meta.capo,
+        content: editor.value.trim(),
+        language: meta.language,
+        tags: meta.tags.trim(),
+      },
+    }
+    try {
+      const res = await fetch(`/api/proposals/${proposalMeta.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error()
+      useToastStore.getState().show("Proposta acceptada!", { type: "success" })
+      router.push("/admin?tab=proposals")
+    } catch {
+      useToastStore.getState().show("Error en acceptar la proposta.", {
+        type: "error",
+      })
+    }
+  }, [proposalMeta, meta, editor.value, router])
+
+  const doReject = useCallback(
+    async (reason: string) => {
+      if (!proposalMeta) return
+      try {
+        const res = await fetch(`/api/proposals/${proposalMeta.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "rejected", notes: reason }),
+        })
+        if (!res.ok) throw new Error()
+        useToastStore.getState().show("Proposta rebutjada.", { type: "success" })
+        router.push("/admin?tab=proposals")
+      } catch {
+        useToastStore.getState().show("Error en rebutjar la proposta.", {
+          type: "error",
+        })
+      }
+    },
+    [proposalMeta, router],
+  )
+
   // ── Handlers de toolbar ──────────────────────────────────────
 
   function handleToolbarReset() {
@@ -275,6 +414,24 @@ export default function EditorPage() {
       return
     }
     setConfirm({ kind: "save" })
+  }
+
+  function handleToolbarAccept() {
+    if (
+      !meta.title.trim() ||
+      !meta.artist.trim() ||
+      !editor.value.trim()
+    ) {
+      useToastStore
+        .getState()
+        .show("Títol, artista i contingut són obligatoris.", { type: "error" })
+      return
+    }
+    setConfirm({ kind: "accept" })
+  }
+
+  function handleToolbarReject() {
+    setShowRejectPopup(true)
   }
 
   function handleToolbarInsertSection() {
@@ -307,11 +464,31 @@ export default function EditorPage() {
       }
       return
     }
+    if (confirm?.kind === "accept") {
+      setSaving(true)
+      try {
+        await doAccept()
+      } finally {
+        setSaving(false)
+        setConfirm(null)
+      }
+      return
+    }
     setConfirm(null)
   }
 
   function handleConfirmCancel() {
     setConfirm(null)
+  }
+
+  async function handleRejectSubmit(reason: string) {
+    setSaving(true)
+    try {
+      await doReject(reason)
+    } finally {
+      setSaving(false)
+      setShowRejectPopup(false)
+    }
   }
 
   // ── Derive titles and button text ────────────────────────────
@@ -320,7 +497,13 @@ export default function EditorPage() {
   let pageSubtitle: string
   let saveButtonText: string
 
-  if (isEdit) {
+  if (isReview) {
+    pageTitle = "✏️ Revisar proposta"
+    pageSubtitle = proposalMeta
+      ? `Proposta de ${proposalMeta.proposerName}`
+      : "Carregant proposta…"
+    saveButtonText = "Acceptar"
+  } else if (isEdit) {
     pageTitle = "✏️ Editar cançó"
     pageSubtitle = "Modifica i guarda els canvis"
     saveButtonText = "Guardar canvis"
@@ -351,6 +534,11 @@ export default function EditorPage() {
       confirmActionLabel = "Sí, enviar"
     }
     confirmVariant = "primary"
+  } else if (confirm?.kind === "accept") {
+    confirmMessage =
+      "Acceptar la proposta i guardar la cançó a la base de dades?"
+    confirmActionLabel = "Sí, acceptar"
+    confirmVariant = "primary"
   }
 
   const placeholder = `Escriu aquí la lletra de la cançó.
@@ -373,8 +561,11 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
   return (
     <>
       <header>
-        <a href="/" className="back-link">
-          ← Cançoner
+        <a
+          href={isReview ? "/admin?tab=proposals" : "/"}
+          className="back-link"
+        >
+          ← {isReview ? "Panell admin" : "Cançoner"}
         </a>
         <h1 id="editor-title">{pageTitle}</h1>
         <p className="subtitle" id="editor-subtitle">
@@ -404,6 +595,9 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
                 ? "Selecciona la tonalitat per a començar la cançó"
                 : undefined
             }
+            mode={isReview ? "review" : "normal"}
+            onAccept={handleToolbarAccept}
+            onReject={handleToolbarReject}
           />
           <WysiwygEditor
             ref={editorRef}
@@ -451,6 +645,15 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
         <NewSongStartPopup
           onManual={handleManual}
           onImported={handleImported}
+        />
+      )}
+
+      {showRejectPopup && proposalMeta && (
+        <RejectProposalPopup
+          proposerName={proposalMeta.proposerName}
+          saving={saving}
+          onCancel={() => setShowRejectPopup(false)}
+          onSubmit={handleRejectSubmit}
         />
       )}
     </>

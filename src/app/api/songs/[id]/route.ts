@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { songUpdateSchema } from "@/lib/schemas/song"
 import { getSongById, updateSong, deleteSong } from "@/db/queries/songs"
+import { cleanupContent } from "@/lib/importers/cleanupContent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -45,7 +46,11 @@ export async function PUT(
       return NextResponse.json({ error: "Dades invàlides" }, { status: 400 })
     }
 
-    const result = await updateSong(id, parsed.data)
+    const update =
+      parsed.data.content !== undefined
+        ? { ...parsed.data, content: cleanupContent(parsed.data.content) }
+        : parsed.data
+    const result = await updateSong(id, update)
     if (result.changes === 0) {
       return NextResponse.json({ error: "Cançó no trobada" }, { status: 404 })
     }

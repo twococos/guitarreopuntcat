@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm"
 import { db, schema } from "@/db/client"
 import type { ProposalInput } from "@/lib/schemas/proposal"
+import { cleanupContent } from "@/lib/importers/cleanupContent"
 
 // ─── GET /api/proposals ──────────────────────────────────────
 
@@ -108,6 +109,7 @@ export async function reviewProposal(
   reviewerId: number,
   status: "approved" | "rejected",
   notes: string,
+  songUpdate?: ProposalInput,
 ) {
   const [proposal] = await db
     .select()
@@ -131,7 +133,24 @@ export async function reviewProposal(
       .run()
 
     if (status === "approved") {
-      tx.update(schema.songs).set({ draft: 0 }).where(eq(schema.songs.id, proposal.songId)).run()
+      if (songUpdate) {
+        tx
+          .update(schema.songs)
+          .set({
+            title: songUpdate.title,
+            artist: songUpdate.artist,
+            key: songUpdate.key,
+            capo: songUpdate.capo,
+            content: cleanupContent(songUpdate.content),
+            language: songUpdate.language,
+            tags: songUpdate.tags,
+            draft: 0,
+          })
+          .where(eq(schema.songs.id, proposal.songId))
+          .run()
+      } else {
+        tx.update(schema.songs).set({ draft: 0 }).where(eq(schema.songs.id, proposal.songId)).run()
+      }
     } else {
       tx.delete(schema.songs).where(eq(schema.songs.id, proposal.songId)).run()
     }

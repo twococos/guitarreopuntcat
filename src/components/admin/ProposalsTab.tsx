@@ -1,6 +1,6 @@
 "use client"
 import { useCallback, useEffect, useState } from "react"
-import { ReviewModal } from "./ReviewModal"
+import { useRouter } from "next/navigation"
 
 interface Proposal {
   id: number
@@ -24,10 +24,10 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: "Rebutjada",
 }
 
-export function ProposalsTab({ onChange }: Props) {
+export function ProposalsTab({ onChange: _onChange }: Props) {
+  const router = useRouter()
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [filter, setFilter] = useState<string>("pending")
-  const [reviewing, setReviewing] = useState<Proposal | null>(null)
 
   const load = useCallback(async () => {
     const res = await fetch("/api/proposals")
@@ -43,12 +43,6 @@ export function ProposalsTab({ onChange }: Props) {
   const filtered = filter
     ? proposals.filter((p) => p.status === filter)
     : proposals
-
-  function handleDone() {
-    setReviewing(null)
-    load()
-    onChange()
-  }
 
   return (
     <>
@@ -112,21 +106,16 @@ export function ProposalsTab({ onChange }: Props) {
                 {STATUS_LABELS[p.status]}
               </span>
               {p.status === "pending" && (
-                <button className="btn-xs" onClick={() => setReviewing(p)}>
+                <button
+                  className="btn-xs"
+                  onClick={() => router.push(`/editor?proposal=${p.id}`)}
+                >
                   Revisar
                 </button>
               )}
             </li>
           ))}
         </ul>
-      )}
-
-      {reviewing && (
-        <ReviewModal
-          proposal={reviewing}
-          onClose={() => setReviewing(null)}
-          onDone={handleDone}
-        />
       )}
     </>
   )

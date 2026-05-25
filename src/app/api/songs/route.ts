@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { songQuerySchema, songInputSchema } from "@/lib/schemas/song"
 import { listSongs, createSong } from "@/db/queries/songs"
+import { cleanupContent } from "@/lib/importers/cleanupContent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -39,7 +40,8 @@ export async function POST(request: Request) {
       )
     }
 
-    const result = await createSong(parsed.data)
+    const input = { ...parsed.data, content: cleanupContent(parsed.data.content) }
+    const result = await createSong(input)
     return NextResponse.json(result, { status: 201 })
   } catch (err) {
     console.error("[POST /api/songs]", err)

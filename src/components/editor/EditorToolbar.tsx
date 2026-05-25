@@ -21,6 +21,15 @@ interface EditorToolbarProps {
    * S'usa mentre no s'ha seleccionat la tonalitat de la cançó.
    */
   disabledReason?: string
+  /**
+   * Mode de la toolbar: "normal" (per defecte) o "review" (revisió de propostes).
+   * En mode review, els botons Reset/Guardar se substitueixen per Acceptar/Rebutjar.
+   */
+  mode?: "normal" | "review"
+  /** Callback Acceptar (només mode review). */
+  onAccept?: () => void
+  /** Callback Rebutjar (només mode review). */
+  onReject?: () => void
 }
 
 export function EditorToolbar({
@@ -35,8 +44,12 @@ export function EditorToolbar({
   onReset,
   saving = false,
   disabledReason,
+  mode = "normal",
+  onAccept,
+  onReject,
 }: EditorToolbarProps): ReactNode {
   const blocked = !!disabledReason
+  const isReview = mode === "review"
   return (
     <div className="editor-toolbar">
       <div className="editor-toolbar-group">
@@ -86,24 +99,49 @@ export function EditorToolbar({
       <span className="editor-toolbar-spacer" />
 
       <div className="editor-toolbar-group">
-        <button
-          type="button"
-          className="toolbar-btn"
-          title="Restablir tot el contingut"
-          onClick={onReset}
-          disabled={saving}
-        >
-          ⟳ Reset
-        </button>
-        <button
-          type="button"
-          className="toolbar-btn toolbar-btn-primary"
-          title={saveLabel}
-          onClick={onSave}
-          disabled={blocked || saving}
-        >
-          💾 {saveLabel}
-        </button>
+        {isReview ? (
+          <>
+            <button
+              type="button"
+              className="toolbar-btn toolbar-btn-reject"
+              title="Rebutjar la proposta"
+              onClick={onReject}
+              disabled={saving}
+            >
+              ✕ Rebutjar
+            </button>
+            <button
+              type="button"
+              className="toolbar-btn toolbar-btn-approve"
+              title="Acceptar la proposta i guardar la cançó"
+              onClick={onAccept}
+              disabled={blocked || saving}
+            >
+              ✓ Acceptar
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="toolbar-btn"
+              title="Restablir tot el contingut"
+              onClick={onReset}
+              disabled={saving}
+            >
+              ⟳ Reset
+            </button>
+            <button
+              type="button"
+              className="toolbar-btn toolbar-btn-primary"
+              title={saveLabel}
+              onClick={onSave}
+              disabled={blocked || saving}
+            >
+              💾 {saveLabel}
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
