@@ -9,6 +9,16 @@ interface Props {
   params: Promise<{ token: string }>
 }
 
+function resolveLinkUrl(
+  platform: "none" | "youtube" | "spotify",
+  yt: string | null,
+  sp: string | null,
+): string | null {
+  if (platform === "none") return null
+  if (platform === "youtube") return yt ?? sp ?? null
+  return sp ?? yt ?? null
+}
+
 export default async function SharedPage({ params }: Props) {
   const { token } = await params
   const canconer = await getCanconerByToken(token)
@@ -22,6 +32,9 @@ export default async function SharedPage({ params }: Props) {
   const inlineStyle = accentColor
     ? ({ "--accent": accentColor } as CSSProperties)
     : undefined
+
+  const linkPlatform = canconer.pdf_options?.link_platform ?? "none"
+  const showQr = canconer.pdf_options?.show_qr ?? false
 
   return (
     <>
@@ -47,17 +60,22 @@ export default async function SharedPage({ params }: Props) {
           <SharedIndex ids={songIds} titles={songTitles} />
         </nav>
         <main id="shared-songs">
-          {canconer.songs.map((s, i) => (
-            <SongView
-              key={s.id}
-              id={`song-${s.id}`}
-              song={s}
-              semitones={s.semitones}
-              number={i + 1}
-              styleVariant={style}
-              accentColor={accentColor}
-            />
-          ))}
+          {canconer.songs.map((s, i) => {
+            const linkUrl = resolveLinkUrl(linkPlatform, s.youtube_url, s.spotify_url)
+            return (
+              <SongView
+                key={s.id}
+                id={`song-${s.id}`}
+                song={s}
+                semitones={s.semitones}
+                number={i + 1}
+                styleVariant={style}
+                accentColor={accentColor}
+                titleLinkUrl={linkUrl}
+                qrUrl={showQr ? linkUrl : null}
+              />
+            )
+          })}
         </main>
       </div>
     </>

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { buildPdfStyles } from "./styles"
+import { buildQrSvg } from "./qr"
 import { renderSongHtml } from "@/components/song/SongView"
 import { transposeKey } from "@/lib/transpose"
 import {
@@ -16,6 +17,24 @@ export interface PdfSong {
   capo: number | null
   content: string
   semitones: number
+  album?: string | null
+  year?: number | null
+  youtubeUrl?: string | null
+  spotifyUrl?: string | null
+}
+
+/**
+ * Resol el link de capçalera segons la plataforma triada, amb fallback
+ * automàtic a l'altra plataforma si la triada no té link a la cançó.
+ */
+function resolveLinkUrl(
+  platform: "none" | "youtube" | "spotify",
+  yt: string | null | undefined,
+  sp: string | null | undefined,
+): string | null {
+  if (platform === "none") return null
+  if (platform === "youtube") return yt ?? sp ?? null
+  return sp ?? yt ?? null
 }
 
 function escHtml(s: string): string {
@@ -50,15 +69,25 @@ function loadCoverImageDataUrl(): string {
  * `[data-style="X"]` de song-styles.css apliquin tant al component
  * com a la portada i l'índex.
  */
-export function buildHtml(
+export async function buildHtml(
   title: string,
   style: CanconerStyle,
   accentColor: string | null,
   songs: PdfSong[],
   options: PdfOptions,
-): string {
+): Promise<string> {
   const safeTitle = escHtml(title)
   const date = new Date().toLocaleDateString("ca-ES")
+
+  // ── Resolem link + QR per cada cançó en paral·lel ──────────
+  const linkUrls = songs.map((s) =>
+    resolveLinkUrl(options.link_platform, s.youtubeUrl, s.spotifyUrl),
+  )
+  const qrSvgs: Array<string | null> = options.show_qr
+    ? await Promise.all(
+        linkUrls.map((u) => (u ? buildQrSvg(u) : Promise.resolve(null))),
+      )
+    : linkUrls.map(() => null)
 
   // ── Portada (full-bleed amb caixa semitransparent centrada) ─
   const coverHtml = options.show_cover
@@ -124,10 +153,15 @@ export function buildHtml(
           key: s.key,
           content: s.content,
           capo: s.capo,
+          album: s.album,
+          year: s.year,
           semitones: s.semitones,
           number: i + 1,
           styleVariant: style,
           accentColor,
+          titleLinkUrl: linkUrls[i],
+          qrSvg: qrSvgs[i],
+          qrUrl: qrSvgs[i] ? linkUrls[i] : null,
         }) +
         `</section>`,
     )

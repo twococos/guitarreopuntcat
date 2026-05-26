@@ -64,6 +64,9 @@ export const ultimateGuitar: Importer = {
     const { key, capo } = findKeyAndCapo(root)
     const language = languageFromHtml(root)
 
+    // ── Metadades opcionals des del JSON de UG (best-effort) ──
+    const ugMeta = extractUgMeta(html)
+
     // ── Cos (pre) ──
     const pre =
       root.querySelector("section.s-juq pre") ??
@@ -83,6 +86,10 @@ export const ultimateGuitar: Importer = {
       language,
       tags: "",
       content,
+      ...(ugMeta.album !== undefined && { album: ugMeta.album }),
+      ...(ugMeta.year !== undefined && { year: ugMeta.year }),
+      ...(ugMeta.youtubeUrl !== undefined && { youtubeUrl: ugMeta.youtubeUrl }),
+      ...(ugMeta.spotifyUrl !== undefined && { spotifyUrl: ugMeta.spotifyUrl }),
     }
   },
 }
@@ -420,6 +427,128 @@ function keyFromFirstChord(chord: string): string {
   const m = /^([A-G]#?)(m)?/.exec(chord)
   if (!m) return "Am"
   return m[2] === "m" ? `${m[1]}m` : m[1]
+}
+
+/* ──────────────────────────── Metadades opcionals UG ──────────────────────────── */
+
+interface UgOptionalMeta {
+  album?: string
+  year?: number
+  youtubeUrl?: string
+  spotifyUrl?: string
+}
+
+/**
+ * Intenta extreure metadades del JSON embegut a la pàgina de UG.
+ * UG sol tenir un element <div class="js-store" data-content="..."> amb un
+ * JSON gran que conté UGAPP.store.page.data.tab (o estructura similar).
+ * També busca dins scripts inline i al text de la pàgina com a fallback.
+ */
+function extractUgMeta(html: string): UgOptionalMeta {
+  const result: UgOptionalMeta = {}
+
+  try {
+    // Cerca el JSON al data-content del js-store
+    const storeM = /data-content="([^"]+)"/.exec(html)
+    if (storeM) {
+      const jsonStr = storeM[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&")
+      const data: unknown = JSON.parse(jsonStr)
+      extractFromUgJson(data, result)
+    }
+  } catch { /* best-effort */ }
+
+  // Fallback: cerca dins scripts inline el JSON de la pàgina
+  if (!result.album && !result.year && !result.youtubeUrl) {
+    try {
+      const scriptM = /window\.UGAPP\s*=\s*(\{[\s\S]*?\});\s*(?:\/\/|<\/script>)/.exec(html)
+      if (scriptM) {
+        const data: unknown = JSON.parse(scriptM[1])
+        extractFromUgJson(data, result)
+      }
+    } catch { /* best-effort */ }
+  }
+
+  // Fallback: cerca Spotify a tot el HTML
+  if (!result.spotifyUrl) {
+    try {
+      const spotM = /(https?:\/\/open\.spotify\.com\/[^\s"'<>]+)/.exec(html)
+      if (spotM) result.spotifyUrl = spotM[1]
+    } catch { /* best-effort */ }
+  }
+
+  return result
+}
+
+function extractFromUgJson(data: unknown, result: UgOptionalMeta): void {
+  if (!data || typeof data !== "object") return
+  const obj = data as Record<string, unknown>
+
+  // Navegar per l'estructura profunda: store.page.data.tab
+  const store = obj.store as Record<string, unknown> | undefined
+  const page = store?.page as Record<string, unknown> | undefined
+  const pageData = page?.data as Record<string, unknown> | undefined
+  const tab = pageData?.tab as Record<string, unknown> | undefined
+
+  // Si no hi ha el camí típic, potser `data` ja és tab directament
+  const tabObj: Record<string, unknown> = tab ?? obj
+
+  try {
+    if (!result.album) {
+      const albumName = tabObj.album_name
+      if (typeof albumName === "string" && albumName.trim()) {
+        result.album = albumName.trim()
+      }
+    }
+  } catch { /* best-effort */ }
+
+  try {
+    if (!result.year) {
+      const albumYear = tabObj.album_year
+      if (typeof albumYear === "number" && albumYear >= 1000 && albumYear <= 2100) {
+        result.year = albumYear
+      } else if (typeof albumYear === "string") {
+        const y = parseInt(albumYear, 10)
+        if (y >= 1000 && y <= 2100) result.year = y
+      }
+    }
+  } catch { /* best-effort */ }
+
+  try {
+    if (!result.youtubeUrl) {
+      // Prova video_url i recommended_youtube_id
+      const videoUrl = tabObj.video_url
+      if (typeof videoUrl === "string" && videoUrl.trim()) {
+        const yt = extractYoutubeUrl(videoUrl.trim())
+        if (yt) result.youtubeUrl = yt
+      }
+      if (!result.youtubeUrl) {
+        const ytId = tabObj.recommended_youtube_id
+        if (typeof ytId === "string" && ytId.trim()) {
+          result.youtubeUrl = `https://www.youtube.com/watch?v=${ytId.trim()}`
+        }
+      }
+    }
+  } catch { /* best-effort */ }
+
+  try {
+    if (!result.spotifyUrl) {
+      // Cerca recursivament "open.spotify.com" al JSON serialitzat
+      const jsonStr = JSON.stringify(data)
+      const spotM = /(https?:\/\/open\.spotify\.com\/[^\s"'\\<>]+)/.exec(jsonStr)
+      if (spotM) result.spotifyUrl = spotM[1]
+    }
+  } catch { /* best-effort */ }
+}
+
+function extractYoutubeUrl(raw: string): string | undefined {
+  if (!raw) return undefined
+  const embedM = /youtube\.com\/embed\/([A-Za-z0-9_-]{11})/.exec(raw)
+  if (embedM) return `https://www.youtube.com/watch?v=${embedM[1]}`
+  const watchM = /youtube\.com\/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{11})/.exec(raw)
+  if (watchM) return `https://www.youtube.com/watch?v=${watchM[1]}`
+  const shortM = /youtu\.be\/([A-Za-z0-9_-]{11})/.exec(raw)
+  if (shortM) return `https://www.youtube.com/watch?v=${shortM[1]}`
+  return undefined
 }
 
 /* ──────────────────────────── Metadades ──────────────────────────── */

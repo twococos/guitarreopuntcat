@@ -68,6 +68,10 @@ export const guitarTuna: Importer = {
       language: meta.language,
       tags: "",
       content,
+      ...(meta.album !== undefined && { album: meta.album }),
+      ...(meta.year !== undefined && { year: meta.year }),
+      ...(meta.youtubeUrl !== undefined && { youtubeUrl: meta.youtubeUrl }),
+      ...(meta.spotifyUrl !== undefined && { spotifyUrl: meta.spotifyUrl }),
     }
   },
 }
@@ -204,6 +208,10 @@ interface JsonLdMeta {
   key: string
   capo: number
   language: string
+  album?: string
+  year?: number
+  youtubeUrl?: string
+  spotifyUrl?: string
 }
 
 function extractJsonLdMeta(root: HTMLElement): JsonLdMeta {
@@ -212,6 +220,10 @@ function extractJsonLdMeta(root: HTMLElement): JsonLdMeta {
   let key = ""
   let capo = 0
   let language = "en"
+  let album: string | undefined
+  let year: number | undefined
+  let youtubeUrl: string | undefined
+  let spotifyUrl: string | undefined
 
   for (const script of root.querySelectorAll('script[type="application/ld+json"]')) {
     const raw = script.text
@@ -252,11 +264,50 @@ function extractJsonLdMeta(root: HTMLElement): JsonLdMeta {
           if (km) key = normalizeKey(km[1])
         }
       }
+
+      // ── Metadades opcionals (best-effort) ──
+      try {
+        // inAlbum → album
+        const inAlbum = it.inAlbum as Record<string, unknown> | undefined
+        if (inAlbum) {
+          const albumName = typeof inAlbum.name === "string" ? inAlbum.name.trim() : ""
+          if (albumName) album = albumName
+        }
+      } catch { /* best-effort */ }
+
+      try {
+        // datePublished → year (4 dígits)
+        const datePublished = typeof it.datePublished === "string" ? it.datePublished : ""
+        if (datePublished) {
+          const ym = /\b(1[0-9]{3}|2[01][0-9]{2})\b/.exec(datePublished)
+          if (ym) {
+            const y = parseInt(ym[1], 10)
+            if (y >= 1000 && y <= 2100) year = y
+          }
+        }
+      } catch { /* best-effort */ }
+
+      try {
+        // sameAs → YouTube / Spotify
+        const sameAs = it.sameAs
+        const urls: string[] = Array.isArray(sameAs)
+          ? sameAs.filter((u): u is string => typeof u === "string")
+          : typeof sameAs === "string" ? [sameAs] : []
+        for (const u of urls) {
+          if (!youtubeUrl && (u.includes("youtube.com") || u.includes("youtu.be"))) {
+            const yt = extractYoutubeUrl(u)
+            if (yt) youtubeUrl = yt
+          }
+          if (!spotifyUrl && u.includes("open.spotify.com")) {
+            spotifyUrl = u
+          }
+        }
+      } catch { /* best-effort */ }
     }
     if (title || artist) break
   }
 
-  return { title, artist, key, capo, language }
+  return { title, artist, key, capo, language, album, year, youtubeUrl, spotifyUrl }
 }
 
 /**
@@ -359,6 +410,17 @@ function finalize(rootLetter: string, rest: string): string | null {
 }
 
 /* ──────────────────────────── Helpers ──────────────────────────── */
+
+function extractYoutubeUrl(raw: string): string | undefined {
+  if (!raw) return undefined
+  const embedM = /youtube\.com\/embed\/([A-Za-z0-9_-]{11})/.exec(raw)
+  if (embedM) return `https://www.youtube.com/watch?v=${embedM[1]}`
+  const watchM = /youtube\.com\/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{11})/.exec(raw)
+  if (watchM) return `https://www.youtube.com/watch?v=${watchM[1]}`
+  const shortM = /youtu\.be\/([A-Za-z0-9_-]{11})/.exec(raw)
+  if (shortM) return `https://www.youtube.com/watch?v=${shortM[1]}`
+  return undefined
+}
 
 function textOf(el: HTMLElement | null): string {
   if (!el) return ""

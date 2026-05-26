@@ -1,12 +1,13 @@
 "use client"
 import { useState } from "react"
 import { useSession } from "next-auth/react"
-import { useSongbookStore } from "@/hooks/useSongbook"
+import { useSongbookStore, isDefaultCanconerTitle } from "@/hooks/useSongbook"
 import { useToastStore } from "@/hooks/useToasts"
 import { useUiStore } from "@/hooks/useUi"
 import { saveCanconer } from "@/lib/canconerApi"
 import { CanconerList } from "./CanconerList"
 import { CanconerGrid } from "./CanconerGrid"
+import { ConfirmToast } from "@/components/editor/ConfirmToast"
 import type { CanconerListItem } from "@/types/song"
 
 export function CanconerPanel() {
@@ -21,13 +22,18 @@ export function CanconerPanel() {
   const setCanconerTitle = useSongbookStore((s) => s.setCanconerTitle)
   const setOverwriteToast = useSongbookStore((s) => s.setOverwriteToast)
   const markSaved = useSongbookStore((s) => s.markSaved)
+  const resetCanconer = useSongbookStore((s) => s.resetCanconer)
   const showToast = useToastStore((s) => s.show)
   const setLoginPopup = useUiStore((s) => s.setLoginPopup)
 
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   const hasItems = canconer.length > 0
   const isLoggedIn = !!(session?.user?.active)
+  const titleIsDefault = isDefaultCanconerTitle(canconerTitle)
+  // Es pot descartar si hi ha qualsevol contingut o si el títol s'ha canviat
+  const canDiscard = hasItems || !titleIsDefault || savedCanconerId !== null
 
   let saveTitle = "Guardar cançoner"
   if (!hasItems) saveTitle = "Afegeix cançons primer"
@@ -112,17 +118,33 @@ export function CanconerPanel() {
     }
   }
 
+  function onConfirmDiscard() {
+    resetCanconer()
+    setConfirmDiscard(false)
+    showToast("Cançoner descartat")
+  }
+
   return (
     <section id="panel-canconer">
       <div className="canconer-header">
         <input
           type="text"
           id="canconer-title"
+          className={`canconer-title-input${titleIsDefault ? " is-default" : ""}`}
           placeholder="Títol del cançoner…"
           value={canconerTitle}
           onChange={(e) => setCanconerTitle(e.target.value)}
         />
         <div className="canconer-header-actions">
+          <button
+            id="btn-discard-canconer"
+            className="btn-icon-action btn-discard"
+            disabled={!canDiscard}
+            title="Descartar cançoner en curs"
+            onClick={() => setConfirmDiscard(true)}
+          >
+            ✕
+          </button>
           <button
             id="btn-save-canconer"
             className="btn-icon-action"
@@ -151,6 +173,16 @@ export function CanconerPanel() {
       )}
       {hasItems && previewActive && <CanconerList />}
       {hasItems && !previewActive && <CanconerGrid />}
+      <ConfirmToast
+        open={confirmDiscard}
+        message="Vols descartar el cançoner en curs? Es perdran tots els canvis no guardats."
+        confirmLabel="Descartar"
+        confirmVariant="danger"
+        cancelLabel="Cancel·lar"
+        onConfirm={onConfirmDiscard}
+        onCancel={() => setConfirmDiscard(false)}
+        autoDismissMs={10000}
+      />
     </section>
   )
 }

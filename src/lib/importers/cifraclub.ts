@@ -52,6 +52,68 @@ export const cifraClub: Importer = {
     const lines = extractLines(pre)
     const content = buildContent(lines)
 
+    // ── Metadades opcionals (best-effort) ──
+    let album: string | undefined
+    let year: number | undefined
+    let youtubeUrl: string | undefined
+    let spotifyUrl: string | undefined
+
+    try {
+      // Album: meta itemprop="album", o link /album/ a la pàgina
+      const albumMeta = root.querySelector('meta[itemprop="album"]')
+      const albumContent = albumMeta?.getAttribute("content") ?? ""
+      if (albumContent.trim()) {
+        album = albumContent.trim()
+      } else {
+        const albumLink = root.querySelector('a[href*="/album/"]')
+        if (albumLink) {
+          const txt = textOf(albumLink).trim()
+          if (txt) album = txt
+        }
+      }
+    } catch { /* best-effort */ }
+
+    try {
+      // Any: meta itemprop="datePublished" o copyright al peu
+      const dateMeta = root.querySelector('meta[itemprop="datePublished"]')
+      const dateContent = dateMeta?.getAttribute("content") ?? ""
+      const yearFromMeta = /\b(1[0-9]{3}|2[01][0-9]{2})\b/.exec(dateContent)
+      if (yearFromMeta) {
+        const y = parseInt(yearFromMeta[1], 10)
+        if (y >= 1000 && y <= 2100) year = y
+      }
+      if (year === undefined) {
+        const bodyText = root.text
+        const yearFromBody = /©\s*(1[0-9]{3}|2[01][0-9]{2})\b/.exec(bodyText)
+        if (yearFromBody) {
+          const y = parseInt(yearFromBody[1], 10)
+          if (y >= 1000 && y <= 2100) year = y
+        }
+      }
+    } catch { /* best-effort */ }
+
+    try {
+      // YouTube: iframe embed o div data-youtube-id
+      for (const iframe of root.querySelectorAll("iframe")) {
+        const src = iframe.getAttribute("src") ?? ""
+        const yt = extractYoutubeUrl(src)
+        if (yt) { youtubeUrl = yt; break }
+      }
+      if (!youtubeUrl) {
+        const ytDiv = root.querySelector("[data-youtube-id]")
+        const ytId = ytDiv?.getAttribute("data-youtube-id") ?? ""
+        if (ytId.trim()) youtubeUrl = `https://www.youtube.com/watch?v=${ytId.trim()}`
+      }
+    } catch { /* best-effort */ }
+
+    try {
+      // Spotify: link open.spotify.com
+      for (const a of root.querySelectorAll("a")) {
+        const href = a.getAttribute("href") ?? ""
+        if (href.includes("open.spotify.com")) { spotifyUrl = href; break }
+      }
+    } catch { /* best-effort */ }
+
     return {
       title: title || "Sense títol",
       artist: artist || "Desconegut",
@@ -60,6 +122,10 @@ export const cifraClub: Importer = {
       language,
       tags: "",
       content,
+      ...(album !== undefined && { album }),
+      ...(year !== undefined && { year }),
+      ...(youtubeUrl !== undefined && { youtubeUrl }),
+      ...(spotifyUrl !== undefined && { spotifyUrl }),
     }
   },
 }
@@ -415,6 +481,17 @@ function languageFromHtml(root: HTMLElement): string {
 }
 
 /* ──────────────────────────── Helpers ──────────────────────────── */
+
+function extractYoutubeUrl(raw: string): string | undefined {
+  if (!raw) return undefined
+  const embedM = /youtube\.com\/embed\/([A-Za-z0-9_-]{11})/.exec(raw)
+  if (embedM) return `https://www.youtube.com/watch?v=${embedM[1]}`
+  const watchM = /youtube\.com\/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{11})/.exec(raw)
+  if (watchM) return `https://www.youtube.com/watch?v=${watchM[1]}`
+  const shortM = /youtu\.be\/([A-Za-z0-9_-]{11})/.exec(raw)
+  if (shortM) return `https://www.youtube.com/watch?v=${shortM[1]}`
+  return undefined
+}
 
 function textOf(el: HTMLElement | null): string {
   if (!el) return ""

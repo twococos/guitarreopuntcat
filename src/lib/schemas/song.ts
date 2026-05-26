@@ -8,6 +8,18 @@ export const songInputSchema = z.object({
   content: z.string().min(1),
   language: z.string().default("ca"),
   tags: z.string().default(""),
+  album: z.string().max(200).nullable().optional(),
+  year: z.number().int().min(1000).max(2100).nullable().optional(),
+  youtubeUrl: z
+    .string()
+    .regex(/^https?:\/\/([^/]+\.)?(youtube\.com|youtu\.be)\//, "URL de YouTube no vàlida")
+    .nullable()
+    .optional(),
+  spotifyUrl: z
+    .string()
+    .regex(/^https?:\/\/open\.spotify\.com\//, "URL de Spotify no vàlida")
+    .nullable()
+    .optional(),
 })
 
 export type SongInput = z.infer<typeof songInputSchema>
@@ -21,6 +33,18 @@ export const songUpdateSchema = z.object({
   language: z.string().optional(),
   tags: z.string().optional(),
   draft: z.number().int().optional(),
+  album: z.string().max(200).nullable().optional(),
+  year: z.number().int().min(1000).max(2100).nullable().optional(),
+  youtubeUrl: z
+    .string()
+    .regex(/^https?:\/\/([^/]+\.)?(youtube\.com|youtu\.be)\//, "URL de YouTube no vàlida")
+    .nullable()
+    .optional(),
+  spotifyUrl: z
+    .string()
+    .regex(/^https?:\/\/open\.spotify\.com\//, "URL de Spotify no vàlida")
+    .nullable()
+    .optional(),
 })
 
 export type SongUpdate = z.infer<typeof songUpdateSchema>

@@ -146,6 +146,8 @@ body.no-breaks .song-page:not(:first-child) {
 /* Evita que els acords/títols es tallin entre columnes/pàgines */
 .song-page .song-head { break-inside: avoid; }
 .song-page .song-body sec { break-inside: avoid; }
+
+/* El QR i els enllaços del títol viuen a song.css (format compartit). */
 `
 
 /**

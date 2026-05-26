@@ -52,6 +52,10 @@ export async function POST(request: Request) {
       capo: song.capo,
       content: song.content,
       semitones,
+      album: song.album,
+      year: song.year,
+      youtubeUrl: song.youtubeUrl,
+      spotifyUrl: song.spotifyUrl,
     })
   }
 
@@ -60,7 +64,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const html = buildHtml(parsed.title, parsed.style, parsed.accent_color, pdfSongs, parsed.pdf_options)
+    const html = await buildHtml(parsed.title, parsed.style, parsed.accent_color, pdfSongs, parsed.pdf_options)
     const pdfBuffer = await generatePdf(
       html,
       parsed.pdf_options,

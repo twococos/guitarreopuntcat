@@ -1,4 +1,5 @@
 "use client"
+import { useLayoutEffect, useRef } from "react"
 import {
   DndContext,
   closestCenter,
@@ -38,6 +39,7 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
   return (
     <li
       ref={setNodeRef}
+      data-song-id={entry.song.id}
       style={style}
       className={`${selected ? "selected" : ""} ${isDragging ? "dragging" : ""}`.trim()}
       onClick={(e) => {
@@ -121,13 +123,72 @@ export function CanconerList() {
     if (from !== -1 && to !== -1) reorder(from, to)
   }
 
+  // ── Animació FLIP en reordenar (canvi de sortMode, applyAllowedKeys, etc.)
+  // Mesura les posicions abans (durant el render previ) i les compara
+  // després; aplica un transform invers + transició per "interpolar" entre
+  // les dues posicions. Només anima `transform` → 60fps fins i tot amb
+  // moltes cançons (el navegador ho fa per GPU sense reflow).
+  const listRef = useRef<HTMLUListElement | null>(null)
+  const prevRectsRef = useRef<Map<number, DOMRect>>(new Map())
+
+  useLayoutEffect(() => {
+    const list = listRef.current
+    if (!list) return
+    const items = list.querySelectorAll<HTMLLIElement>("li[data-song-id]")
+    const newRects = new Map<number, DOMRect>()
+    items.forEach((el) => {
+      const id = Number(el.dataset.songId)
+      newRects.set(id, el.getBoundingClientRect())
+    })
+
+    const prevRects = prevRectsRef.current
+    if (prevRects.size > 0) {
+      // Compta quants items han canviat de posició. Si només n'hi ha 1-2,
+      // probablement és un drag amb @dnd-kit que ja té la seva animació
+      // pròpia, així que NO apliquem FLIP per evitar conflictes. Si el
+      // canvi és més gran (canvi de sortMode, toggle ↑↓, random, etc.),
+      // animem amb la Web Animations API (no toquem `style.transform`
+      // perquè @dnd-kit també hi escriu — `.animate()` crea una animació
+      // separada que el navegador interpola per sobre).
+      let movedCount = 0
+      items.forEach((el) => {
+        const id = Number(el.dataset.songId)
+        const prev = prevRects.get(id)
+        const next = newRects.get(id)
+        if (!prev || !next) return
+        if (prev.top !== next.top || prev.left !== next.left) movedCount++
+      })
+
+      if (movedCount > 2) {
+        items.forEach((el) => {
+          const id = Number(el.dataset.songId)
+          const prev = prevRects.get(id)
+          const next = newRects.get(id)
+          if (!prev || !next) return
+          const dx = prev.left - next.left
+          const dy = prev.top - next.top
+          if (dx === 0 && dy === 0) return
+          el.animate(
+            [
+              { transform: `translate(${dx}px, ${dy}px)` },
+              { transform: "translate(0, 0)" },
+            ],
+            { duration: 280, easing: "ease", fill: "none" },
+          )
+        })
+      }
+    }
+
+    prevRectsRef.current = newRects
+  }, [canconer])
+
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext
         items={canconer.map((en) => en.song.id)}
         strategy={verticalListSortingStrategy}
       >
-        <ul id="canconer-list">
+        <ul id="canconer-list" ref={listRef}>
           {canconer.map((entry, i) => (
             <SortableItem key={entry.song.id} entry={entry} idx={i} />
           ))}

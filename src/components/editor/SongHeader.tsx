@@ -7,6 +7,10 @@ import {
 } from "react"
 import { KeyPicker } from "./KeyPicker"
 
+// Regex de validació de URLs de YouTube i Spotify (mateixos que als schemas Zod).
+export const YOUTUBE_URL_REGEX = /^https?:\/\/([^/]+\.)?(youtube\.com|youtu\.be)\//
+export const SPOTIFY_URL_REGEX = /^https?:\/\/open\.spotify\.com\//
+
 // Tipus oficial de metadades de la cançó.
 export interface SongMetadata {
   title: string
@@ -15,15 +19,21 @@ export interface SongMetadata {
   capo: number
   language: string
   tags: string
+  album: string
+  year: number | null
+  youtubeUrl: string
+  spotifyUrl: string
 }
 
 interface SongHeaderProps {
   value: SongMetadata
   onChange: (next: SongMetadata) => void
+  /** Si false, els links són obligatoris i es marquen amb `*`. */
+  isAdmin: boolean
 }
 
-// Quin camp de text és en mode edició: "title", "artist" o cap (null).
-type EditingField = "title" | "artist" | null
+// Quin camp inline-editable és en mode edició.
+type EditingField = "title" | "artist" | "album" | "year" | null
 
 // Posició del popover del KeyPicker
 interface KeyPickerPos {
@@ -31,41 +41,54 @@ interface KeyPickerPos {
   y: number
 }
 
-export function SongHeader({ value, onChange }: SongHeaderProps): ReactNode {
-  // Camp de text en edició inline
+export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): ReactNode {
+  // Camp en edició inline
   const [editing, setEditing] = useState<EditingField>(null)
-  // Valor temporal mentre s'edita (per poder cancel·lar amb Escape)
   const [draft, setDraft] = useState<string>("")
 
   // Estat del KeyPicker
   const [keyOpen, setKeyOpen] = useState(false)
   const [keyPos, setKeyPos] = useState<KeyPickerPos>({ x: 0, y: 0 })
 
-  // Ref per fer .select() en entrar al mode d'edició
+  // Refs
   const titleInputRef = useRef<HTMLInputElement>(null)
   const artistInputRef = useRef<HTMLInputElement>(null)
+  const albumInputRef = useRef<HTMLInputElement>(null)
+  const yearInputRef = useRef<HTMLInputElement>(null)
 
-  // ── Edició de títol i artista ───────────────────────────
+  // ── Edició inline ───────────────────────────────────────
 
   function startEditing(field: EditingField) {
     if (field === null) return
     setEditing(field)
-    setDraft(value[field])
-    // autoFocus + select es fa via l'atribut autoFocus i l'onFocus del input
+    if (field === "year") {
+      setDraft(value.year != null ? String(value.year) : "")
+    } else {
+      setDraft(value[field])
+    }
   }
 
   function commitEdit() {
     if (editing === null) return
-    onChange({ ...value, [editing]: draft })
+    if (editing === "year") {
+      const trimmed = draft.trim()
+      let parsed: number | null = null
+      if (trimmed !== "") {
+        const n = parseInt(trimmed, 10)
+        if (Number.isFinite(n)) parsed = n
+      }
+      onChange({ ...value, year: parsed })
+    } else {
+      onChange({ ...value, [editing]: draft })
+    }
     setEditing(null)
   }
 
   function cancelEdit() {
     setEditing(null)
-    // No cridem onChange: descartem el draft
   }
 
-  function handleTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleInlineKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault()
       commitEdit()
@@ -75,17 +98,6 @@ export function SongHeader({ value, onChange }: SongHeaderProps): ReactNode {
     }
   }
 
-  function handleArtistKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      e.preventDefault()
-      commitEdit()
-    } else if (e.key === "Escape") {
-      e.preventDefault()
-      cancelEdit()
-    }
-  }
-
-  // Selecciona tot el text quan el input rep el focus
   function handleInputFocus(e: React.FocusEvent<HTMLInputElement>) {
     e.currentTarget.select()
   }
@@ -93,7 +105,6 @@ export function SongHeader({ value, onChange }: SongHeaderProps): ReactNode {
   // ── Badge de tonalitat ──────────────────────────────────
 
   function handleOpenKeyPicker(e: React.MouseEvent<HTMLButtonElement>) {
-    // Evita que el clic tanqui el picker de seguida via document.click
     e.stopPropagation()
     const rect = e.currentTarget.getBoundingClientRect()
     setKeyPos({ x: rect.left, y: rect.bottom + 4 })
@@ -105,7 +116,7 @@ export function SongHeader({ value, onChange }: SongHeaderProps): ReactNode {
     setKeyOpen(false)
   }
 
-  // ── Camps del panell "Més opcions" ──────────────────────
+  // ── Camps secundaris ────────────────────────────────────
 
   function handleCapoChange(e: ChangeEvent<HTMLInputElement>) {
     onChange({ ...value, capo: parseInt(e.target.value, 10) || 0 })
@@ -119,14 +130,30 @@ export function SongHeader({ value, onChange }: SongHeaderProps): ReactNode {
     onChange({ ...value, tags: e.target.value })
   }
 
-  // ── Render ──────────────────────────────────────────────
+  function handleYoutubeChange(e: ChangeEvent<HTMLInputElement>) {
+    onChange({ ...value, youtubeUrl: e.target.value })
+  }
+
+  function handleSpotifyChange(e: ChangeEvent<HTMLInputElement>) {
+    onChange({ ...value, spotifyUrl: e.target.value })
+  }
+
+  // ── Estat de validació dels links ───────────────────────
+  const ytTrimmed = value.youtubeUrl.trim()
+  const spTrimmed = value.spotifyUrl.trim()
+  const ytInvalid = ytTrimmed !== "" && !YOUTUBE_URL_REGEX.test(ytTrimmed)
+  const spInvalid = spTrimmed !== "" && !SPOTIFY_URL_REGEX.test(spTrimmed)
+
+  const required = !isAdmin
+  const ytLabel = required ? "YouTube *" : "YouTube"
+  const spLabel = required ? "Spotify *" : "Spotify"
 
   return (
     <div className="song-header-edit">
       {/* Capçalera visual: replica l'estructura de SongView */}
       <div className="song-head">
         <div className="song-titles">
-          {/* Títol editable inline */}
+          {/* Títol editable inline (ocupa tota l'amplada) */}
           {editing === "title" ? (
             <input
               ref={titleInputRef}
@@ -137,7 +164,7 @@ export function SongHeader({ value, onChange }: SongHeaderProps): ReactNode {
               onFocus={handleInputFocus}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
               onBlur={commitEdit}
-              onKeyDown={handleTitleKeyDown}
+              onKeyDown={handleInlineKeyDown}
             />
           ) : (
             <div
@@ -154,33 +181,108 @@ export function SongHeader({ value, onChange }: SongHeaderProps): ReactNode {
             </div>
           )}
 
-          {/* Artista editable inline */}
-          {editing === "artist" ? (
-            <input
-              ref={artistInputRef}
-              className="song-artist song-artist-input"
-              type="text"
-              value={draft}
-              autoFocus
-              onFocus={handleInputFocus}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
-              onBlur={commitEdit}
-              onKeyDown={handleArtistKeyDown}
-            />
-          ) : (
-            <p
-              className={`song-artist song-artist--editable${!value.artist ? " song-artist--empty" : ""}`}
-              role="button"
-              tabIndex={0}
-              title="Clica per editar l'artista"
-              onClick={() => startEditing("artist")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") startEditing("artist")
-              }}
-            >
-              {value.artist || "Autor o grup"}
-            </p>
-          )}
+          {/* Fila secundària: artista · àlbum (any), tots tres inline-editables */}
+          <div className="song-artist song-meta-row">
+            {/* Artista */}
+            {editing === "artist" ? (
+              <input
+                ref={artistInputRef}
+                className="song-meta-input song-meta-input--artist"
+                type="text"
+                value={draft}
+                autoFocus
+                onFocus={handleInputFocus}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={handleInlineKeyDown}
+              />
+            ) : (
+              <span
+                className={`song-meta-part song-meta-part--editable${!value.artist ? " song-meta-part--empty" : ""}`}
+                role="button"
+                tabIndex={0}
+                title="Clica per editar l'artista"
+                onClick={() => startEditing("artist")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") startEditing("artist")
+                }}
+              >
+                {value.artist || "Autor o grup"}
+              </span>
+            )}
+
+            <span className="song-meta-sep"> · </span>
+
+            {/* Àlbum */}
+            {editing === "album" ? (
+              <input
+                ref={albumInputRef}
+                className="song-meta-input song-meta-input--album"
+                type="text"
+                value={draft}
+                autoFocus
+                onFocus={handleInputFocus}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={handleInlineKeyDown}
+              />
+            ) : (
+              <span
+                className={`song-meta-part song-meta-part--editable${!value.album ? " song-meta-part--empty" : ""}`}
+                role="button"
+                tabIndex={0}
+                title="Clica per editar l'àlbum"
+                onClick={() => startEditing("album")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") startEditing("album")
+                }}
+              >
+                {value.album || "Àlbum"}
+              </span>
+            )}
+
+            <span className="song-meta-sep"> (</span>
+
+            {/* Any */}
+            {editing === "year" ? (
+              <input
+                ref={yearInputRef}
+                className="song-meta-input song-meta-input--year"
+                type="number"
+                min={1000}
+                max={2100}
+                value={draft}
+                autoFocus
+                onFocus={handleInputFocus}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={handleInlineKeyDown}
+              />
+            ) : (
+              <span
+                className={`song-meta-part song-meta-part--editable${value.year == null ? " song-meta-part--empty" : ""}`}
+                role="button"
+                tabIndex={0}
+                title="Clica per editar l'any"
+                onClick={() => startEditing("year")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") startEditing("year")
+                }}
+              >
+                {value.year ?? "any"}
+              </span>
+            )}
+
+            <span className="song-meta-sep">)</span>
+
+            {/* Cellata (read-only aquí; s'edita a la fila de sota) */}
+            {value.capo > 0 && (
+              <>
+                <span className="song-meta-sep"> · </span>
+                <span className="song-meta-part">Cejilla {value.capo}</span>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Badge de tonalitat: obre el KeyPicker */}
@@ -194,6 +296,37 @@ export function SongHeader({ value, onChange }: SongHeaderProps): ReactNode {
             {value.key || "Selecciona una tonalitat"}
           </button>
         </div>
+      </div>
+
+      {/* Fila de links streaming (YouTube + Spotify) */}
+      <div className="song-links-row">
+        <label className="more-options-field more-options-field--inline more-options-field--grow">
+          <span className="more-options-label">{ytLabel}</span>
+          <input
+            type="url"
+            value={value.youtubeUrl}
+            placeholder="https://www.youtube.com/watch?v=..."
+            onChange={handleYoutubeChange}
+            className={`more-options-input${ytInvalid ? " more-options-input--error" : ""}`}
+          />
+          {ytInvalid && (
+            <span className="more-options-error">URL de YouTube no vàlida</span>
+          )}
+        </label>
+
+        <label className="more-options-field more-options-field--inline more-options-field--grow">
+          <span className="more-options-label">{spLabel}</span>
+          <input
+            type="url"
+            value={value.spotifyUrl}
+            placeholder="https://open.spotify.com/track/..."
+            onChange={handleSpotifyChange}
+            className={`more-options-input${spInvalid ? " more-options-input--error" : ""}`}
+          />
+          {spInvalid && (
+            <span className="more-options-error">URL de Spotify no vàlida</span>
+          )}
+        </label>
       </div>
 
       {/* Camps secundaris sempre visibles: cejilla, idioma, etiquetes */}

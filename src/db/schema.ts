@@ -12,8 +12,13 @@ export const songs = sqliteTable("songs", {
   content: text("content").notNull(),
   language: text("language").default("ca"),
   tags: text("tags").default(""),
+  album: text("album"),
+  year: integer("year"),
+  youtubeUrl: text("youtube_url"),
+  spotifyUrl: text("spotify_url"),
   draft: integer("draft").default(0),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
 })
 
 // ─── Usuaris ────────────────────────────────────────────────

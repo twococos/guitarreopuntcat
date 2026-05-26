@@ -55,6 +55,38 @@ body {
   overflow: hidden;
 }
 
+/* ── Scrollbars custom ─────────────────────────────────────── */
+/* Estrets per defecte, més amples i visibles en hover. Color
+   coordinat amb el tema (gris fosc semi-transparent). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(60, 60, 60, 0.35) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(60, 60, 60, 0.28);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.15s;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(40, 40, 40, 0.6);
+  background-clip: padding-box;
+}
+/* Hover sobre l'element scrollable → engreixa la barra. Aplicable
+   amb hover sobre tot el contenidor amb scroll. */
+*:hover::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
 /* ── Capçalera ─────────────────────────────────────────────── */
 header {
   height: var(--header-h);
@@ -126,10 +158,27 @@ header .subtitle {
   grid-template-columns: var(--col-songs) 1fr var(--col-detail);
   flex: 1;
   overflow: hidden;
+  position: relative;
   transition: grid-template-columns 0.2s ease;
 }
 #main-layout.no-preview {
-  grid-template-columns: var(--col-songs) 1fr 28px;
+  grid-template-columns: var(--col-songs) 1fr 0;
+}
+
+/* ── Resize handles ────────────────────────────────────────── */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 70;
+  background: transparent;
+  transition: background 0.12s;
+}
+.resize-handle:hover,
+.resize-handle:active {
+  background: rgba(192, 57, 43, 0.25);
 }
 #main-layout > section {
   overflow-y: auto;
@@ -179,7 +228,9 @@ select:focus {
   border-radius: var(--radius);
   padding: 0.55rem 0.75rem;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
   user-select: none;
 }
 #song-list li:hover {
@@ -231,13 +282,32 @@ select:focus {
   min-width: 100px;
   font-weight: 700;
   font-size: 0.95rem;
-  border: none;
+  border: 1px dashed var(--border);
   outline: none;
   background: transparent;
-  padding: 0.2rem 0;
+  padding: 0.32rem 0.55rem;
+  border-radius: 6px;
+  transition:
+    border-color 0.15s,
+    border-style 0.15s,
+    color 0.15s,
+    background 0.15s;
+}
+.canconer-header input:hover {
+  border-color: var(--muted);
 }
 .canconer-header input:focus {
-  border-bottom: 1px solid var(--accent);
+  border-color: var(--accent);
+  border-style: solid;
+  background: #fff;
+}
+.canconer-header input.is-default {
+  color: var(--muted);
+  font-weight: 600;
+}
+.canconer-header input.is-default:focus {
+  color: var(--text);
+  font-weight: 700;
 }
 .canconer-header-actions {
   display: flex;
@@ -258,7 +328,9 @@ select:focus {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
 .btn-icon-action:hover:not(:disabled) {
   border-color: var(--accent);
@@ -268,6 +340,15 @@ select:focus {
 .btn-icon-action:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+.btn-discard {
+  color: var(--muted);
+  padding: 0.32rem 0.55rem;
+}
+.btn-discard:hover:not(:disabled) {
+  border-color: #c0392b;
+  background: #fdecea;
+  color: #c0392b;
 }
 
 #canconer-list {
@@ -280,7 +361,8 @@ select:focus {
   overflow-y: auto;
 }
 #canconer-list li {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr) minmax(0, 38%) auto auto;
   align-items: center;
   gap: 0.4rem;
   padding: 0.45rem 0.6rem;
@@ -289,7 +371,9 @@ select:focus {
   cursor: pointer;
   border: 1px solid var(--border);
   background: var(--surface);
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
   position: relative;
 }
 #canconer-list li:hover {
@@ -310,14 +394,11 @@ select:focus {
 .c-num {
   font-size: 0.68rem;
   color: var(--muted);
-  min-width: 1.4rem;
   text-align: right;
-  flex-shrink: 0;
   font-family: monospace;
 }
 .c-title {
   font-weight: 600;
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -326,8 +407,7 @@ select:focus {
 .c-artist {
   font-size: 0.72rem;
   color: var(--muted);
-  flex-shrink: 0;
-  max-width: 90px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -357,7 +437,9 @@ select:focus {
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.15s, background 0.1s;
+  transition:
+    opacity 0.15s,
+    background 0.1s;
   flex-shrink: 0;
 }
 .c-transpose .c-pm:hover {
@@ -371,14 +453,19 @@ select:focus {
   font-size: 0.72rem;
   color: var(--accent);
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 2px 0;
+  width: 30px;
+  text-align: center;
+  box-sizing: border-box;
   border-radius: 5px;
   border: 1px solid #f0c8c4;
   background: #fdf4f3;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
 .c-key:hover {
   border-color: var(--accent);
@@ -393,7 +480,9 @@ select:focus {
   font-size: 0.85rem;
   padding: 0 2px;
   opacity: 0;
-  transition: opacity 0.12s, color 0.12s;
+  transition:
+    opacity 0.12s,
+    color 0.12s;
   flex-shrink: 0;
 }
 #canconer-list li:hover .c-remove {
@@ -436,7 +525,10 @@ select:focus {
   background: var(--bg);
   cursor: pointer;
   text-align: center;
-  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    color 0.1s;
 }
 .key-menu-grid button:hover {
   background: #fdf4f3;
@@ -449,13 +541,26 @@ select:focus {
   border-color: var(--accent);
 }
 
-/* Mode compacte — column-count omple verticalment */
+/* Mode compacte — column-count omple verticalment.
+   Responsive: el nombre de columnes s'adapta a l'amplada de la finestra
+   (la columna del cançoner ocupa quasi tota la pantalla quan la vista
+   prèvia està plegada). */
 #canconer-grid {
   flex: 1;
   padding: 0.75rem;
   overflow-y: auto;
-  column-count: 4;
+  column-count: 2;
   column-gap: 0.4rem;
+}
+@media (min-width: 900px) {
+  #canconer-grid {
+    column-count: 3;
+  }
+}
+@media (min-width: 1300px) {
+  #canconer-grid {
+    column-count: 4;
+  }
 }
 #canconer-grid .cg-item {
   break-inside: avoid;
@@ -469,7 +574,9 @@ select:focus {
   margin-bottom: 0.3rem;
   border: 1px solid var(--border);
   background: var(--surface);
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
 #canconer-grid .cg-item:hover {
   border-color: var(--accent);
@@ -522,7 +629,9 @@ select:focus {
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.15s, background 0.1s;
+  transition:
+    opacity 0.15s,
+    background 0.1s;
 }
 #canconer-grid .cg-item:hover .cg-transpose .cg-pm {
   opacity: 1;
@@ -538,7 +647,10 @@ select:focus {
   color: var(--accent);
   font-weight: 700;
   flex-shrink: 0;
-  padding: 2px 5px;
+  padding: 2px 0;
+  width: 38px;
+  text-align: center;
+  box-sizing: border-box;
   border-radius: 4px;
   border: 1px solid #f0c8c4;
   background: #fdf4f3;
@@ -547,6 +659,24 @@ select:focus {
 }
 .cg-key:hover {
   border-color: var(--accent);
+}
+
+.cg-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 0 2px;
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity 0.12s, color 0.12s;
+}
+#canconer-grid .cg-item:hover .cg-remove {
+  opacity: 1;
+}
+.cg-remove:hover {
+  color: var(--accent);
 }
 
 /* ── Panell lateral (col 3) ────────────────────────────────── */
@@ -562,24 +692,49 @@ select:focus {
   display: none;
 }
 
-.btn-collapse {
-  width: 28px;
-  flex-shrink: 0;
+/* Botó flotant per a plegar/desplegar la vista prèvia.
+   Rectangular vertical (més alt que ample) amb cantonades arrodonides,
+   centrat verticalment. Viu dins `#main-layout` (no dins `#panel-detail`,
+   que té overflow auto i el tallaria). Ancorat a la vora esquerra del
+   panell de vista prèvia (per això `right: var(--col-detail)`).
+   Quan està plegada, passa a `position: fixed` per flotar a la cantonada
+   dreta del viewport. */
+.preview-toggle {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--col-detail) - 12px);
+  transform: translateY(-50%);
+  width: 24px;
+  height: 56px;
+  border-radius: 8px;
   background: var(--surface);
-  border: none;
-  border-left: 1px solid var(--border);
+  border: 1px solid var(--border);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--muted);
   font-size: 1.1rem;
-  transition: background 0.15s, color 0.15s;
-  order: -1;
+  z-index: 80;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    right 0.2s ease;
 }
-.btn-collapse:hover {
+.preview-toggle:hover {
   background: #fdf4f3;
   color: var(--accent);
+  border-color: var(--accent);
+}
+/* Quan està plegat, `--col-detail` és 0 (gràcies a `.no-preview`), de manera
+   que `right: calc(0 - 12px) = -12px` deixaria el botó fora de pantalla. Aquí
+   l'ancorem una mica cap dins (el botó té 24px d'amplada, així `right: -12px`
+   centra el botó just sobre la vora dreta del viewport). En lloc d'això,
+   forcem `right: 8px` perquè quedi visible amb un petit marge. */
+.preview-toggle.collapsed {
+  right: 8px;
 }
 #collapse-arrow {
   line-height: 1;
@@ -609,7 +764,9 @@ select:focus {
   cursor: pointer;
   color: var(--muted);
   border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
   white-space: nowrap;
 }
 .detail-tab.active {
@@ -634,21 +791,51 @@ select:focus {
 }
 
 #tab-preview {
-  padding: 1.1rem;
-  gap: 1rem;
+  padding: 0;
+  gap: 0;
 }
 
 /* La capçalera, controls de transposició i body de la cançó
    ara els proporciona el component <SongView /> i els seus estils
    viuen a src/styles/song.css. */
 
-#detail-content {
+/* ── Vista prèvia fidedigna A4 ───────────────────────────────
+   El contenidor .preview-viewport té un padding fix i és scroll-
+   able. Dins dibuixem una pàgina A4 a mida real (210×297mm a 96dpi)
+   i li apliquem `transform: scale(...)` perquè encaixi exactament
+   a l'amplada disponible — així el resultat és sempre fidedigne al
+   PDF, només canvia el zoom. */
+.preview-viewport {
   flex: 1;
   overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  overflow-x: hidden;
   padding: 1rem;
+  background: var(--bg);
+}
+.preview-scaler {
+  position: relative;
+  width: 100%;
+}
+.preview-page {
+  background: #fff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.1);
+  /* width/height/padding/transform venen del style inline (JS) */
+}
+/* Columnes del PDF també a la preview, perquè la coincidència sigui
+   completa. Mirroreja la regla equivalent de src/lib/pdf/styles.ts. */
+.preview-page .song-body {
+  column-count: var(--pdf-cols, 1);
+  column-fill: balance;
+  column-gap: 1.2rem;
+}
+.preview-page .song {
+  --song-body-size: calc(0.9rem * var(--pdf-font-scale, 1));
+}
+.preview-page .song-head {
+  break-inside: avoid;
+}
+.preview-page .song-body sec {
+  break-inside: avoid;
 }
 
 /* ── Estat buit ────────────────────────────────────────────── */
@@ -805,7 +992,10 @@ select:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    color 0.12s;
   padding: 0;
   line-height: 1;
 }
@@ -837,7 +1027,10 @@ select:focus {
   border-radius: var(--radius);
   background: var(--bg);
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, opacity 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    opacity 0.12s;
   opacity: 0.42;
 }
 .key-filter-btn.active {
@@ -972,7 +1165,10 @@ select:focus {
   font-weight: 600;
   color: var(--muted);
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    color 0.12s;
 }
 .pdf-cols-btn:hover {
   border-color: var(--accent);
@@ -1134,7 +1330,9 @@ select:focus {
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .btn-login img {
   width: 15px;
@@ -1158,7 +1356,9 @@ select:focus {
   border-radius: var(--radius);
   padding: 0.26rem 0.6rem 0.26rem 0.32rem;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .user-trigger:hover {
   border-color: var(--accent);
@@ -1268,8 +1468,12 @@ select:focus {
   animation: fadeIn 0.18s ease;
 }
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 #auth-popup {
   background: var(--surface);
@@ -1346,7 +1550,9 @@ select:focus {
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: box-shadow 0.15s, border-color 0.15s;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
 }
 #btn-google-login img {
   width: 18px;
@@ -1398,8 +1604,13 @@ select:focus {
   cursor: pointer;
   font-weight: 600;
 }
-.btn-danger:hover:not(:disabled) { background: #a93226; }
-.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-danger:hover:not(:disabled) {
+  background: #a93226;
+}
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btn-ghost {
   background: transparent;
@@ -1409,8 +1620,14 @@ select:focus {
   border-radius: 4px;
   cursor: pointer;
 }
-.btn-ghost:hover:not(:disabled) { background: var(--bg, #f7f7f5); color: #333; }
-.btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-ghost:hover:not(:disabled) {
+  background: var(--bg, #f7f7f5);
+  color: #333;
+}
+.btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ════════════════════════════════════════════════════════════
    2. EDITOR.CSS — pàgina /editor
@@ -1507,7 +1724,9 @@ body:has(#shared-layout) {
   border-radius: 4px;
   background: var(--bg);
   cursor: pointer;
-  transition: background 0.1s, border-color 0.1s;
+  transition:
+    background 0.1s,
+    border-color 0.1s;
 }
 .chord-group-items button:hover {
   background: #fdf4f3;
@@ -1667,7 +1886,9 @@ body:has(#shared-layout) {
   font-weight: 600;
   color: var(--muted);
   margin-bottom: -2px;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -2045,7 +2266,9 @@ tbody tr:hover {
   border-radius: var(--radius);
   cursor: pointer;
   background: var(--bg);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 #mc-list li:hover {
   border-color: var(--accent);
@@ -2187,7 +2410,9 @@ tbody tr:hover {
   font-weight: 600;
   cursor: pointer;
   margin-bottom: 0.4rem;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
   text-align: left;
 }
 .btn-option:hover {
@@ -2234,7 +2459,9 @@ tbody tr:hover {
   color: var(--text);
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
 .btn-outline-sm:hover {
   border-color: var(--accent);
@@ -2384,7 +2611,9 @@ tbody tr:hover {
   color: var(--text);
   padding: 0.3rem 0.5rem;
   border-radius: 4px;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 }
 #shared-index a::before {
   content: counter(idx) ".";
@@ -2495,7 +2724,9 @@ tbody tr:hover {
   border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  transition:
+    background 0.15s,
+    opacity 0.15s;
 }
 
 .btn-start--idle {
@@ -2549,8 +2780,12 @@ tbody tr:hover {
   background: #ddd;
 }
 
-.new-song-divider::before { left: 0; }
-.new-song-divider::after { right: 0; }
+.new-song-divider::before {
+  left: 0;
+}
+.new-song-divider::after {
+  right: 0;
+}
 
 .new-song-divider span {
   background: var(--surface);
@@ -2568,7 +2803,9 @@ tbody tr:hover {
   border-radius: 6px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .btn-manual:hover:not(:disabled) {
@@ -2725,6 +2962,96 @@ tbody tr:hover {
 .more-options-select:focus {
   border-color: var(--accent);
 }
+/* Validació visual d'URLs no vàlides al SongHeader */
+.more-options-input--error {
+  border-color: #c0392b;
+}
+.more-options-input--error:focus {
+  border-color: #c0392b;
+}
+.more-options-error {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: #c0392b;
+}
+
+/* Fila inline al SongHeader: artista · àlbum (any) · cejilla
+   Cada part és clicable per editar-la, similar al títol. */
+.song-meta-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0;
+}
+.song-meta-part {
+  display: inline-block;
+}
+.song-meta-part--editable {
+  cursor: text;
+  padding: 0 3px;
+  border-radius: 3px;
+  border: 1px dashed transparent;
+  transition: border-color 0.15s;
+}
+.song-meta-part--editable:hover {
+  border-color: var(--border, #e5e5e3);
+}
+.song-meta-part--empty {
+  font-style: italic;
+  opacity: 0.55;
+}
+.song-meta-sep {
+  user-select: none;
+  white-space: pre;
+}
+.song-meta-input {
+  font: inherit;
+  color: inherit;
+  background: var(--surface, #fff);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 0 3px;
+  outline: none;
+}
+.song-meta-input--artist {
+  min-width: 8rem;
+}
+.song-meta-input--album {
+  min-width: 6rem;
+}
+.song-meta-input--year {
+  width: 4.5rem;
+}
+
+/* Fila d'enllaços a streaming (YouTube + Spotify) al SongHeader */
+.song-links-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: end;
+  margin-top: 0.5rem;
+}
+
+/* Reproductor YouTube embed sota l'editor (aspect 16:9 fluid) */
+.song-yt-embed {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  margin: 1rem auto 0;
+  padding-bottom: 56.25%;
+  height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+}
+.song-yt-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
 
 /* ── EditorToolbar ──────────────────────────────────────────── */
 .editor-toolbar {
@@ -2769,7 +3096,9 @@ tbody tr:hover {
   font-size: 0.9rem;
   cursor: pointer;
   color: #444;
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
 }
 .toolbar-btn:hover:not(:disabled) {
   border-color: var(--accent);
@@ -3014,7 +3343,9 @@ div[data-block="section"]:hover .wsec {
   font-weight: 600;
   min-width: 3rem;
   text-align: center;
-  transition: border-color 0.12s, color 0.12s;
+  transition:
+    border-color 0.12s,
+    color 0.12s;
 }
 .key-picker-cell:hover {
   border-color: var(--accent);
@@ -3104,7 +3435,10 @@ div[data-block="section"]:hover .wsec {
   cursor: pointer;
   font-size: 0.8rem;
   font-family: monospace;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s;
 }
 .chord-modifier-chip:hover {
   border-color: var(--accent);
@@ -3174,7 +3508,10 @@ div[data-block="section"]:hover .wsec {
   font-size: 0.85rem;
   font-weight: 600;
   text-align: center;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s;
 }
 .chord-menu-chord-btn:hover {
   background: #fae5e1;
@@ -3229,7 +3566,9 @@ div[data-block="section"]:hover .wsec {
   padding: 0.1rem 0.4rem;
   margin: -0.1rem -0.4rem;
   cursor: text;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 .song-title--editable:hover,
 .song-artist--editable:hover {

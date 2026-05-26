@@ -10,7 +10,10 @@ import {
 import {
   SongHeader,
   type SongMetadata,
+  YOUTUBE_URL_REGEX,
+  SPOTIFY_URL_REGEX,
 } from "@/components/editor/SongHeader"
+import { youtubeVideoId } from "@/lib/youtube"
 import { EditorToolbar } from "@/components/editor/EditorToolbar"
 import { ConfirmToast } from "@/components/editor/ConfirmToast"
 import { ProposeInfoPopup } from "@/components/editor/ProposeInfoPopup"
@@ -31,6 +34,10 @@ interface DraftData {
   language?: string
   tags?: string
   content?: string
+  album?: string
+  year?: number | null
+  youtubeUrl?: string
+  spotifyUrl?: string
 }
 
 const DEFAULT_META: SongMetadata = {
@@ -40,6 +47,10 @@ const DEFAULT_META: SongMetadata = {
   capo: 0,
   language: "ca",
   tags: "",
+  album: "",
+  year: null,
+  youtubeUrl: "",
+  spotifyUrl: "",
 }
 
 type ConfirmKind = "reset" | "save" | "accept"
@@ -140,6 +151,10 @@ export default function EditorPage() {
             language: string
             tags: string
             content: string
+            album: string | null
+            year: number | null
+            youtube_url: string | null
+            spotify_url: string | null
           }
           setMeta({
             title: song.title,
@@ -148,6 +163,10 @@ export default function EditorPage() {
             capo: song.capo ?? 0,
             language: song.language ?? "ca",
             tags: song.tags ?? "",
+            album: song.album ?? "",
+            year: song.year,
+            youtubeUrl: song.youtube_url ?? "",
+            spotifyUrl: song.spotify_url ?? "",
           })
           editor.reset(song.content)
         } catch {
@@ -172,6 +191,10 @@ export default function EditorPage() {
             language: string
             tags: string
             content: string
+            album: string | null
+            year: number | null
+            youtube_url: string | null
+            spotify_url: string | null
           }>
         })
         .then((song) => {
@@ -182,6 +205,10 @@ export default function EditorPage() {
             capo: song.capo ?? 0,
             language: song.language ?? "ca",
             tags: song.tags ?? "",
+            album: song.album ?? "",
+            year: song.year,
+            youtubeUrl: song.youtube_url ?? "",
+            spotifyUrl: song.spotify_url ?? "",
           })
           editor.reset(song.content)
         })
@@ -206,6 +233,10 @@ export default function EditorPage() {
               capo: d.capo ?? 0,
               language: d.language ?? "ca",
               tags: d.tags ?? "",
+              album: d.album ?? "",
+              year: d.year ?? null,
+              youtubeUrl: d.youtubeUrl ?? "",
+              spotifyUrl: d.spotifyUrl ?? "",
             })
             if (d.content) {
               editor.reset(d.content)
@@ -248,6 +279,10 @@ export default function EditorPage() {
         language: meta.language,
         tags: meta.tags,
         content: editor.value,
+        album: meta.album,
+        year: meta.year,
+        youtubeUrl: meta.youtubeUrl,
+        spotifyUrl: meta.spotifyUrl,
       }
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
     }, 250)
@@ -274,6 +309,10 @@ export default function EditorPage() {
       capo: data.capo,
       language: data.language,
       tags: data.tags,
+      album: data.album ?? "",
+      year: data.year ?? null,
+      youtubeUrl: data.youtubeUrl ?? "",
+      spotifyUrl: data.spotifyUrl ?? "",
     })
     editor.reset(data.content)
     setShowStartPopup(false)
@@ -300,6 +339,10 @@ export default function EditorPage() {
       content: editor.value.trim(),
       language: meta.language,
       tags: meta.tags.trim(),
+      album: meta.album.trim() || null,
+      year: meta.year,
+      youtubeUrl: meta.youtubeUrl.trim() || null,
+      spotifyUrl: meta.spotifyUrl.trim() || null,
     }
 
     try {
@@ -312,6 +355,8 @@ export default function EditorPage() {
         })
         if (!res.ok) throw new Error()
         useToastStore.getState().show("Cançó actualitzada!", { type: "success" })
+        router.push("/admin?tab=songs")
+        return
       } else if (isAdmin) {
         res = await fetch("/api/songs", {
           method: "POST",
@@ -339,7 +384,7 @@ export default function EditorPage() {
     } catch {
       useToastStore.getState().show("Error en guardar.", { type: "error" })
     }
-  }, [meta, editor.value, isEdit, editId, isAdmin, resetEditor])
+  }, [meta, editor.value, isEdit, editId, isAdmin, resetEditor, router])
 
   // ── Accions de revisió de propostes ─────────────────────────
 
@@ -356,6 +401,10 @@ export default function EditorPage() {
         content: editor.value.trim(),
         language: meta.language,
         tags: meta.tags.trim(),
+        album: meta.album.trim() || null,
+        year: meta.year,
+        youtubeUrl: meta.youtubeUrl.trim(),
+        spotifyUrl: meta.spotifyUrl.trim(),
       },
     }
     try {
@@ -413,6 +462,28 @@ export default function EditorPage() {
         .show("Títol, artista i contingut són obligatoris.", { type: "error" })
       return
     }
+    // Validació de format dels links (si s'han omplert)
+    const yt = meta.youtubeUrl.trim()
+    const sp = meta.spotifyUrl.trim()
+    if (yt && !YOUTUBE_URL_REGEX.test(yt)) {
+      useToastStore.getState().show("Link de YouTube no vàlid.", { type: "error" })
+      return
+    }
+    if (sp && !SPOTIFY_URL_REGEX.test(sp)) {
+      useToastStore.getState().show("Link de Spotify no vàlid.", { type: "error" })
+      return
+    }
+    // Propostes (no-admin): els dos links són obligatoris
+    if (!isAdmin && !isEdit) {
+      if (!yt || !sp) {
+        useToastStore
+          .getState()
+          .show("Cal omplir els links de YouTube i Spotify per a enviar una proposta.", {
+            type: "error",
+          })
+        return
+      }
+    }
     setConfirm({ kind: "save" })
   }
 
@@ -446,8 +517,14 @@ export default function EditorPage() {
 
   async function handleConfirmConfirm() {
     if (confirm?.kind === "reset") {
+      if (isEdit) {
+        // En mode edit, "Descartar canvis" → tornar a /admin sense desar res.
+        setConfirm(null)
+        router.push("/admin?tab=songs")
+        return
+      }
       resetEditor()
-      if (isAdmin && !isEdit) {
+      if (isAdmin) {
         setShowStartPopup(true)
       }
       setConfirm(null)
@@ -518,9 +595,15 @@ export default function EditorPage() {
   let confirmActionLabel = ""
   let confirmVariant: "primary" | "danger" = "primary"
   if (confirm?.kind === "reset") {
-    confirmMessage =
-      "Esborrar tot el progrés? Es perdran títol, artista i contingut."
-    confirmActionLabel = "Sí, esborrar"
+    if (isEdit) {
+      confirmMessage =
+        "Descartar els canvis i tornar al panell admin? Es perdran les modificacions no guardades."
+      confirmActionLabel = "Sí, descartar"
+    } else {
+      confirmMessage =
+        "Esborrar tot el progrés? Es perdran títol, artista i contingut."
+      confirmActionLabel = "Sí, esborrar"
+    }
     confirmVariant = "danger"
   } else if (confirm?.kind === "save") {
     if (isEdit) {
@@ -578,7 +661,7 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
 
       <main className="editor-page">
         <div className="editor-stack">
-          <SongHeader value={meta} onChange={setMeta} />
+          <SongHeader value={meta} onChange={setMeta} isAdmin={isAdmin} />
           <EditorToolbar
             onInsertSection={handleToolbarInsertSection}
             onInsertChord={handleToolbarInsertChord}
@@ -589,6 +672,7 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
             saveLabel={saveButtonText}
             onSave={handleToolbarSave}
             onReset={handleToolbarReset}
+            resetLabel={isEdit ? "Descartar canvis" : "Reset"}
             saving={saving}
             disabledReason={
               !meta.key
@@ -617,6 +701,22 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
                 : undefined
             }
           />
+          {(() => {
+            const yt = meta.youtubeUrl.trim()
+            if (!yt || !YOUTUBE_URL_REGEX.test(yt)) return null
+            const id = youtubeVideoId(yt)
+            if (!id) return null
+            return (
+              <div className="song-yt-embed">
+                <iframe
+                  src={`https://www.youtube.com/embed/${id}`}
+                  title="Reproductor YouTube"
+                  allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            )
+          })()}
         </div>
       </main>
 

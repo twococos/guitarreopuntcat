@@ -1,6 +1,7 @@
 "use client"
-import { useState } from "react"
+import { useLayoutEffect, useRef, useState } from "react"
 import { useSongbookStore, ALL_MAJOR_KEYS, RELATIVE_MINOR } from "@/hooks/useSongbook"
+import { useColumnSizesStore } from "@/hooks/useColumnSizes"
 import { useToastStore } from "@/hooks/useToasts"
 import { SongView } from "@/components/song/SongView"
 import { AccentPicker } from "./AccentPicker"
@@ -10,44 +11,166 @@ import {
   STYLE_DEFAULT_ACCENTS,
   FONT_SCALES,
   FONT_SCALE_LABELS,
+  FONT_SCALE_FACTORS,
   type CanconerStyle,
   type FontScale,
 } from "@/lib/schemas/canconer"
 import type { CSSProperties } from "react"
 
+/** Conversions per dimensionar la pàgina A4 a la preview.
+ *  El PDF s'imprimeix a A4 (210×297mm). Aquí dibuixem el mateix
+ *  a 96 dpi (1mm ≈ 3.7795px). */
+const A4_WIDTH_MM = 210
+const A4_HEIGHT_MM = 297
+const PX_PER_MM = 96 / 25.4
+const A4_WIDTH_PX = A4_WIDTH_MM * PX_PER_MM
+const A4_HEIGHT_PX = A4_HEIGHT_MM * PX_PER_MM
+
+/** Espai reservat per a la capçalera/peu de pàgina al PDF (mm).
+ *  Mirroreja les constants HEADER_AREA_MM / FOOTER_AREA_MM de
+ *  src/lib/pdf/styles.ts perquè la preview tingui els mateixos
+ *  marges efectius que el PDF generat. */
+const HEADER_AREA_MM = 12
+const FOOTER_AREA_MM = 10
+
 /* ── PreviewTab ────────────────────────────────────────────── */
+
+function resolveLinkUrl(
+  platform: "none" | "youtube" | "spotify",
+  yt: string | null,
+  sp: string | null,
+): string | null {
+  if (platform === "none") return null
+  if (platform === "youtube") return yt ?? sp ?? null
+  return sp ?? yt ?? null
+}
 
 function PreviewTab() {
   const canconer = useSongbookStore((s) => s.canconer)
   const selectedIdx = useSongbookStore((s) => s.selectedIdx)
   const canconerStyle = useSongbookStore((s) => s.canconerStyle)
   const accentColor = useSongbookStore((s) => s.accentColor)
+  const pdfOptions = useSongbookStore((s) => s.pdfOptions)
+  // L'amplada de la columna dreta es persisteix al store de mides; usem-lo com
+  // a "tick" perquè el càlcul d'escala també respongui a canvis del store
+  // (per si el ResizeObserver no es dispara per algun motiu en certs entorns).
+  const rightWidth = useColumnSizesStore((s) => s.rightWidth)
+
+  const viewportRef = useRef<HTMLDivElement | null>(null)
+  const [scale, setScale] = useState(1)
 
   const entry = selectedIdx != null ? canconer[selectedIdx] : undefined
 
+  // Calcula l'escala perquè la pàgina A4 encaixi exactament a l'amplada
+  // del contenidor visible. S'amplia si el panell és més ample que A4
+  // i es redueix si és més estret. Recalcula amb ResizeObserver i també
+  // amb un doble rAF al primer render per assegurar que el layout està
+  // ja resolt quan mesurem.
+  //
+  // Depèn de `entry?.song.id` perquè quan se selecciona la primera cançó,
+  // el `.preview-viewport` es munta i necessitem mesurar de nou.
+  useLayoutEffect(() => {
+    const el = viewportRef.current
+    if (!el) return
+    function compute() {
+      if (!el) return
+      const styles = getComputedStyle(el)
+      const padX =
+        parseFloat(styles.paddingLeft || "0") + parseFloat(styles.paddingRight || "0")
+      const inner = Math.max(0, el.clientWidth - padX)
+      if (inner > 0) setScale(inner / A4_WIDTH_PX)
+    }
+    compute()
+    const raf1 = requestAnimationFrame(() => {
+      compute()
+      // Segon rAF: després del primer paint complet
+      requestAnimationFrame(compute)
+    })
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    return () => {
+      cancelAnimationFrame(raf1)
+      ro.disconnect()
+    }
+  }, [rightWidth, entry?.song.id])
+
   if (!entry) {
     return (
-      <div id="detail-empty" className="empty-state">
-        <span>←</span>
-        <p>Selecciona una cançó del cançoner</p>
+      <div id="tab-preview" className="tab-content active">
+        <div className="preview-viewport" ref={viewportRef}>
+          <div id="detail-empty" className="empty-state">
+            <span>←</span>
+            <p>Selecciona una cançó del cançoner</p>
+          </div>
+        </div>
       </div>
     )
   }
 
-  const inlineStyle = accentColor
+  // L'API retorna snake_case (mapSong). Tot i que el tipus `Song` diu
+  // camelCase, els fields reals al runtime són snake_case. Llegim-los així.
+  const songLike = entry.song as unknown as {
+    youtube_url: string | null
+    spotify_url: string | null
+  }
+  const linkUrl = resolveLinkUrl(
+    pdfOptions.link_platform,
+    songLike.youtube_url,
+    songLike.spotify_url,
+  )
+
+  // Marges efectius del PDF (en mm). Mateixos càlculs que styles.ts:
+  // marge usuari + zona reservada per a la capçalera/peu (que pdf-lib pinta).
+  const padTopMm = pdfOptions.margin_top + HEADER_AREA_MM
+  const padBottomMm = pdfOptions.margin_bottom + FOOTER_AREA_MM
+  const padLeftMm = pdfOptions.margin_left
+  const padRightMm = pdfOptions.margin_right
+
+  const pageInlineStyle: CSSProperties = {
+    width: `${A4_WIDTH_PX}px`,
+    minHeight: `${A4_HEIGHT_PX}px`,
+    paddingTop: `${padTopMm}mm`,
+    paddingBottom: `${padBottomMm}mm`,
+    paddingLeft: `${padLeftMm}mm`,
+    paddingRight: `${padRightMm}mm`,
+    transform: `scale(${scale})`,
+    transformOrigin: "top left",
+  }
+  const accentStyle = accentColor
     ? ({ "--accent": accentColor } as CSSProperties)
     : undefined
+  const fontScale = FONT_SCALE_FACTORS[pdfOptions.font_scale]
+  const pageVars = {
+    "--pdf-cols": pdfOptions.columns,
+    "--pdf-font-scale": fontScale,
+    ...accentStyle,
+  } as CSSProperties
+
+  // L'alçada del wrapper extern és l'alçada A4 × scale (perquè el
+  // transform: scale no afecta el flow). Així evitem espai en blanc
+  // a sota i obtenim un scroll vertical correcte.
+  const scaledHeightPx = A4_HEIGHT_PX * scale
 
   return (
     <div id="tab-preview" className="tab-content active">
-      <div id="detail-content" data-style={canconerStyle} style={inlineStyle}>
-        <SongView
-          song={entry.song}
-          semitones={entry.semitones}
-          number={selectedIdx! + 1}
-          styleVariant={canconerStyle}
-          accentColor={accentColor}
-        />
+      <div className="preview-viewport" ref={viewportRef}>
+        <div className="preview-scaler" style={{ height: scaledHeightPx }}>
+          <div
+            className="preview-page song-page"
+            data-style={canconerStyle}
+            style={{ ...pageInlineStyle, ...pageVars }}
+          >
+            <SongView
+              song={entry.song}
+              semitones={entry.semitones}
+              number={selectedIdx! + 1}
+              styleVariant={canconerStyle}
+              accentColor={accentColor}
+              titleLinkUrl={linkUrl}
+              qrUrl={pdfOptions.show_qr ? linkUrl : null}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -300,6 +423,41 @@ function PdfFormatSection() {
           />
         </label>
       </div>
+
+      <h4 className="options-subsection">Enllaços i QR</h4>
+      <label className="opt-row">
+        <span>Enllaç clicable:</span>
+        <select
+          className="opt-select"
+          value={opts.link_platform}
+          onChange={(e) =>
+            setOpt(
+              "link_platform",
+              e.target.value as "none" | "youtube" | "spotify",
+            )
+          }
+        >
+          <option value="none">Cap</option>
+          <option value="youtube">YouTube</option>
+          <option value="spotify">Spotify</option>
+        </select>
+      </label>
+      <p className="opt-hint">
+        En clicar la capçalera d&apos;una cançó al PDF s&apos;obrirà l&apos;enllaç de la plataforma triada
+        (amb fallback automàtic a l&apos;altra si una cançó no en té).
+      </p>
+      <label className="opt-row">
+        <input
+          type="checkbox"
+          checked={opts.show_qr}
+          onChange={(e) => setOpt("show_qr", e.target.checked)}
+          disabled={opts.link_platform === "none"}
+        />
+        <span>Mostrar codi QR a cada capçalera</span>
+      </label>
+      <p className="opt-hint">
+        Genera un QR a la dreta de la capçalera apuntant al mateix enllaç. Útil per a la versió impresa.
+      </p>
     </div>
   )
 }
@@ -350,19 +508,10 @@ function OptionsTab() {
 
 export function DetailPanel() {
   const previewActive = useSongbookStore((s) => s.previewActive)
-  const togglePreviewActive = useSongbookStore((s) => s.togglePreviewActive)
   const [activeTab, setActiveTab] = useState<"preview" | "options">("preview")
 
   return (
     <section id="panel-detail">
-      <button
-        id="btn-collapse-panel"
-        className="btn-collapse"
-        title="Amagar/mostrar panell"
-        onClick={togglePreviewActive}
-      >
-        <span id="collapse-arrow">{previewActive ? "›" : "‹"}</span>
-      </button>
       {previewActive && (
         <div id="panel-detail-inner">
           <div className="detail-tabs">
@@ -384,5 +533,24 @@ export function DetailPanel() {
         </div>
       )}
     </section>
+  )
+}
+
+/** Botó flotant per plegar/desplegar la vista prèvia, posicionat
+ *  per fora de `#panel-detail` (que té `overflow:auto` i el tallaria).
+ *  Quan està plegat, el seu CSS el converteix en `position: fixed` per
+ *  flotar a la cantonada dreta del viewport. */
+export function PreviewToggleButton() {
+  const previewActive = useSongbookStore((s) => s.previewActive)
+  const togglePreviewActive = useSongbookStore((s) => s.togglePreviewActive)
+  return (
+    <button
+      id="btn-collapse-panel"
+      className={`preview-toggle${previewActive ? "" : " collapsed"}`}
+      title={previewActive ? "Amagar vista prèvia" : "Mostrar vista prèvia"}
+      onClick={togglePreviewActive}
+    >
+      <span id="collapse-arrow">{previewActive ? "›" : "‹"}</span>
+    </button>
   )
 }

@@ -2,11 +2,7 @@ import "server-only"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { PDFDocument, StandardFonts, rgb, type RGB } from "pdf-lib"
-import {
-  type PdfOptions,
-  type CanconerStyle,
-  STYLE_DEFAULT_ACCENTS,
-} from "@/lib/schemas/canconer"
+import { type PdfOptions, type CanconerStyle, STYLE_DEFAULT_ACCENTS } from "@/lib/schemas/canconer"
 import type { SongAnchor, TocAnchor } from "./generate"
 
 /**
@@ -72,7 +68,10 @@ const PX_TO_PT = 0.75 // 1 px (96 dpi) = 0.75 pt
 function hexToRgb(hex: string): RGB {
   let h = hex.replace("#", "")
   if (h.length === 3) {
-    h = h.split("").map((c) => c + c).join("")
+    h = h
+      .split("")
+      .map((c) => c + c)
+      .join("")
   }
   const r = parseInt(h.slice(0, 2), 16) / 255
   const g = parseInt(h.slice(2, 4), 16) / 255
@@ -151,7 +150,7 @@ export async function addHeaderFooter(
   const TEXT_COLOR = rgb(0.35, 0.35, 0.35)
   const LINE_COLOR = rgb(0.6, 0.6, 0.6)
   const FONT_SIZE = 9
-  const LOGO_HEIGHT = 14 // pt
+  const LOGO_HEIGHT = 28 // pt
 
   // Refresca pages (pot haver-se modificat amb la insertPage)
   const pages = pdfDoc.getPages()
@@ -168,7 +167,9 @@ export async function addHeaderFooter(
   const firstSongFinalPage =
     songAnchorsAdjusted.length > 0
       ? Math.min(...songAnchorsAdjusted.map((a) => a.page))
-      : (hasCover ? 2 : 1)
+      : hasCover
+        ? 2
+        : 1
   const startIdx = firstSongFinalPage - 1 // 1-indexed → 0-indexed
 
   // ── Capçaleres i peus a totes les pàgines de cançons ─────
@@ -240,9 +241,7 @@ export async function addHeaderFooter(
 
     let pageNumX: number
     if (options.book_format) {
-      pageNumX = isOdd
-        ? width - marginRightPt - pageNumWidth
-        : marginLeftPt
+      pageNumX = isOdd ? width - marginRightPt - pageNumWidth : marginLeftPt
     } else {
       pageNumX = (width - pageNumWidth) / 2
     }
@@ -333,7 +332,7 @@ function drawBranding(
     x -= logoW
     page.drawImage(logoImg, {
       x,
-      y: opts.y - 2,
+      y: opts.y - 10,
       width: logoW,
       height: opts.logoHeight,
     })
@@ -363,7 +362,7 @@ function drawBrandingLeft(
     const logoW = logoImg.width * logoScale
     page.drawImage(logoImg, {
       x,
-      y: opts.y - 2,
+      y: opts.y - 10,
       width: logoW,
       height: opts.logoHeight,
     })

@@ -47,6 +47,39 @@ export const acordsCatala: Importer = {
     const lines = extractLines(pre)
     const { content, detectedKey } = buildContent(lines)
 
+    // ── Metadades opcionals (best-effort) ──
+    let youtubeUrl: string | undefined
+    let spotifyUrl: string | undefined
+
+    try {
+      // Cerquem og:video que pot contenir un embed de YouTube
+      const ogVideo = root.querySelector('meta[property="og:video"]')
+      const ogVideoUrl = ogVideo?.getAttribute("content") ?? ""
+      if (ogVideoUrl) {
+        const yt = extractYoutubeUrl(ogVideoUrl)
+        if (yt) youtubeUrl = yt
+      }
+    } catch { /* best-effort */ }
+
+    try {
+      // Cerquem iframes de YouTube
+      if (!youtubeUrl) {
+        for (const iframe of root.querySelectorAll("iframe")) {
+          const src = iframe.getAttribute("src") ?? ""
+          const yt = extractYoutubeUrl(src)
+          if (yt) { youtubeUrl = yt; break }
+        }
+      }
+    } catch { /* best-effort */ }
+
+    try {
+      // Cerquem links a Spotify
+      for (const a of root.querySelectorAll("a")) {
+        const href = a.getAttribute("href") ?? ""
+        if (href.includes("open.spotify.com")) { spotifyUrl = href; break }
+      }
+    } catch { /* best-effort */ }
+
     return {
       title: title || "Sense títol",
       artist: artist || "Desconegut",
@@ -55,6 +88,8 @@ export const acordsCatala: Importer = {
       language: "ca",
       tags: "",
       content,
+      ...(youtubeUrl !== undefined && { youtubeUrl }),
+      ...(spotifyUrl !== undefined && { spotifyUrl }),
     }
   },
 }
@@ -478,6 +513,22 @@ function keyFromFirstChord(chord: string): string {
 }
 
 /* ──────────────────────────── Helpers ──────────────────────────── */
+
+/**
+ * Intenta extreure un ID de YouTube de qualsevol forma d'URL coneguda i
+ * retorna la URL canònica watch?v=. Retorna undefined si no ho pot fer.
+ */
+function extractYoutubeUrl(raw: string): string | undefined {
+  if (!raw) return undefined
+  // youtube.com/embed/ID  o  youtube.com/watch?v=ID
+  const embedM = /youtube\.com\/embed\/([A-Za-z0-9_-]{11})/.exec(raw)
+  if (embedM) return `https://www.youtube.com/watch?v=${embedM[1]}`
+  const watchM = /youtube\.com\/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{11})/.exec(raw)
+  if (watchM) return `https://www.youtube.com/watch?v=${watchM[1]}`
+  const shortM = /youtu\.be\/([A-Za-z0-9_-]{11})/.exec(raw)
+  if (shortM) return `https://www.youtube.com/watch?v=${shortM[1]}`
+  return undefined
+}
 
 function textOf(el: HTMLElement | null): string {
   if (!el) return ""

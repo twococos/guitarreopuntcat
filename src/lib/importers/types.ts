@@ -17,6 +17,14 @@ export interface ImportResult {
   tags: string
   /** Contingut ja amb tags <sec> i <ch> aplicats. */
   content: string
+  /** Àlbum si es detecta. */
+  album?: string
+  /** Any de publicació (4 dígits). */
+  year?: number
+  /** URL a un vídeo de YouTube de la cançó si es detecta. */
+  youtubeUrl?: string
+  /** URL a un track/episode de Spotify si es detecta. */
+  spotifyUrl?: string
 }
 
 export interface Importer {

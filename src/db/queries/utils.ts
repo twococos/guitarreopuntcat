@@ -23,8 +23,13 @@ export function mapSong(song: {
   content: string
   language: string | null
   tags: string | null
+  album: string | null
+  year: number | null
+  youtubeUrl: string | null
+  spotifyUrl: string | null
   draft: number | null
   createdAt: string | null
+  updatedAt: string | null
 }) {
   return {
     id: song.id,
@@ -35,12 +40,17 @@ export function mapSong(song: {
     content: song.content,
     language: song.language ?? "ca",
     tags: song.tags ?? "",
+    album: song.album,
+    year: song.year,
+    youtube_url: song.youtubeUrl,
+    spotify_url: song.spotifyUrl,
     draft: song.draft ?? 0,
     created_at: song.createdAt,
+    updated_at: song.updatedAt,
   }
 }
 
-/** Song summary sense content ni draft ni created_at */
+/** Song summary sense content ni draft */
 export function mapSongSummary(song: {
   id: number
   title: string
@@ -49,6 +59,10 @@ export function mapSongSummary(song: {
   capo: number | null
   language: string | null
   tags: string | null
+  album: string | null
+  year: number | null
+  youtubeUrl: string | null
+  spotifyUrl: string | null
 }) {
   return {
     id: song.id,
@@ -58,6 +72,10 @@ export function mapSongSummary(song: {
     capo: song.capo ?? 0,
     language: song.language ?? "ca",
     tags: song.tags ?? "",
+    album: song.album,
+    year: song.year,
+    youtube_url: song.youtubeUrl,
+    spotify_url: song.spotifyUrl,
   }
 }
 

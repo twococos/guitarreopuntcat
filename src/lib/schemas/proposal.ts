@@ -8,6 +8,16 @@ export const proposalInputSchema = z.object({
   content: z.string().min(1),
   language: z.string().default("ca"),
   tags: z.string().default(""),
+  album: z.string().max(200).nullable().optional(),
+  year: z.number().int().min(1000).max(2100).nullable().optional(),
+  youtubeUrl: z
+    .string()
+    .min(1, "Link de YouTube obligatori")
+    .regex(/^https?:\/\/([^/]+\.)?(youtube\.com|youtu\.be)\//, "URL de YouTube no vàlida"),
+  spotifyUrl: z
+    .string()
+    .min(1, "Link de Spotify obligatori")
+    .regex(/^https?:\/\/open\.spotify\.com\//, "URL de Spotify no vàlida"),
 })
 
 export type ProposalInput = z.infer<typeof proposalInputSchema>

@@ -52,14 +52,49 @@
 
 /* ── Capçalera: número + títol/artista + tonalitat ────── */
 
+/* Wrapper que conté el header i, opcionalment, el QR a la dreta.
+   El QR queda FORA del header perquè la línia (border-bottom) del
+   header acabi just abans del QR, no a sota. */
+.song-head-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
 .song-head {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   border-bottom: 2px solid var(--song-head-border);
   padding-bottom: 0.6rem;
-  margin-bottom: 1rem;
+}
+
+/* Codi QR opcional, ancorat a la dreta de tot, fora del header. */
+.song-qr {
+  width: 60px;
+  aspect-ratio: 1;
+  flex-shrink: 0;
+  align-self: center;
+  display: inline-flex;
+  text-decoration: none;
+  color: inherit;
+}
+.song-qr svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Títol clicable (només quan hi ha link de streaming triat al PDF
+   o cançoner). Hereta color i decoració del títol. */
+.song-title-link,
+.song-title-link:visited,
+.song-title-link:hover {
+  color: inherit;
+  text-decoration: none;
 }
 
 .song-number {

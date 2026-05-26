@@ -1,7 +1,14 @@
-import { eq, like, or, asc, desc, and } from "drizzle-orm"
+import { eq, like, or, asc, desc, and, sql } from "drizzle-orm"
 import { db, schema } from "@/db/client"
 import { mapSong, mapSongSummary } from "./utils"
 import type { SongQuery } from "@/lib/schemas/song"
+
+// Camps que disparen actualització de updated_at en fer updateSong.
+// `draft` no està a la llista: només volem traçar canvis de contingut.
+const SONG_CONTENT_KEYS = [
+  "title", "artist", "key", "capo", "content", "language", "tags",
+  "album", "year", "youtubeUrl", "spotifyUrl",
+] as const
 
 // ─── GET /api/songs ──────────────────────────────────────────
 
@@ -47,6 +54,10 @@ export async function listSongs(query: SongQuery) {
       capo: schema.songs.capo,
       language: schema.songs.language,
       tags: schema.songs.tags,
+      album: schema.songs.album,
+      year: schema.songs.year,
+      youtubeUrl: schema.songs.youtubeUrl,
+      spotifyUrl: schema.songs.spotifyUrl,
     })
     .from(schema.songs)
     .where(and(...conditions))
@@ -78,6 +89,10 @@ export async function createSong(data: {
   content: string
   language: string
   tags: string
+  album?: string | null
+  year?: number | null
+  youtubeUrl?: string | null
+  spotifyUrl?: string | null
 }) {
   const result = db
     .insert(schema.songs)
@@ -89,6 +104,10 @@ export async function createSong(data: {
       content: data.content,
       language: data.language,
       tags: data.tags,
+      album: data.album ?? null,
+      year: data.year ?? null,
+      youtubeUrl: data.youtubeUrl ?? null,
+      spotifyUrl: data.spotifyUrl ?? null,
       draft: 0,
     })
     .run()
@@ -108,12 +127,21 @@ export async function updateSong(
     content: string
     language: string
     tags: string
+    album: string | null
+    year: number | null
+    youtubeUrl: string | null
+    spotifyUrl: string | null
     draft: number
   }>,
 ) {
+  const touchesContent = SONG_CONTENT_KEYS.some((k) => k in data)
+  const updates = touchesContent
+    ? { ...data, updatedAt: sql`(datetime('now'))` }
+    : data
+
   const result = db
     .update(schema.songs)
-    .set(data)
+    .set(updates)
     .where(eq(schema.songs.id, id))
     .run()
 

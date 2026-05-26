@@ -12,8 +12,10 @@ interface EditorToolbarProps {
   saveLabel: string
   /** Callback quan l'usuari clica Guardar/Proposar. El pare ha de demanar confirmació via toast. */
   onSave: () => void
-  /** Callback quan l'usuari clica Reset. El pare ha de demanar confirmació via toast. */
+  /** Callback quan l'usuari clica Reset/Descartar. El pare ha de demanar confirmació via toast. */
   onReset: () => void
+  /** Etiqueta del botó esquerre. Default: "Reset". En mode edit, "Descartar canvis". */
+  resetLabel?: string
   /** Si està en disabled state mentre es guarda */
   saving?: boolean
   /**
@@ -42,6 +44,7 @@ export function EditorToolbar({
   saveLabel,
   onSave,
   onReset,
+  resetLabel = "Reset",
   saving = false,
   disabledReason,
   mode = "normal",
@@ -125,11 +128,11 @@ export function EditorToolbar({
             <button
               type="button"
               className="toolbar-btn"
-              title="Restablir tot el contingut"
+              title={resetLabel === "Reset" ? "Restablir tot el contingut" : resetLabel}
               onClick={onReset}
               disabled={saving}
             >
-              ⟳ Reset
+              ⟳ {resetLabel}
             </button>
             <button
               type="button"

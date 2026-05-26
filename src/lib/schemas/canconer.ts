@@ -84,6 +84,8 @@ export const pdfOptionsSchema = z.object({
   margin_bottom: z.number().min(0).max(50).default(20),
   margin_left: z.number().min(0).max(50).default(18),
   font_scale: z.enum(FONT_SCALES).default("normal"),
+  link_platform: z.enum(["none", "youtube", "spotify"]).default("none"),
+  show_qr: z.boolean().default(false),
 })
 
 export type PdfOptions = z.infer<typeof pdfOptionsSchema>

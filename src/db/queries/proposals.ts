@@ -85,6 +85,10 @@ export async function createProposal(userId: number, data: ProposalInput) {
         content: data.content,
         language: data.language,
         tags: data.tags,
+        album: data.album ?? null,
+        year: data.year ?? null,
+        youtubeUrl: data.youtubeUrl,
+        spotifyUrl: data.spotifyUrl,
         draft: 1,
       })
       .run()
@@ -144,12 +148,21 @@ export async function reviewProposal(
             content: cleanupContent(songUpdate.content),
             language: songUpdate.language,
             tags: songUpdate.tags,
+            album: songUpdate.album ?? null,
+            year: songUpdate.year ?? null,
+            youtubeUrl: songUpdate.youtubeUrl,
+            spotifyUrl: songUpdate.spotifyUrl,
             draft: 0,
+            updatedAt: sql`(datetime('now'))`,
           })
           .where(eq(schema.songs.id, proposal.songId))
           .run()
       } else {
-        tx.update(schema.songs).set({ draft: 0 }).where(eq(schema.songs.id, proposal.songId)).run()
+        tx
+          .update(schema.songs)
+          .set({ draft: 0, updatedAt: sql`(datetime('now'))` })
+          .where(eq(schema.songs.id, proposal.songId))
+          .run()
       }
     } else {
       tx.delete(schema.songs).where(eq(schema.songs.id, proposal.songId)).run()

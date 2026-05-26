@@ -150,6 +150,24 @@ export interface SongbookState {
 
   /** Marcar que ha estat guardat (després de POST OK). */
   markSaved: (id: number) => void
+
+  /**
+   * Descarta el cançoner en curs: torna tot l'estat editable als valors
+   * per defecte (canconer buit, títol "El meu cançoner", estil/color/opcions
+   * inicials) i oblida `savedCanconerId`. No toca el catàleg de cançons ni
+   * els filtres de la columna esquerra.
+   */
+  resetCanconer: () => void
+}
+
+/** Clau de sessionStorage on es persisteix el cançoner en curs. */
+export const IN_PROGRESS_STORAGE_KEY = "canconer_in_progress"
+
+export const DEFAULT_CANCONER_TITLE = "El meu cançoner"
+
+/** Comprova si el títol és el "per defecte" (per estilar-lo en gris). */
+export function isDefaultCanconerTitle(title: string): boolean {
+  return /^El meu cançoner( \d+)?$/.test(title.trim())
 }
 
 /* ── Ordenació interna del cançoner ─────────────────────── */
@@ -208,7 +226,7 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
   allowedKeys: new Set(ALL_MAJOR_KEYS),
   keyMenu: null,
   savedCanconerId: null,
-  canconerTitle: "El meu cançoner",
+  canconerTitle: DEFAULT_CANCONER_TITLE,
   canconerStyle: "classic",
   accentColor: null,
   pdfOptions: PDF_OPTIONS_DEFAULTS,
@@ -450,5 +468,22 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
 
   markSaved(id) {
     set({ savedCanconerId: id })
+  },
+
+  resetCanconer() {
+    set({
+      canconer: [],
+      selectedIdx: null,
+      canconerTitle: DEFAULT_CANCONER_TITLE,
+      canconerStyle: "classic",
+      accentColor: null,
+      pdfOptions: PDF_OPTIONS_DEFAULTS,
+      savedCanconerId: null,
+      sortMode: "custom",
+      sortAsc: true,
+    })
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(IN_PROGRESS_STORAGE_KEY)
+    }
   },
 }))
