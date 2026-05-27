@@ -6,7 +6,7 @@ interface SongRow {
   title: string
   artist: string
   key: string
-  draft: number | null
+  state: number
 }
 
 export function SongsTab() {
@@ -89,8 +89,8 @@ export function SongsTab() {
                 <td>{s.artist}</td>
                 <td style={{ fontFamily: "monospace" }}>{s.key}</td>
                 <td>
-                  <span className={`badge ${s.draft ? "badge-draft" : "badge-public"}`}>
-                    {s.draft ? "Esborrany" : "Pública"}
+                  <span className={`badge ${s.state === 0 ? "badge-public" : "badge-draft"}`}>
+                    {s.state === 0 ? "Pública" : s.state === 2 ? "Pendent" : s.state === 3 ? "Rebutjada" : s.state === 4 ? "Cancel·lada" : "Privada"}
                   </span>
                 </td>
                 <td className="td-actions">

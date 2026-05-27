@@ -37,11 +37,31 @@ export async function listCanconersByUser(userId: number) {
 
 // ─── GET /api/canconers/[id] ─────────────────────────────────
 
-export async function getCanconerById(id: number, userId: number) {
+/** Retorna el cançoner amb les seves cançons i el nom del propietari.
+ *  Si `userId` és definit, afegeix un filtre d'ownership (el cançoner
+ *  ha de pertànyer a l'usuari). Si és undefined, no es comprova (ús admin).
+ */
+async function getCanconerByIdInternal(id: number, userId?: number) {
+  const whereClause = userId !== undefined
+    ? and(eq(schema.canconers.id, id), eq(schema.canconers.userId, userId))
+    : eq(schema.canconers.id, id)
+
   const [canconer] = await db
-    .select()
+    .select({
+      id: schema.canconers.id,
+      userId: schema.canconers.userId,
+      title: schema.canconers.title,
+      shareToken: schema.canconers.shareToken,
+      style: schema.canconers.style,
+      accentColor: schema.canconers.accentColor,
+      pdfOptions: schema.canconers.pdfOptions,
+      createdAt: schema.canconers.createdAt,
+      updatedAt: schema.canconers.updatedAt,
+      ownerName: schema.users.name,
+    })
     .from(schema.canconers)
-    .where(and(eq(schema.canconers.id, id), eq(schema.canconers.userId, userId)))
+    .innerJoin(schema.users, eq(schema.users.id, schema.canconers.userId))
+    .where(whereClause)
     .limit(1)
 
   if (!canconer) return null
@@ -60,7 +80,7 @@ export async function getCanconerById(id: number, userId: number) {
       year: schema.songs.year,
       youtubeUrl: schema.songs.youtubeUrl,
       spotifyUrl: schema.songs.spotifyUrl,
-      draft: schema.songs.draft,
+      state: schema.songs.state,
       createdAt: schema.songs.createdAt,
       updatedAt: schema.songs.updatedAt,
       semitones: schema.canconerSongs.semitones,
@@ -73,12 +93,27 @@ export async function getCanconerById(id: number, userId: number) {
 
   return {
     ...mapCanconer(canconer),
+    owner_name: canconer.ownerName,
     songs: songRows.map((s) => ({
       ...mapSong(s),
       semitones: s.semitones ?? 0,
       position: s.position,
     })),
   }
+}
+
+/** Retorna el cançoner del propietari especificat (amb ownership check).
+ *  Retorna null si no existeix o si no pertany a l'usuari.
+ */
+export async function getCanconerById(id: number, userId: number) {
+  return getCanconerByIdInternal(id, userId)
+}
+
+/** Retorna qualsevol cançoner per id, sense restricció d'usuari.
+ *  Ús exclusiu per a administradors.
+ */
+export async function getCanconerByIdForAdmin(id: number) {
+  return getCanconerByIdInternal(id, undefined)
 }
 
 // ─── GET /api/canconers/shared/[token] ───────────────────────
@@ -118,7 +153,7 @@ export async function getCanconerByToken(token: string) {
       year: schema.songs.year,
       youtubeUrl: schema.songs.youtubeUrl,
       spotifyUrl: schema.songs.spotifyUrl,
-      draft: schema.songs.draft,
+      state: schema.songs.state,
       createdAt: schema.songs.createdAt,
       updatedAt: schema.songs.updatedAt,
       semitones: schema.canconerSongs.semitones,
@@ -145,15 +180,15 @@ export async function getCanconerByToken(token: string) {
 export async function saveOrUpdateCanconer(userId: number, data: CanconerSave) {
   const { id, title, style, accent_color, pdf_options, songs } = data
 
-  // Validate all songs exist and are public (draft=0)
+  // Validar que totes les cançons existeixen i són públiques (state=0)
   for (const s of songs) {
     const [song] = await db
-      .select({ id: schema.songs.id, draft: schema.songs.draft })
+      .select({ id: schema.songs.id, state: schema.songs.state })
       .from(schema.songs)
       .where(eq(schema.songs.id, s.id))
       .limit(1)
 
-    if (!song || (song.draft ?? 0) !== 0) {
+    if (!song || song.state !== 0) {
       throw new Error("Alguna cançó no existeix o no és pública")
     }
   }

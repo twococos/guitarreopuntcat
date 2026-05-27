@@ -7,12 +7,12 @@ export async function getStats() {
   const [songsRow] = await db
     .select({ count: sql<number>`COUNT(*)`.as("c") })
     .from(schema.songs)
-    .where(eq(schema.songs.draft, 0))
+    .where(eq(schema.songs.state, 0))
 
   const [draftsRow] = await db
     .select({ count: sql<number>`COUNT(*)`.as("c") })
     .from(schema.songs)
-    .where(eq(schema.songs.draft, 1))
+    .where(eq(schema.songs.state, 2))
 
   const [usersRow] = await db
     .select({ count: sql<number>`COUNT(*)`.as("c") })

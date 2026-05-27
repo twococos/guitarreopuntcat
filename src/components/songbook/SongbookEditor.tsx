@@ -60,7 +60,7 @@ export function SongbookEditor() {
     loadSongs()
 
     // Prioritats de càrrega:
-    // 1) "load_canconer" (one-shot des de /my-canconers) — màxima prioritat.
+    // 1) "load_canconer" (one-shot des de /library) — màxima prioritat.
     // 2) "canconer_in_progress" (autoguardat de sessió anterior).
     // 3) Estat per defecte, amb títol generat segons cançoners existents.
     const loadRaw = sessionStorage.getItem("load_canconer")

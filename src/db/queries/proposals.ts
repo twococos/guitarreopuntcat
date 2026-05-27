@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm"
+import { and, eq, ne, sql } from "drizzle-orm"
 import { db, schema } from "@/db/client"
 import type { ProposalInput } from "@/lib/schemas/proposal"
 import { cleanupContent } from "@/lib/importers/cleanupContent"
@@ -18,6 +18,7 @@ export async function listProposals(isAdmin: boolean, userId: number) {
       notes: schema.songProposals.notes,
       createdAt: schema.songProposals.createdAt,
       reviewedAt: schema.songProposals.reviewedAt,
+      resubmittedAt: schema.songProposals.resubmittedAt,
       songTitle: schema.songs.title,
       songArtist: schema.songs.artist,
       proposerName: schema.users.name,
@@ -30,9 +31,13 @@ export async function listProposals(isAdmin: boolean, userId: number) {
   // We need reviewer name via a subquery / raw sql approach because Drizzle
   // doesn't support aliased self-joins cleanly with the typed API.
   // We'll fetch reviewer names separately.
+  // Per a no-admins: exclou propostes cancel·lades (l'usuari les ha descartat).
   const whereClause = isAdmin
     ? undefined
-    : eq(schema.songProposals.userId, userId)
+    : and(
+        eq(schema.songProposals.userId, userId),
+        ne(schema.songProposals.status, "cancelled"),
+      )
 
   const rows = whereClause
     ? await proposer.where(whereClause).orderBy(sql`${schema.songProposals.createdAt} DESC`)
@@ -60,6 +65,7 @@ export async function listProposals(isAdmin: boolean, userId: number) {
     notes: r.notes,
     created_at: r.createdAt,
     reviewed_at: r.reviewedAt,
+    resubmitted_at: r.resubmittedAt,
     song_title: r.songTitle,
     song_artist: r.songArtist,
     proposer_name: r.proposerName,
@@ -89,7 +95,7 @@ export async function createProposal(userId: number, data: ProposalInput) {
         year: data.year ?? null,
         youtubeUrl: data.youtubeUrl,
         spotifyUrl: data.spotifyUrl,
-        draft: 1,
+        state: 2, // pendent de revisió
       })
       .run()
 
@@ -152,7 +158,7 @@ export async function reviewProposal(
             year: songUpdate.year ?? null,
             youtubeUrl: songUpdate.youtubeUrl,
             spotifyUrl: songUpdate.spotifyUrl,
-            draft: 0,
+            state: 0, // pública
             updatedAt: sql`(datetime('now'))`,
           })
           .where(eq(schema.songs.id, proposal.songId))
@@ -160,16 +166,120 @@ export async function reviewProposal(
       } else {
         tx
           .update(schema.songs)
-          .set({ draft: 0, updatedAt: sql`(datetime('now'))` })
+          .set({ state: 0, updatedAt: sql`(datetime('now'))` }) // pública
           .where(eq(schema.songs.id, proposal.songId))
           .run()
       }
     } else {
-      tx.delete(schema.songs).where(eq(schema.songs.id, proposal.songId)).run()
+      // Rebutjada: la cançó es conserva amb state=3 perquè el propietari
+      // pugui modificar-la i re-enviar la proposta.
+      tx
+        .update(schema.songs)
+        .set({ state: 3, updatedAt: sql`(datetime('now'))` })
+        .where(eq(schema.songs.id, proposal.songId))
+        .run()
     }
   })
 
   return { ok: true }
+}
+
+// ─── POST /api/proposals/[id]/cancel ─────────────────────────
+// L'usuari propietari descarta la seva proposta. La cançó passa a
+// state=4 (cancel·lada) i la proposta a status="cancelled". La proposta
+// queda visible al panell admin però desapareix de la llista de l'usuari.
+
+export async function cancelProposal(proposalId: number, userId: number) {
+  const [proposal] = await db
+    .select()
+    .from(schema.songProposals)
+    .where(eq(schema.songProposals.id, proposalId))
+    .limit(1)
+
+  if (!proposal) return { error: "Proposta no trobada", status: 404 as const }
+  if (proposal.userId !== userId) return { error: "No autoritzat", status: 403 as const }
+  if (proposal.status !== "pending" && proposal.status !== "rejected") {
+    return { error: "Aquesta proposta no es pot cancel·lar", status: 400 as const }
+  }
+
+  db.transaction((tx) => {
+    tx
+      .update(schema.songProposals)
+      .set({ status: "cancelled" })
+      .where(eq(schema.songProposals.id, proposalId))
+      .run()
+
+    tx
+      .update(schema.songs)
+      .set({ state: 4, updatedAt: sql`(datetime('now'))` })
+      .where(eq(schema.songs.id, proposal.songId))
+      .run()
+  })
+
+  return { ok: true as const }
+}
+
+// ─── PUT /api/proposals/[id] ─────────────────────────────────
+// L'usuari propietari modifica la seva proposta (pending o rejected) i la
+// torna a enviar. La cançó s'actualitza i la proposta torna a status="pending".
+// Si la proposta venia de "rejected", omplim resubmittedAt perquè els admins
+// la puguin marcar visualment com a re-enviada.
+
+export async function resubmitProposal(
+  proposalId: number,
+  userId: number,
+  data: ProposalInput,
+) {
+  const [proposal] = await db
+    .select()
+    .from(schema.songProposals)
+    .where(eq(schema.songProposals.id, proposalId))
+    .limit(1)
+
+  if (!proposal) return { error: "Proposta no trobada", status: 404 as const }
+  if (proposal.userId !== userId) return { error: "No autoritzat", status: 403 as const }
+  if (proposal.status !== "pending" && proposal.status !== "rejected") {
+    return { error: "Aquesta proposta no es pot modificar", status: 400 as const }
+  }
+
+  const wasRejected = proposal.status === "rejected"
+  const now = new Date().toISOString().replace("T", " ").slice(0, 19)
+
+  db.transaction((tx) => {
+    tx
+      .update(schema.songs)
+      .set({
+        title: data.title,
+        artist: data.artist,
+        key: data.key,
+        capo: data.capo,
+        content: cleanupContent(data.content),
+        language: data.language,
+        tags: data.tags,
+        album: data.album ?? null,
+        year: data.year ?? null,
+        youtubeUrl: data.youtubeUrl,
+        spotifyUrl: data.spotifyUrl,
+        state: 2, // pendent
+        updatedAt: sql`(datetime('now'))`,
+      })
+      .where(eq(schema.songs.id, proposal.songId))
+      .run()
+
+    tx
+      .update(schema.songProposals)
+      .set({
+        status: "pending",
+        // Si venia de rebutjada, marquem-la com a re-enviada (badge admin).
+        // Si venia de pendent (l'usuari només l'ha retocada), preservem
+        // qualsevol resubmittedAt previ.
+        ...(wasRejected ? { resubmittedAt: now } : {}),
+      })
+      .where(eq(schema.songProposals.id, proposalId))
+      .run()
+  })
+
+  return { ok: true as const }
 }
 
 // ─── GET /api/proposals/pending-count ────────────────────────

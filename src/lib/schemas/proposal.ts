@@ -29,3 +29,9 @@ export const proposalReviewSchema = z.object({
 })
 
 export type ProposalReview = z.infer<typeof proposalReviewSchema>
+
+// Schema per a modificacions del propietari de la proposta (re-enviament).
+// Reutilitza els mateixos camps que crear una proposta.
+export const proposalUpdateSchema = proposalInputSchema
+
+export type ProposalUpdate = z.infer<typeof proposalUpdateSchema>

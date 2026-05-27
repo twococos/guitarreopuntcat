@@ -32,7 +32,7 @@ export const songUpdateSchema = z.object({
   content: z.string().min(1).optional(),
   language: z.string().optional(),
   tags: z.string().optional(),
-  draft: z.number().int().optional(),
+  state: z.number().int().optional(),
   album: z.string().max(200).nullable().optional(),
   year: z.number().int().min(1000).max(2100).nullable().optional(),
   youtubeUrl: z

@@ -27,7 +27,7 @@ export function mapSong(song: {
   year: number | null
   youtubeUrl: string | null
   spotifyUrl: string | null
-  draft: number | null
+  state: number
   createdAt: string | null
   updatedAt: string | null
 }) {
@@ -44,13 +44,13 @@ export function mapSong(song: {
     year: song.year,
     youtube_url: song.youtubeUrl,
     spotify_url: song.spotifyUrl,
-    draft: song.draft ?? 0,
+    state: song.state,
     created_at: song.createdAt,
     updated_at: song.updatedAt,
   }
 }
 
-/** Song summary sense content ni draft */
+/** Song summary sense content ni state */
 export function mapSongSummary(song: {
   id: number
   title: string

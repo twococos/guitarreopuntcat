@@ -7,11 +7,12 @@ interface Proposal {
   song_id: number
   song_title: string
   song_artist: string
-  status: "pending" | "approved" | "rejected"
+  status: "pending" | "approved" | "rejected" | "cancelled"
   proposer_name: string
   proposer_avatar: string | null
   notes: string | null
   created_at: string | null
+  resubmitted_at: string | null
 }
 
 interface Props {
@@ -22,6 +23,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "Pendent",
   approved: "Aprovada",
   rejected: "Rebutjada",
+  cancelled: "Cancel·lada",
 }
 
 export function ProposalsTab({ onChange: _onChange }: Props) {
@@ -55,6 +57,7 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
           <option value="pending">Pendents</option>
           <option value="approved">Aprovades</option>
           <option value="rejected">Rebutjades</option>
+          <option value="cancelled">Cancel·lades</option>
           <option value="">Totes</option>
         </select>
       </div>
@@ -91,6 +94,16 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
                 <div className="prop-meta">
                   Proposat per {p.proposer_name} ·{" "}
                   {new Date(p.created_at ?? "").toLocaleDateString("ca-ES")}
+                  {p.resubmitted_at && (
+                    <span
+                      className="badge-resubmitted"
+                      title={`Re-enviada el ${new Date(
+                        p.resubmitted_at,
+                      ).toLocaleDateString("ca-ES")}`}
+                    >
+                      Re-enviada
+                    </span>
+                  )}
                 </div>
                 {p.notes && <div className="prop-notes">Nota admin: {p.notes}</div>}
               </div>
@@ -99,8 +112,10 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
                   p.status === "pending"
                     ? "badge-draft"
                     : p.status === "approved"
-                    ? "badge-public"
-                    : "badge-inactive"
+                      ? "badge-public"
+                      : p.status === "rejected"
+                        ? "badge-inactive"
+                        : "badge-cancelled"
                 }`}
               >
                 {STATUS_LABELS[p.status]}

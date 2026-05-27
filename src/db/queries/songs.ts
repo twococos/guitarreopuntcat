@@ -4,7 +4,7 @@ import { mapSong, mapSongSummary } from "./utils"
 import type { SongQuery } from "@/lib/schemas/song"
 
 // Camps que disparen actualització de updated_at en fer updateSong.
-// `draft` no està a la llista: només volem traçar canvis de contingut.
+// `state` no està a la llista: només volem traçar canvis de contingut.
 const SONG_CONTENT_KEYS = [
   "title", "artist", "key", "capo", "content", "language", "tags",
   "album", "year", "youtubeUrl", "spotifyUrl",
@@ -15,7 +15,7 @@ const SONG_CONTENT_KEYS = [
 export async function listSongs(query: SongQuery) {
   const { search, artist, sortBy, order } = query
 
-  const conditions = [eq(schema.songs.draft, 0)]
+  const conditions = [eq(schema.songs.state, 0)]
 
   if (search) {
     conditions.push(
@@ -108,7 +108,7 @@ export async function createSong(data: {
       year: data.year ?? null,
       youtubeUrl: data.youtubeUrl ?? null,
       spotifyUrl: data.spotifyUrl ?? null,
-      draft: 0,
+      state: 0,
     })
     .run()
 
@@ -131,7 +131,7 @@ export async function updateSong(
     year: number | null
     youtubeUrl: string | null
     spotifyUrl: string | null
-    draft: number
+    state: number
   }>,
 ) {
   const touchesContent = SONG_CONTENT_KEYS.some((k) => k in data)

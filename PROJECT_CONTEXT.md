@@ -44,7 +44,7 @@ src/
 │   ├── globals.css                         Tots els estils globals (≈3.000 línies)
 │   ├── page.tsx                            Pàgina principal
 │   ├── editor/page.tsx                     Pàgina /editor (crear/editar cançons, WYSIWYG)
-│   ├── my-canconers/page.tsx
+│   ├── library/page.tsx                    Pàgina /library (els meus cançoners)
 │   ├── admin/{layout,page}.tsx             Gate server-side admin + dashboard
 │   ├── c/[token]/page.tsx                  Vista pública compartida
 │   └── api/                                Route Handlers (songs, canconers, proposals, admin, pdf, import)
@@ -160,7 +160,7 @@ Puppeteer llança Chromium per cada PDF (no hi ha pool). Trigada típica: ~7s pe
 ### 9. Auth gate per pàgina
 
 - `/` → pública.
-- `/editor`, `/my-canconers` → gate al client (`useSession` + redirect).
+- `/editor`, `/library` → gate al client (`useSession` + redirect).
 - `/admin` → gate al **server** (`src/app/admin/layout.tsx`).
 - `/c/[token]` → pública.
 

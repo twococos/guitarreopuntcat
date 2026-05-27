@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { UserWidget } from "@/components/UserWidget"
@@ -59,6 +59,26 @@ interface ProposalMeta {
   id: number
   songId: number
   proposerName: string
+  status?: string
+  notes?: string | null
+}
+
+function snapshotOf(meta: SongMetadata, content: string): string {
+  return JSON.stringify({
+    meta: {
+      title: meta.title.trim(),
+      artist: meta.artist.trim(),
+      key: meta.key,
+      capo: meta.capo,
+      language: meta.language,
+      tags: meta.tags.trim(),
+      album: meta.album.trim(),
+      year: meta.year,
+      youtubeUrl: meta.youtubeUrl.trim(),
+      spotifyUrl: meta.spotifyUrl.trim(),
+    },
+    content: content.trim(),
+  })
 }
 
 export default function EditorPage() {
@@ -70,13 +90,19 @@ export default function EditorPage() {
   const isEdit = !!editId
 
   const proposalIdRaw = searchParams.get("proposal")
-  const proposalId = proposalIdRaw ? Number(proposalIdRaw) : null
-  const isReview = proposalId !== null && Number.isFinite(proposalId)
+  const proposalId =
+    proposalIdRaw && Number.isFinite(Number(proposalIdRaw))
+      ? Number(proposalIdRaw)
+      : null
+  const modeParam = searchParams.get("mode")
+  const isModify = proposalId !== null && modeParam === "modify"
+  const isReview = proposalId !== null && !isModify
 
   const isAdmin = session?.user?.role === "admin"
 
   const editor = useEditorHistory("")
   const editorRef = useRef<WysiwygEditorHandle>(null)
+  const initialSnapshotRef = useRef<string | null>(null)
 
   const [meta, setMeta] = useState<SongMetadata>(DEFAULT_META)
   const [showProposeInfo, setShowProposeInfo] = useState(false)
@@ -106,9 +132,90 @@ export default function EditorPage() {
     }
   }, [status, isReview, isAdmin, router])
 
-  // Load song for edit mode OR restore draft for create mode OR load proposal for review
+  // Load song for edit mode OR restore draft for create mode OR load proposal for review/modify
   useEffect(() => {
     if (status !== "authenticated") return
+
+    if (isModify && proposalId !== null) {
+      ;(async () => {
+        try {
+          const propsRes = await fetch("/api/proposals")
+          if (!propsRes.ok) throw new Error()
+          const proposals = (await propsRes.json()) as Array<{
+            id: number
+            user_id: number
+            song_id: number
+            status: string
+            notes: string | null
+            proposer_name: string
+          }>
+          const p = proposals.find((x) => x.id === proposalId)
+          if (!p) {
+            useToastStore.getState().show("Proposta no trobada.", { type: "error" })
+            router.replace("/library?tab=proposals")
+            return
+          }
+          if (session?.user?.id && Number(session.user.id) !== p.user_id) {
+            useToastStore.getState().show("No ets el propietari d'aquesta proposta.", {
+              type: "error",
+            })
+            router.replace("/library?tab=proposals")
+            return
+          }
+          if (p.status !== "pending" && p.status !== "rejected") {
+            useToastStore.getState().show("Aquesta proposta ja no es pot modificar.", {
+              type: "error",
+            })
+            router.replace("/library?tab=proposals")
+            return
+          }
+          setProposalMeta({
+            id: p.id,
+            songId: p.song_id,
+            proposerName: p.proposer_name,
+            status: p.status,
+            notes: p.notes,
+          })
+
+          const songRes = await fetch(`/api/songs/${p.song_id}`)
+          if (!songRes.ok) throw new Error()
+          const song = (await songRes.json()) as {
+            title: string
+            artist: string
+            key: string
+            capo: number
+            language: string
+            tags: string
+            content: string
+            album: string | null
+            year: number | null
+            youtube_url: string | null
+            spotify_url: string | null
+          }
+          const loadedMeta: SongMetadata = {
+            title: song.title,
+            artist: song.artist,
+            key: song.key,
+            capo: song.capo ?? 0,
+            language: song.language ?? "ca",
+            tags: song.tags ?? "",
+            album: song.album ?? "",
+            year: song.year,
+            youtubeUrl: song.youtube_url ?? "",
+            spotifyUrl: song.spotify_url ?? "",
+          }
+          setMeta(loadedMeta)
+          editor.reset(song.content)
+          initialSnapshotRef.current = snapshotOf(loadedMeta, song.content)
+        } catch {
+          useToastStore.getState().show("No s'ha pogut carregar la proposta.", {
+            type: "error",
+          })
+          router.replace("/library?tab=proposals")
+        }
+      })()
+      return
+    }
 
     if (isReview && proposalId !== null) {
       if (!isAdmin) return
@@ -262,11 +369,11 @@ export default function EditorPage() {
     }
     // editor.reset is stable (useCallback), isEdit and editId are derived from URL
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, isEdit, editId, isAdmin, isReview, proposalId])
+  }, [status, isEdit, editId, isAdmin, isReview, isModify, proposalId, session?.user?.id])
 
   // Auto-save draft (create mode only) with debounce
   useEffect(() => {
-    if (isEdit || isReview) return
+    if (isEdit || isReview || isModify) return
     if (typeof window === "undefined") return
 
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
@@ -290,7 +397,7 @@ export default function EditorPage() {
     return () => {
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
     }
-  }, [isEdit, meta, editor.value])
+  }, [isEdit, isReview, isModify, meta, editor.value])
 
   // Reset complet de l'editor (després de guardar/proposar o per acció manual)
   const resetEditor = useCallback(() => {
@@ -329,6 +436,13 @@ export default function EditorPage() {
     }
   }, [])
 
+  // Diff respecte l'estat inicial carregat (només mode modify)
+  const hasChanges = useMemo(() => {
+    if (!isModify) return false
+    if (initialSnapshotRef.current === null) return false
+    return snapshotOf(meta, editor.value) !== initialSnapshotRef.current
+  }, [isModify, meta, editor.value])
+
   // Lògica de desat (sense validació: ja la fa handleToolbarSave)
   const doSave = useCallback(async () => {
     const body = {
@@ -347,7 +461,19 @@ export default function EditorPage() {
 
     try {
       let res: Response
-      if (isEdit && editId) {
+      if (isModify && proposalId !== null) {
+        res = await fetch(`/api/proposals/${proposalId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) throw new Error()
+        useToastStore
+          .getState()
+          .show("Proposta modificada i re-enviada!", { type: "success" })
+        router.push("/library?tab=proposals")
+        return
+      } else if (isEdit && editId) {
         res = await fetch(`/api/songs/${editId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -384,7 +510,7 @@ export default function EditorPage() {
     } catch {
       useToastStore.getState().show("Error en guardar.", { type: "error" })
     }
-  }, [meta, editor.value, isEdit, editId, isAdmin, resetEditor, router])
+  }, [meta, editor.value, isEdit, editId, isAdmin, isModify, proposalId, resetEditor, router])
 
   // ── Accions de revisió de propostes ─────────────────────────
 
@@ -473,8 +599,9 @@ export default function EditorPage() {
       useToastStore.getState().show("Link de Spotify no vàlid.", { type: "error" })
       return
     }
-    // Propostes (no-admin): els dos links són obligatoris
-    if (!isAdmin && !isEdit) {
+    // Propostes (no-admin): els dos links són obligatoris.
+    // També s'aplica al mode modify (re-enviar la proposta).
+    if (isModify || (!isAdmin && !isEdit)) {
       if (!yt || !sp) {
         useToastStore
           .getState()
@@ -517,6 +644,25 @@ export default function EditorPage() {
 
   async function handleConfirmConfirm() {
     if (confirm?.kind === "reset") {
+      if (isModify && proposalId !== null) {
+        setSaving(true)
+        try {
+          const res = await fetch(`/api/proposals/${proposalId}/cancel`, {
+            method: "POST",
+          })
+          if (!res.ok) throw new Error()
+          useToastStore.getState().show("Proposta cancel·lada.", { type: "success" })
+          router.push("/library?tab=proposals")
+        } catch {
+          useToastStore
+            .getState()
+            .show("Error en cancel·lar la proposta.", { type: "error" })
+        } finally {
+          setSaving(false)
+          setConfirm(null)
+        }
+        return
+      }
       if (isEdit) {
         // En mode edit, "Descartar canvis" → tornar a /admin sense desar res.
         setConfirm(null)
@@ -574,7 +720,12 @@ export default function EditorPage() {
   let pageSubtitle: string
   let saveButtonText: string
 
-  if (isReview) {
+  if (isModify) {
+    pageTitle = "✏️ Modificar proposta"
+    pageSubtitle =
+      "Modifica la teva proposta i torna a enviar-la perquè un admin la revisi."
+    saveButtonText = "Modificar Proposta"
+  } else if (isReview) {
     pageTitle = "✏️ Revisar proposta"
     pageSubtitle = proposalMeta
       ? `Proposta de ${proposalMeta.proposerName}`
@@ -595,7 +746,11 @@ export default function EditorPage() {
   let confirmActionLabel = ""
   let confirmVariant: "primary" | "danger" = "primary"
   if (confirm?.kind === "reset") {
-    if (isEdit) {
+    if (isModify) {
+      confirmMessage =
+        "Cancel·lar la proposta sencera? Es perdrà i no apareixerà a la teva llista."
+      confirmActionLabel = "Sí, cancel·lar"
+    } else if (isEdit) {
       confirmMessage =
         "Descartar els canvis i tornar al panell admin? Es perdran les modificacions no guardades."
       confirmActionLabel = "Sí, descartar"
@@ -606,7 +761,11 @@ export default function EditorPage() {
     }
     confirmVariant = "danger"
   } else if (confirm?.kind === "save") {
-    if (isEdit) {
+    if (isModify) {
+      confirmMessage =
+        "Re-enviar la proposta modificada perquè un admin la torni a revisar?"
+      confirmActionLabel = "Sí, re-enviar"
+    } else if (isEdit) {
       confirmMessage = "Actualitzar la cançó a la base de dades pública?"
       confirmActionLabel = "Sí, actualitzar"
     } else if (isAdmin) {
@@ -627,6 +786,27 @@ export default function EditorPage() {
   const placeholder = `Escriu aquí la lletra de la cançó.
 Clic dret per inserir acords, clic mig per inserir seccions.`
 
+  const rejectionNotes =
+    isModify &&
+    proposalMeta?.status === "rejected" &&
+    proposalMeta.notes &&
+    proposalMeta.notes.trim() !== ""
+      ? proposalMeta.notes
+      : null
+
+  let backHref: string
+  let backLabel: string
+  if (isModify) {
+    backHref = "/library?tab=proposals"
+    backLabel = "← Les meves propostes"
+  } else if (isReview) {
+    backHref = "/admin?tab=proposals"
+    backLabel = "← Panell admin"
+  } else {
+    backHref = "/"
+    backLabel = "← Cançoner"
+  }
+
   // ── Estats de càrrega / no autenticat ────────────────────────
 
   if (status === "loading") {
@@ -644,11 +824,8 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
   return (
     <>
       <header>
-        <a
-          href={isReview ? "/admin?tab=proposals" : "/"}
-          className="back-link"
-        >
-          ← {isReview ? "Panell admin" : "Cançoner"}
+        <a href={backHref} className="back-link">
+          {backLabel}
         </a>
         <h1 id="editor-title">{pageTitle}</h1>
         <p className="subtitle" id="editor-subtitle">
@@ -660,6 +837,12 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
       </header>
 
       <main className="editor-page">
+        {isModify && rejectionNotes && (
+          <div className="editor-rejection-banner">
+            <strong>La teva proposta va ser rebutjada.</strong>
+            <p>Retroacció de l&apos;administrador: {rejectionNotes}</p>
+          </div>
+        )}
         <div className="editor-stack">
           <SongHeader value={meta} onChange={setMeta} isAdmin={isAdmin} />
           <EditorToolbar
@@ -672,7 +855,9 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
             saveLabel={saveButtonText}
             onSave={handleToolbarSave}
             onReset={handleToolbarReset}
-            resetLabel={isEdit ? "Descartar canvis" : "Reset"}
+            resetLabel={
+              isModify ? "Cancel·lar" : isEdit ? "Descartar canvis" : "Reset"
+            }
             saving={saving}
             disabledReason={
               !meta.key
@@ -682,6 +867,11 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
             mode={isReview ? "review" : "normal"}
             onAccept={handleToolbarAccept}
             onReject={handleToolbarReject}
+            saveDisabledHint={
+              isModify && !hasChanges
+                ? "No s'ha modificat res encara"
+                : undefined
+            }
           />
           <WysiwygEditor
             ref={editorRef}

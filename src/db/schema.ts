@@ -16,7 +16,8 @@ export const songs = sqliteTable("songs", {
   year: integer("year"),
   youtubeUrl: text("youtube_url"),
   spotifyUrl: text("spotify_url"),
-  draft: integer("draft").default(0),
+  state: integer("state").notNull().default(0),
+  // 0 pública, 1 privada, 2 pendent, 3 rebutjada, 4 cancel·lada
   createdAt: text("created_at").default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").default(sql`(datetime('now'))`),
 })
@@ -85,11 +86,14 @@ export const songProposals = sqliteTable("song_proposals", {
   songId: integer("song_id")
     .notNull()
     .references(() => songs.id, { onDelete: "cascade" }),
-  status: text("status", { enum: ["pending", "approved", "rejected"] }).default("pending"),
+  status: text("status", {
+    enum: ["pending", "approved", "rejected", "cancelled"],
+  }).default("pending"),
   reviewerId: integer("reviewer_id").references(() => users.id),
   notes: text("notes").default(""),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
   reviewedAt: text("reviewed_at"),
+  resubmittedAt: text("resubmitted_at"),
 })
 
 // ─── Tipus inferits ─────────────────────────────────────────

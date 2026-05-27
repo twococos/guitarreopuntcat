@@ -32,6 +32,12 @@ interface EditorToolbarProps {
   onAccept?: () => void
   /** Callback Rebutjar (només mode review). */
   onReject?: () => void
+  /**
+   * Si el botó Guardar/Primari està desactivat manualment (p. ex. en mode
+   * "modify" quan no hi ha canvis pendents), aquest text s'usa com a tooltip
+   * en lloc de `saveLabel`. Si està set, també força disabled del botó.
+   */
+  saveDisabledHint?: string
 }
 
 export function EditorToolbar({
@@ -50,6 +56,7 @@ export function EditorToolbar({
   mode = "normal",
   onAccept,
   onReject,
+  saveDisabledHint,
 }: EditorToolbarProps): ReactNode {
   const blocked = !!disabledReason
   const isReview = mode === "review"
@@ -137,9 +144,9 @@ export function EditorToolbar({
             <button
               type="button"
               className="toolbar-btn toolbar-btn-primary"
-              title={saveLabel}
+              title={saveDisabledHint ?? saveLabel}
               onClick={onSave}
-              disabled={blocked || saving}
+              disabled={blocked || saving || !!saveDisabledHint}
             >
               💾 {saveLabel}
             </button>

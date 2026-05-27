@@ -2,6 +2,7 @@
 import { signOut, useSession } from "next-auth/react"
 import { useEffect, useRef, useState } from "react"
 import { LoginPopup } from "./LoginPopup"
+import { IconLibrary, IconSettings } from "./shared/Icons"
 
 export function UserWidget() {
   const { data: session, status } = useSession()
@@ -66,12 +67,14 @@ export function UserWidget() {
             </div>
           </div>
           <div className="user-dropdown-sep" />
-          <a href="/my-canconers" className="user-dropdown-item">
-            📚 Els meus cançoners
+          <a href="/library" className="user-dropdown-item">
+            <IconLibrary />
+            <span>La teva Biblioteca</span>
           </a>
           {isAdmin && (
             <a href="/admin" className="user-dropdown-item">
-              ⚙️ Panell d&apos;administració
+              <IconSettings />
+              <span>Panell d&apos;administració</span>
             </a>
           )}
           <div className="user-dropdown-sep" />
