@@ -685,7 +685,9 @@ select:focus {
   padding: 0 2px;
   opacity: 0;
   flex-shrink: 0;
-  transition: opacity 0.12s, color 0.12s;
+  transition:
+    opacity 0.12s,
+    color 0.12s;
 }
 #canconer-grid .cg-item:hover .cg-remove {
   opacity: 1;
@@ -2359,7 +2361,9 @@ tbody tr:hover {
   line-height: 1;
   font-weight: 700;
   min-width: 2.1rem;
-  transition: border-color 0.12s, color 0.12s;
+  transition:
+    border-color 0.12s,
+    color 0.12s;
 }
 .library-sort-dir:hover {
   border-color: var(--accent);
@@ -2400,7 +2404,9 @@ tbody tr:hover {
   border-radius: var(--radius);
   background: var(--surface);
   overflow: hidden;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .library-card:hover {
   border-color: var(--accent);
@@ -2454,7 +2460,10 @@ tbody tr:hover {
   background: none;
   color: var(--muted);
   cursor: pointer;
-  transition: color 0.12s, background 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    background 0.12s,
+    border-color 0.12s;
   flex-shrink: 0;
   padding: 0;
 }
@@ -2535,7 +2544,10 @@ tbody tr:hover {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    color 0.12s;
   text-align: center;
   white-space: nowrap;
 }
@@ -2603,7 +2615,10 @@ tbody tr:hover {
   color: var(--text);
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    color 0.12s,
+    background 0.12s;
 }
 .library-share-btn:hover {
   border-color: var(--accent);
@@ -2747,7 +2762,9 @@ tbody tr:hover {
   border-radius: var(--radius);
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
 }
 .library-empty-btn:hover {
   background: #c93f33;
@@ -4009,7 +4026,9 @@ div[data-block="section"]:hover .wsec {
   border: none;
   border-radius: 999px;
   cursor: pointer;
-  transition: filter 0.1s, transform 0.05s;
+  transition:
+    filter 0.1s,
+    transform 0.05s;
 }
 .public-song-cta:hover {
   filter: brightness(0.95);
@@ -4269,14 +4288,14 @@ header.public-nav {
    ════════════════════════════════════════════════════════════ */
 
 .public-home {
-  max-width: 1000px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 0 1rem 5rem;
+  padding: 0 1.5rem 5rem;
 }
 
 .public-home-hero {
   text-align: center;
-  padding: 4rem 0 2rem;
+  padding: 5.5rem 0 3.5rem;
 }
 
 .public-home-logo {
@@ -4319,7 +4338,9 @@ header.public-nav {
   text-decoration: none;
   font-weight: 600;
   font-size: 0.95rem;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 .public-home-secondary-cta:hover {
   background: var(--accent);
@@ -4343,14 +4364,23 @@ header.public-nav {
 
 /* Secció genèrica (Últimes incorporades, etc.) */
 .public-home-section {
-  margin-top: 3.5rem;
+  margin-top: 3rem;
 }
 
-.public-home-section-head {
+header.public-home-section-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.2rem;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--accent);
+  border-radius: 0;
+  padding: 0.25rem 0.25rem 0.55rem;
+  height: auto;
+  position: static;
+  z-index: auto;
 }
 
 .public-home-section-title {
@@ -4358,6 +4388,11 @@ header.public-nav {
   font-size: 1.3rem;
   font-weight: 600;
   color: var(--text);
+}
+.public-home-section-subtitle {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 1rem;
 }
 
 .public-home-section-link {
@@ -4374,26 +4409,59 @@ header.public-nav {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.85rem;
+}
+@media (max-width: 720px) {
+  .public-home-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .public-home-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .public-home-card {
   /* nothing — el link és el contenidor estilable */
 }
 
+.public-home-card--reroll {
+  opacity: 0;
+  animation: inspirat-card-in 0.32s ease-out forwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes inspirat-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .public-home-card-link {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "title title"
+    "artist key";
+  column-gap: 0.5rem;
+  row-gap: 0.25rem;
   padding: 1rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--text);
   text-decoration: none;
-  transition: border-color 0.1s, box-shadow 0.1s, transform 0.05s;
-  position: relative;
+  transition:
+    border-color 0.1s,
+    box-shadow 0.1s,
+    transform 0.05s;
 }
 .public-home-card-link:hover {
   border-color: var(--accent);
@@ -4402,19 +4470,22 @@ header.public-nav {
 }
 
 .public-home-card-title {
+  grid-area: title;
   font-weight: 500;
   line-height: 1.3;
 }
 
 .public-home-card-artist {
+  grid-area: artist;
   font-size: 0.85rem;
   color: var(--muted);
+  align-self: center;
 }
 
 .public-home-card-key {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
+  grid-area: key;
+  align-self: center;
+  justify-self: end;
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-size: 0.7rem;
   color: var(--muted);
@@ -4438,39 +4509,36 @@ header.public-nav {
 }
 
 /* ── Inspira't (cançó aleatòria) ─────────────────────────────── */
-.inspirat-dice {
+.inspirat-dice-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.4rem 0.95rem 0.4rem 0.6rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--text);
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0.25rem;
+  color: var(--muted);
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, transform 0.05s;
+  transition:
+    color 0.12s,
+    transform 0.05s;
 }
-.inspirat-dice:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: #fdf4f3;
+.inspirat-dice-btn:hover:not(:disabled) {
   color: var(--accent);
 }
-.inspirat-dice:active:not(:disabled) {
+.inspirat-dice-btn:active:not(:disabled) {
   transform: translateY(1px);
 }
-.inspirat-dice:disabled {
-  opacity: 0.6;
+.inspirat-dice-btn:disabled {
+  opacity: 0.5;
   cursor: progress;
 }
-.inspirat-dice-emoji {
-  font-size: 1.2rem;
-  line-height: 1;
-  display: inline-block;
-  transition: transform 0.3s ease;
+.inspirat-dice-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  transition: transform 0.35s ease;
 }
-.inspirat-dice.is-rolling .inspirat-dice-emoji {
+.inspirat-dice-btn.is-rolling .inspirat-dice-icon {
   transform: rotate(360deg);
 }
 
@@ -4550,7 +4618,9 @@ header.public-nav {
   text-decoration: none;
   font-weight: 600;
   font-size: 0.95rem;
-  transition: background 0.12s, transform 0.05s;
+  transition:
+    background 0.12s,
+    transform 0.05s;
 }
 .inspirat-card-cta:hover {
   background: var(--accent-hv);
@@ -4580,8 +4650,11 @@ header.public-nav {
 
 .search-hero {
   position: relative;
-  max-width: 760px;
+  width: 100%;
   margin: 0 auto;
+}
+.search-hero:not(.search-hero--compact):focus-within {
+  z-index: 35;
 }
 /* Variant compacta (p. ex. dins de la pàgina /songs). Es pot usar afegint
    la classe .search-hero--compact al wrapper. */
@@ -4592,12 +4665,15 @@ header.public-nav {
 .search-hero-input-wrap {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   background: var(--surface);
   border: 1.5px solid var(--border);
-  border-radius: 999px;
+  border-radius: 16px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+  overflow: hidden;
 }
 .search-hero-input-wrap:focus-within {
   border-color: var(--accent);
@@ -4605,6 +4681,7 @@ header.public-nav {
 }
 .search-hero--compact .search-hero-input-wrap {
   box-shadow: var(--shadow);
+  border-radius: 999px;
 }
 
 .search-hero-icon {
@@ -4612,31 +4689,34 @@ header.public-nav {
   align-items: center;
   justify-content: center;
   color: var(--muted);
-  padding: 0 0.5rem 0 1.5rem;
+  padding: 0 0.4rem 0 1.1rem;
   flex-shrink: 0;
 }
 .search-hero-icon svg {
-  width: 26px;
-  height: 26px;
-}
-.search-hero--compact .search-hero-icon {
-  padding: 0 0.4rem 0 1.1rem;
-}
-.search-hero--compact .search-hero-icon svg {
   width: 20px;
   height: 20px;
 }
 
+/* Selector amb especificitat extra perquè guanyi al global
+   `input[type="text"]` (que té especificitat 0,1,1,0). */
+input[type="text"].search-hero-input,
 .search-hero-input {
   flex: 1;
-  padding: 1.35rem 0.5rem;
-  font-size: 1.25rem;
+  width: auto;
+  padding: 0.95rem 1.25rem;
+  font-size: 1.1rem;
+  line-height: 1.2;
   background: transparent;
   border: none;
   outline: none;
   color: var(--text);
+  border-radius: 0;
 }
-.search-hero--compact .search-hero-input {
+input[type="text"].search-hero-input:focus {
+  border-color: transparent;
+}
+.search-hero--compact .search-hero-input,
+input[type="text"].search-hero--compact .search-hero-input {
   padding: 0.9rem 0.4rem;
   font-size: 1.02rem;
 }
@@ -4645,16 +4725,45 @@ header.public-nav {
 }
 
 .search-hero-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.85rem;
+  transform: translateY(-50%);
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
   color: var(--muted);
   font-size: 1rem;
-  padding: 0 1.1rem;
   cursor: pointer;
-  height: 100%;
+  border-radius: 50%;
 }
 .search-hero-clear:hover {
   color: var(--text);
+  background: rgba(0, 0, 0, 0.05);
+}
+.search-hero--compact .search-hero-clear {
+  right: 0.5rem;
+}
+
+/* Backdrop difuminat quan el camp del Hero té focus. Cobreix tota la
+   viewport excepte la nav (que té z-index 40). */
+.search-hero-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(247, 247, 245, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+body:has(.search-hero:not(.search-hero--compact):focus-within) .search-hero-backdrop {
+  opacity: 1;
 }
 
 /* Dropdown */
@@ -4663,7 +4772,7 @@ header.public-nav {
   top: calc(100% + 0.4rem);
   left: 0;
   right: 0;
-  z-index: 30;
+  z-index: 36;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -4672,6 +4781,19 @@ header.public-nav {
   max-height: 60vh;
   overflow-y: auto;
   text-align: left;
+  transform-origin: top center;
+  animation: search-hero-dropdown-in 0.15s ease-out;
+}
+
+@keyframes search-hero-dropdown-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.85) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
 }
 
 .search-hero-empty {
@@ -4704,6 +4826,20 @@ header.public-nav {
   color: var(--text);
   text-decoration: none;
   transition: background 0.1s;
+  opacity: 0;
+  animation: search-hero-result-in 0.18s ease-out forwards;
+  animation-delay: calc(var(--i, 0) * 28ms);
+}
+
+@keyframes search-hero-result-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .search-hero-result.is-focused,
 .search-hero-result:hover {
@@ -4884,7 +5020,9 @@ header.public-nav {
   font-size: 0.9rem;
   font-weight: 500;
   border-radius: 999px;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 .songs-index-toggle-btn:hover {
   background: rgba(0, 0, 0, 0.04);
@@ -4932,7 +5070,9 @@ header.public-nav {
   color: var(--muted);
   text-decoration: none;
   border-radius: 999px;
-  transition: color 0.1s, background 0.1s;
+  transition:
+    color 0.1s,
+    background 0.1s;
 }
 .songs-index-az-pill:hover {
   color: var(--accent);

@@ -153,13 +153,15 @@ export function SearchHero({ compact = false, placeholder }: SearchHeroProps = {
   return (
     <div className={`search-hero ${compact ? "search-hero--compact" : ""}`} ref={wrapRef}>
       <div className="search-hero-input-wrap">
-        <span className="search-hero-icon" aria-hidden="true">
-          {/* Icona lupa inline (la mida ve del CSS) */}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
-        </span>
+        {compact && (
+          <span className="search-hero-icon" aria-hidden="true">
+            {/* Icona lupa inline — només a la variant compacta (/songs) */}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </span>
+        )}
         <input
           ref={inputRef}
           type="text"
@@ -194,7 +196,17 @@ export function SearchHero({ compact = false, placeholder }: SearchHeroProps = {
       </div>
 
       {showDropdown && (
-        <div className="search-hero-dropdown" role="listbox">
+        <div
+          className="search-hero-dropdown"
+          role="listbox"
+          onMouseDown={(e) => {
+            // Evita que clicar zones no interactives del dropdown (labels,
+            // separadors) tregui el focus de l'input — això faria desaparèixer
+            // el backdrop difuminat. Els <Link>/<a> reben el click igualment.
+            if ((e.target as HTMLElement).closest("a")) return
+            e.preventDefault()
+          }}
+        >
           {loading && items.length === 0 && (
             <div className="search-hero-empty">Cercant…</div>
           )}
@@ -214,6 +226,7 @@ export function SearchHero({ compact = false, placeholder }: SearchHeroProps = {
                     key={a.slug}
                     href={`/songs/${a.slug}`}
                     className={`search-hero-result search-hero-result--artist ${focused ? "is-focused" : ""}`}
+                    style={{ "--i": idx } as React.CSSProperties}
                     onMouseEnter={() => setFocusedIdx(idx)}
                     onClick={() => setOpen(false)}
                     role="option"
@@ -244,6 +257,7 @@ export function SearchHero({ compact = false, placeholder }: SearchHeroProps = {
                     key={s.id}
                     href={`/songs/${s.artist_slug}/${s.song_slug}`}
                     className={`search-hero-result ${focused ? "is-focused" : ""}`}
+                    style={{ "--i": idx } as React.CSSProperties}
                     onMouseEnter={() => setFocusedIdx(idx)}
                     onClick={() => setOpen(false)}
                     role="option"

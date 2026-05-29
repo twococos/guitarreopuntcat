@@ -351,13 +351,23 @@ export async function listRecentPublicSongs(limit: number) {
  * Usa `ORDER BY RANDOM()` de SQLite — barat fins a milers de files.
  */
 export async function getRandomPublicSong(excludeId?: number) {
+  const rows = await getRandomPublicSongs(1, excludeId !== undefined ? [excludeId] : [])
+  return rows[0] ?? null
+}
+
+/**
+ * N cançons públiques al·leatòries, opcionalment excloent un conjunt d'ids
+ * (per re-tirar el dau sense repetir els resultats actuals).
+ */
+export async function getRandomPublicSongs(count: number, excludeIds: number[] = []) {
   const conditions = [
     eq(schema.songs.state, 0),
     isNotNull(schema.songs.artistSlug),
     isNotNull(schema.songs.songSlug),
   ]
-  if (excludeId !== undefined && Number.isFinite(excludeId)) {
-    conditions.push(sql`${schema.songs.id} <> ${excludeId}`)
+  const validIds = excludeIds.filter((id) => Number.isFinite(id))
+  if (validIds.length > 0) {
+    conditions.push(sql`${schema.songs.id} NOT IN (${sql.join(validIds.map((id) => sql`${id}`), sql`, `)})`)
   }
 
   const rows = await db
@@ -379,9 +389,9 @@ export async function getRandomPublicSong(excludeId?: number) {
     .from(schema.songs)
     .where(and(...conditions))
     .orderBy(sql`RANDOM()`)
-    .limit(1)
+    .limit(Math.max(1, count))
 
-  return rows[0] ? mapSongSummary(rows[0]) : null
+  return rows.map(mapSongSummary)
 }
 
 /**

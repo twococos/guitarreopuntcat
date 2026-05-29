@@ -13,33 +13,40 @@ interface SongLite {
 }
 
 interface Props {
-  initial: SongLite | null
+  initial: SongLite[]
 }
 
 /**
- * InspiratSection — destaca una cançó pública aleatòria a la portada amb un
- * botó "Tira el dau" per re-cercar-ne una de nova sense recarregar.
+ * InspiratSection — fila de cançons públiques aleatòries a la portada amb un
+ * botó "Tira el dau" per re-cercar-ne de noves sense recarregar.
  *
- * La primera cançó arriba renderitzada des del servidor (SEO + zero flash).
- * Les següents tirades es demanen a /api/songs/random?exclude=ID.
+ * Les primeres cançons arriben renderitzades des del servidor (SEO + zero
+ * flash). Les següents tirades es demanen a /api/songs/random?count=N&exclude=...
  */
 export function InspiratSection({ initial }: Props) {
-  const [song, setSong] = useState<SongLite | null>(initial)
+  const [songs, setSongs] = useState<SongLite[]>(initial)
   const [loading, setLoading] = useState(false)
   const [rolling, setRolling] = useState(false)
+  // S'incrementa a cada tirada per forçar React a recrear els <li> i així
+  // re-disparar l'animació d'entrada de les targetes.
+  const [rollKey, setRollKey] = useState(0)
 
   async function roll() {
     if (loading) return
     setLoading(true)
     setRolling(true)
     try {
-      const url = song
-        ? `/api/songs/random?exclude=${song.id}`
-        : "/api/songs/random"
-      const res = await fetch(url)
+      const count = songs.length || 3
+      const params = new URLSearchParams()
+      params.set("count", String(count))
+      for (const s of songs) params.append("exclude", String(s.id))
+      const res = await fetch(`/api/songs/random?${params.toString()}`)
       if (!res.ok) return
-      const data: { song: SongLite | null } = await res.json()
-      if (data.song) setSong(data.song)
+      const data: { songs: SongLite[] } = await res.json()
+      if (data.songs && data.songs.length > 0) {
+        setSongs(data.songs)
+        setRollKey((k) => k + 1)
+      }
     } catch {
       // silenci — l'usuari pot tornar a clicar
     } finally {
@@ -49,51 +56,64 @@ export function InspiratSection({ initial }: Props) {
     }
   }
 
-  if (!song) {
+  if (songs.length === 0) {
     // Sense cap cançó pública encara: amaga la secció.
     return null
   }
 
-  const href =
-    song.artist_slug && song.song_slug
-      ? `/songs/${song.artist_slug}/${song.song_slug}`
-      : null
-
   return (
     <section className="public-home-section inspirat">
       <header className="public-home-section-head">
-        <h2 className="public-home-section-title">Inspira&apos;t</h2>
+        <h2 className="public-home-section-title">
+          Inspira&apos;t
+          <span className="public-home-section-subtitle">
+            {" "}— Cançons al·leatòries
+          </span>
+        </h2>
         <button
           type="button"
-          className={`inspirat-dice ${rolling ? "is-rolling" : ""}`}
+          className={`inspirat-dice-btn ${rolling ? "is-rolling" : ""}`}
           onClick={roll}
           disabled={loading}
-          aria-label="Tira el dau per veure una altra cançó"
+          aria-label="Tira el dau per veure altres cançons"
           title="Tira el dau"
         >
-          <span className="inspirat-dice-emoji" aria-hidden="true">🎲</span>
-          <span className="inspirat-dice-label">Tira el dau</span>
+          <svg
+            className="inspirat-dice-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 12a9 9 0 1 1-3.2-6.9" />
+            <polyline points="21 4 21 9 16 9" />
+          </svg>
         </button>
       </header>
 
-      <div className="inspirat-card">
-        <div className="inspirat-card-meta">
-          <span className="inspirat-card-eyebrow">Cançó aleatòria</span>
-          <h3 className="inspirat-card-title">{song.title}</h3>
-          <p className="inspirat-card-artist">{song.artist}</p>
-          <div className="inspirat-card-badges">
-            <span className="inspirat-card-key">{song.key}</span>
-            {song.year ? (
-              <span className="inspirat-card-year">{song.year}</span>
-            ) : null}
-          </div>
-        </div>
-        {href && (
-          <Link href={href} className="inspirat-card-cta">
-            Obre la cançó →
-          </Link>
+      <ul className="public-home-grid">
+        {songs.map((s, i) =>
+          s.artist_slug && s.song_slug ? (
+            <li
+              key={`${rollKey}-${s.id}`}
+              className="public-home-card public-home-card--reroll"
+              style={{ "--i": i } as React.CSSProperties}
+            >
+              <Link
+                href={`/songs/${s.artist_slug}/${s.song_slug}`}
+                className="public-home-card-link"
+              >
+                <span className="public-home-card-title">{s.title}</span>
+                <span className="public-home-card-artist">{s.artist}</span>
+                <span className="public-home-card-key">{s.key}</span>
+              </Link>
+            </li>
+          ) : null,
         )}
-      </div>
+      </ul>
     </section>
   )
 }

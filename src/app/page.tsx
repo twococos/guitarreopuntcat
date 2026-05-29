@@ -1,8 +1,10 @@
 import Link from "next/link"
-import { listRecentPublicSongs, getRandomPublicSong } from "@/db/queries/songs"
+import { listRecentPublicSongs, getRandomPublicSongs } from "@/db/queries/songs"
 import { PublicNav } from "@/components/public/PublicNav"
 import { SearchHero } from "@/components/public/SearchHero"
 import { InspiratSection } from "@/components/public/InspiratSection"
+
+const INSPIRAT_COUNT = 3
 
 export const dynamic = "force-dynamic"
 
@@ -20,14 +22,16 @@ export const dynamic = "force-dynamic"
  * (sense aquesta directiva, Next podria cache-jar la portada estàticament).
  */
 export default async function HomePage() {
-  const [recent, randomSong] = await Promise.all([
-    listRecentPublicSongs(8),
-    getRandomPublicSong(),
+  const [recent, randomSongs] = await Promise.all([
+    listRecentPublicSongs(6),
+    getRandomPublicSongs(INSPIRAT_COUNT),
   ])
 
   return (
     <>
       <PublicNav />
+
+      <div className="search-hero-backdrop" aria-hidden="true" />
 
       <main className="public-home">
         <section className="public-home-hero">
@@ -51,19 +55,15 @@ export default async function HomePage() {
         </section>
 
         <InspiratSection
-          initial={
-            randomSong
-              ? {
-                  id: randomSong.id,
-                  title: randomSong.title,
-                  artist: randomSong.artist,
-                  artist_slug: randomSong.artist_slug,
-                  song_slug: randomSong.song_slug,
-                  key: randomSong.key,
-                  year: randomSong.year ?? null,
-                }
-              : null
-          }
+          initial={randomSongs.map((s) => ({
+            id: s.id,
+            title: s.title,
+            artist: s.artist,
+            artist_slug: s.artist_slug,
+            song_slug: s.song_slug,
+            key: s.key,
+            year: s.year ?? null,
+          }))}
         />
 
         {recent.length > 0 && (
