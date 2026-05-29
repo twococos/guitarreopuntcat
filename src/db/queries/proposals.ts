@@ -2,6 +2,7 @@ import { and, eq, ne, sql } from "drizzle-orm"
 import { db, schema } from "@/db/client"
 import type { ProposalInput } from "@/lib/schemas/proposal"
 import { cleanupContent } from "@/lib/importers/cleanupContent"
+import { generateSlugsForNewSong } from "./songs"
 
 // ─── GET /api/proposals ──────────────────────────────────────
 
@@ -80,12 +81,16 @@ export async function createProposal(userId: number, data: ProposalInput) {
   let songId!: number
   let proposalId!: number
 
+  const { artistSlug, songSlug } = generateSlugsForNewSong(data.artist, data.title)
+
   db.transaction((tx) => {
     const songResult = tx
       .insert(schema.songs)
       .values({
         title: data.title,
         artist: data.artist,
+        artistSlug,
+        songSlug,
         key: data.key,
         capo: data.capo,
         content: data.content,

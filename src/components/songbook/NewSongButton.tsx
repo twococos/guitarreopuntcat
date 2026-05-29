@@ -25,14 +25,14 @@ export function NewSongButton() {
 
   if (isAdmin) {
     return (
-      <a id="btn-new-song" className="btn-new-song" href="/editor">
+      <a id="btn-new-song" className="btn-new-song" href="/app/editor">
         + Nova cançó
       </a>
     )
   }
 
   return (
-    <a id="btn-new-song" className="btn-new-song" href="/editor">
+    <a id="btn-new-song" className="btn-new-song" href="/app/editor">
       + Proposa una cançó
     </a>
   )

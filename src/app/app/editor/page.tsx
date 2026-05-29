@@ -128,7 +128,7 @@ export default function EditorPage() {
       useToastStore.getState().show("Cal ser administrador per a revisar propostes.", {
         type: "error",
       })
-      router.replace("/")
+      router.replace("/app")
     }
   }, [status, isReview, isAdmin, router])
 
@@ -152,21 +152,21 @@ export default function EditorPage() {
           const p = proposals.find((x) => x.id === proposalId)
           if (!p) {
             useToastStore.getState().show("Proposta no trobada.", { type: "error" })
-            router.replace("/library?tab=proposals")
+            router.replace("/app/library?tab=proposals")
             return
           }
           if (session?.user?.id && Number(session.user.id) !== p.user_id) {
             useToastStore.getState().show("No ets el propietari d'aquesta proposta.", {
               type: "error",
             })
-            router.replace("/library?tab=proposals")
+            router.replace("/app/library?tab=proposals")
             return
           }
           if (p.status !== "pending" && p.status !== "rejected") {
             useToastStore.getState().show("Aquesta proposta ja no es pot modificar.", {
               type: "error",
             })
-            router.replace("/library?tab=proposals")
+            router.replace("/app/library?tab=proposals")
             return
           }
           setProposalMeta({
@@ -211,7 +211,7 @@ export default function EditorPage() {
           useToastStore.getState().show("No s'ha pogut carregar la proposta.", {
             type: "error",
           })
-          router.replace("/library?tab=proposals")
+          router.replace("/app/library?tab=proposals")
         }
       })()
       return
@@ -232,14 +232,14 @@ export default function EditorPage() {
           const p = proposals.find((x) => x.id === proposalId)
           if (!p) {
             useToastStore.getState().show("Proposta no trobada.", { type: "error" })
-            router.replace("/admin?tab=proposals")
+            router.replace("/app/admin?tab=proposals")
             return
           }
           if (p.status !== "pending") {
             useToastStore.getState().show("Aquesta proposta ja ha estat revisada.", {
               type: "error",
             })
-            router.replace("/admin?tab=proposals")
+            router.replace("/app/admin?tab=proposals")
             return
           }
           setProposalMeta({
@@ -280,7 +280,7 @@ export default function EditorPage() {
           useToastStore.getState().show("No s'ha pogut carregar la proposta.", {
             type: "error",
           })
-          router.replace("/admin?tab=proposals")
+          router.replace("/app/admin?tab=proposals")
         }
       })()
       return
@@ -323,7 +323,7 @@ export default function EditorPage() {
           useToastStore.getState().show("No s'ha pogut carregar la cançó.", {
             type: "error",
           })
-          router.replace("/")
+          router.replace("/app")
         })
     } else {
       // Restore draft
@@ -471,7 +471,7 @@ export default function EditorPage() {
         useToastStore
           .getState()
           .show("Proposta modificada i re-enviada!", { type: "success" })
-        router.push("/library?tab=proposals")
+        router.push("/app/library?tab=proposals")
         return
       } else if (isEdit && editId) {
         res = await fetch(`/api/songs/${editId}`, {
@@ -481,7 +481,7 @@ export default function EditorPage() {
         })
         if (!res.ok) throw new Error()
         useToastStore.getState().show("Cançó actualitzada!", { type: "success" })
-        router.push("/admin?tab=songs")
+        router.push("/app/admin?tab=songs")
         return
       } else if (isAdmin) {
         res = await fetch("/api/songs", {
@@ -541,7 +541,7 @@ export default function EditorPage() {
       })
       if (!res.ok) throw new Error()
       useToastStore.getState().show("Proposta acceptada!", { type: "success" })
-      router.push("/admin?tab=proposals")
+      router.push("/app/admin?tab=proposals")
     } catch {
       useToastStore.getState().show("Error en acceptar la proposta.", {
         type: "error",
@@ -560,7 +560,7 @@ export default function EditorPage() {
         })
         if (!res.ok) throw new Error()
         useToastStore.getState().show("Proposta rebutjada.", { type: "success" })
-        router.push("/admin?tab=proposals")
+        router.push("/app/admin?tab=proposals")
       } catch {
         useToastStore.getState().show("Error en rebutjar la proposta.", {
           type: "error",
@@ -652,7 +652,7 @@ export default function EditorPage() {
           })
           if (!res.ok) throw new Error()
           useToastStore.getState().show("Proposta cancel·lada.", { type: "success" })
-          router.push("/library?tab=proposals")
+          router.push("/app/library?tab=proposals")
         } catch {
           useToastStore
             .getState()
@@ -666,7 +666,7 @@ export default function EditorPage() {
       if (isEdit) {
         // En mode edit, "Descartar canvis" → tornar a /admin sense desar res.
         setConfirm(null)
-        router.push("/admin?tab=songs")
+        router.push("/app/admin?tab=songs")
         return
       }
       resetEditor()
@@ -797,13 +797,13 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
   let backHref: string
   let backLabel: string
   if (isModify) {
-    backHref = "/library?tab=proposals"
+    backHref = "/app/library?tab=proposals"
     backLabel = "← Les meves propostes"
   } else if (isReview) {
-    backHref = "/admin?tab=proposals"
+    backHref = "/app/admin?tab=proposals"
     backLabel = "← Panell admin"
   } else {
-    backHref = "/"
+    backHref = "/app"
     backLabel = "← Cançoner"
   }
 

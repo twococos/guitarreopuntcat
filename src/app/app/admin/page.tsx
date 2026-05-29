@@ -48,7 +48,7 @@ export default function AdminPage() {
   return (
     <>
       <header>
-        <Link href="/" className="back-link">
+        <Link href="/app" className="back-link">
           ← Cançoner
         </Link>
         <h1>⚙️ Panell d&apos;administració</h1>

@@ -46,7 +46,7 @@ export default function LibraryPage() {
     setTab(next)
     const params = new URLSearchParams(searchParams.toString())
     params.set("tab", next)
-    router.replace(`/library?${params.toString()}`, { scroll: false })
+    router.replace(`/app/library?${params.toString()}`, { scroll: false })
   }
 
   if (status === "loading") {
@@ -59,7 +59,7 @@ export default function LibraryPage() {
   return (
     <>
       <header>
-        <Link href="/" className="back-link">
+        <Link href="/app" className="back-link">
           ← Cançoner
         </Link>
         <h1>

@@ -3,24 +3,37 @@ import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core
 import type { PdfOptions } from "@/lib/schemas/canconer"
 
 // ─── Cançons ────────────────────────────────────────────────
-export const songs = sqliteTable("songs", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  title: text("title").notNull(),
-  artist: text("artist").notNull(),
-  key: text("key").notNull(),
-  capo: integer("capo").default(0),
-  content: text("content").notNull(),
-  language: text("language").default("ca"),
-  tags: text("tags").default(""),
-  album: text("album"),
-  year: integer("year"),
-  youtubeUrl: text("youtube_url"),
-  spotifyUrl: text("spotify_url"),
-  state: integer("state").notNull().default(0),
-  // 0 pública, 1 privada, 2 pendent, 3 rebutjada, 4 cancel·lada
-  createdAt: text("created_at").default(sql`(datetime('now'))`),
-  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
-})
+export const songs = sqliteTable(
+  "songs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    title: text("title").notNull(),
+    artist: text("artist").notNull(),
+    // Slugs URL-safe per a les rutes públiques /songs/[artist]/[song].
+    // Generats al moment de creació i mai re-generats automàticament
+    // encara que canviï `title` o `artist` (evitem trencar enllaços externs).
+    // `artistSlug` és únic globalment per artista (totes les cançons del
+    // mateix artista comparteixen el mateix slug).
+    artistSlug: text("artist_slug"),
+    songSlug: text("song_slug"),
+    key: text("key").notNull(),
+    capo: integer("capo").default(0),
+    content: text("content").notNull(),
+    language: text("language").default("ca"),
+    tags: text("tags").default(""),
+    album: text("album"),
+    year: integer("year"),
+    youtubeUrl: text("youtube_url"),
+    spotifyUrl: text("spotify_url"),
+    state: integer("state").notNull().default(0),
+    // 0 pública, 1 privada, 2 pendent, 3 rebutjada, 4 cancel·lada
+    createdAt: text("created_at").default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").default(sql`(datetime('now'))`),
+  },
+  (t) => ({
+    slugUnique: uniqueIndex("songs_artist_song_slug_unique").on(t.artistSlug, t.songSlug),
+  }),
+)
 
 // ─── Usuaris ────────────────────────────────────────────────
 // Nota: el camp `googleId` es manté per compatibilitat amb dades

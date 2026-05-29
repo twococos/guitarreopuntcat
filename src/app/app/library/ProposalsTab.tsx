@@ -236,7 +236,7 @@ export function ProposalsTab() {
                               type="button"
                               className="library-action"
                               onClick={() =>
-                                router.push(`/editor?proposal=${p.id}&mode=modify`)
+                                router.push(`/app/editor?proposal=${p.id}&mode=modify`)
                               }
                             >
                               <IconPencil /> Modificar
@@ -262,7 +262,7 @@ export function ProposalsTab() {
         {proposals.length === 0 && (
           <div className="library-empty">
             <p>Encara no has fet cap proposta de cançó.</p>
-            <Link href="/editor" className="library-empty-btn">
+            <Link href="/app/editor" className="library-empty-btn">
               <IconPlus /> Fer una proposta
             </Link>
           </div>

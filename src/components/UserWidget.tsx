@@ -67,12 +67,12 @@ export function UserWidget() {
             </div>
           </div>
           <div className="user-dropdown-sep" />
-          <a href="/library" className="user-dropdown-item">
+          <a href="/app/library" className="user-dropdown-item">
             <IconLibrary />
             <span>La teva Biblioteca</span>
           </a>
           {isAdmin && (
-            <a href="/admin" className="user-dropdown-item">
+            <a href="/app/admin" className="user-dropdown-item">
               <IconSettings />
               <span>Panell d&apos;administració</span>
             </a>
@@ -80,7 +80,14 @@ export function UserWidget() {
           <div className="user-dropdown-sep" />
           <button
             className="user-dropdown-item user-dropdown-logout"
-            onClick={() => signOut({ callbackUrl: "/" })}
+            onClick={() => {
+              // Si estem dins de l'app, tornem a /app (la portada de l'app);
+              // altrament quedem-nos a la mateixa pàgina pública.
+              const path =
+                typeof window !== "undefined" ? window.location.pathname : "/"
+              const callbackUrl = path.startsWith("/app") ? "/app" : path
+              signOut({ callbackUrl })
+            }}
           >
             Tancar sessió
           </button>

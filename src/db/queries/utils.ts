@@ -18,6 +18,8 @@ export function mapSong(song: {
   id: number
   title: string
   artist: string
+  artistSlug: string | null
+  songSlug: string | null
   key: string
   capo: number | null
   content: string
@@ -35,6 +37,8 @@ export function mapSong(song: {
     id: song.id,
     title: song.title,
     artist: song.artist,
+    artist_slug: song.artistSlug,
+    song_slug: song.songSlug,
     key: song.key,
     capo: song.capo ?? 0,
     content: song.content,
@@ -55,6 +59,8 @@ export function mapSongSummary(song: {
   id: number
   title: string
   artist: string
+  artistSlug: string | null
+  songSlug: string | null
   key: string
   capo: number | null
   language: string | null
@@ -68,6 +74,8 @@ export function mapSongSummary(song: {
     id: song.id,
     title: song.title,
     artist: song.artist,
+    artist_slug: song.artistSlug,
+    song_slug: song.songSlug,
     key: song.key,
     capo: song.capo ?? 0,
     language: song.language ?? "ca",

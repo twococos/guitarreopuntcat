@@ -123,7 +123,7 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
               {p.status === "pending" && (
                 <button
                   className="btn-xs"
-                  onClick={() => router.push(`/editor?proposal=${p.id}`)}
+                  onClick={() => router.push(`/app/editor?proposal=${p.id}`)}
                 >
                   Revisar
                 </button>

@@ -144,7 +144,7 @@ export function CanconersTab() {
   function handleEdit() {
     if (!active) return
     sessionStorage.setItem("load_canconer", JSON.stringify(active))
-    router.push("/")
+    router.push("/app")
   }
 
   async function handleDelete() {
@@ -319,7 +319,7 @@ export function CanconersTab() {
                             type="button"
                             className="library-action"
                             onClick={() =>
-                              router.push(`/library/canconers/${active.id}/preview`)
+                              router.push(`/app/library/canconers/${active.id}/preview`)
                             }
                           >
                             <IconEye /> Mostrar
@@ -393,7 +393,7 @@ export function CanconersTab() {
         {canconers.length === 0 && (
           <div className="library-empty">
             <p>Encara no has guardat cap cançoner.</p>
-            <Link href="/" className="library-empty-btn">
+            <Link href="/app" className="library-empty-btn">
               <IconPlus /> Crear el primer
             </Link>
           </div>

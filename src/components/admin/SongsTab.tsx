@@ -94,7 +94,7 @@ export function SongsTab() {
                   </span>
                 </td>
                 <td className="td-actions">
-                  <a href={`/editor?id=${s.id}`} className="btn-xs">
+                  <a href={`/app/editor?id=${s.id}`} className="btn-xs">
                     Editar
                   </a>
                   <button

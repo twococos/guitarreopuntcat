@@ -61,8 +61,9 @@ export function SongbookEditor() {
 
     // Prioritats de càrrega:
     // 1) "load_canconer" (one-shot des de /library) — màxima prioritat.
-    // 2) "canconer_in_progress" (autoguardat de sessió anterior).
-    // 3) Estat per defecte, amb títol generat segons cançoners existents.
+    // 2) "start_with_song" (one-shot des de /songs/[artist]/[song]).
+    // 3) "canconer_in_progress" (autoguardat de sessió anterior).
+    // 4) Estat per defecte, amb títol generat segons cançoners existents.
     const loadRaw = sessionStorage.getItem("load_canconer")
     if (loadRaw) {
       sessionStorage.removeItem("load_canconer")
@@ -70,6 +71,16 @@ export function SongbookEditor() {
       // sobreescriure'l immediatament amb el contingut del guardat.
       sessionStorage.removeItem(IN_PROGRESS_STORAGE_KEY)
       void loadFromSession(loadRaw).finally(() => {
+        hydratedRef.current = true
+      })
+      return
+    }
+
+    const startRaw = sessionStorage.getItem("start_with_song")
+    if (startRaw) {
+      sessionStorage.removeItem("start_with_song")
+      sessionStorage.removeItem(IN_PROGRESS_STORAGE_KEY)
+      void startWithSong(startRaw).finally(() => {
         hydratedRef.current = true
       })
       return
@@ -94,8 +105,9 @@ export function SongbookEditor() {
   useEffect(() => {
     if (!hydratedRef.current) return
     const loadRaw = sessionStorage.getItem("load_canconer")
+    const startRaw = sessionStorage.getItem("start_with_song")
     const inProgressRaw = sessionStorage.getItem(IN_PROGRESS_STORAGE_KEY)
-    if (loadRaw || inProgressRaw) return
+    if (loadRaw || startRaw || inProgressRaw) return
     if (session?.user?.active) {
       void setDefaultTitle()
     }
@@ -193,6 +205,23 @@ export function SongbookEditor() {
     } catch {
       // Si la hidratació falla, esborra la clau corrupta
       sessionStorage.removeItem(IN_PROGRESS_STORAGE_KEY)
+    }
+  }
+
+  async function startWithSong(raw: string) {
+    try {
+      const data = JSON.parse(raw) as { songId: number; semitones?: number }
+      if (typeof data.songId !== "number") return
+      const res = await fetch(`/api/songs/${data.songId}`)
+      if (!res.ok) return
+      const song = (await res.json()) as Song
+      useSongbookStore.setState({
+        savedCanconerId: null,
+        canconer: [{ song, semitones: data.semitones ?? 0 }],
+        selectedIdx: 0,
+      })
+    } catch {
+      // Ignora errors de parse/fetch — quedarà l'estat per defecte.
     }
   }
 

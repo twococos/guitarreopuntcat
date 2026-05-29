@@ -69,8 +69,8 @@ interface Props {
  * CanconerPreviewLayout — layout de vista prèvia d'un cançoner.
  *
  * Compartit entre:
- *   · /c/[token]                          (vista pública compartida)
- *   · /library/canconers/[id]/preview     (vista privada del propietari)
+ *   · /c/[token]                              (vista pública compartida)
+ *   · /app/library/canconers/[id]/preview     (vista privada del propietari)
  *
  * Reprodueix exactament el JSX de la pàgina /c/[token] original,
  * parametritzat per `backHref`, `backLabel` i `ownerName`.

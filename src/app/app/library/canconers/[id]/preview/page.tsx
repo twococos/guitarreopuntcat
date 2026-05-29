@@ -25,7 +25,7 @@ export default async function PrivatePreviewPage({ params }: Props) {
       <CanconerPreviewLayout
         canconer={canconer}
         ownerName={canconer.owner_name}
-        backHref="/library?tab=canconers"
+        backHref="/app/library?tab=canconers"
         backLabel="← La teva Biblioteca"
       />
     )
@@ -39,7 +39,7 @@ export default async function PrivatePreviewPage({ params }: Props) {
     <CanconerPreviewLayout
       canconer={canconer}
       ownerName={canconer.owner_name}
-      backHref="/library?tab=canconers"
+      backHref="/app/library?tab=canconers"
       backLabel="← La teva Biblioteca"
     />
   )

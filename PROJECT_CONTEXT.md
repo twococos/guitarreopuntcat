@@ -4,13 +4,17 @@
 
 ## Què és el projecte
 
-**El Cançoner** és una eina web per crear llibrets de cançons. Permet:
+**El Cançoner** (guitarreo.cat) és una eina web amb dues cares:
 
-- Mantenir una base de dades de cançons amb lletra i acords (tags semàntics `<ch>` i `<sec>`).
-- Crear cançoners personalitzats triant cançons, reordenant-les i transposant-les.
-- Generar PDFs imprimibles amb portada, índex i pàgines de cançons.
-- Comptes d'usuari amb Google OAuth: cada usuari té els seus cançoners guardats, pot compartir-los per enllaç públic i proposar noves cançons.
-- Panell d'administració: estadístiques, revisió de propostes, gestió d'usuaris i cançoners.
+- **Àrea pública** (`/`, `/songs/*`, `/projecte`, `/contacte`): catàleg SEO de cançons amb lletra+acords navegable per Google, cerca, secció "Inspira't" amb cançons aleatòries i CTA per crear cançoners.
+- **App privada** (`/app/*`): editor de cançoners, editor de cançons WYSIWYG, biblioteca i admin. Tot el que era a `/` abans ara és a `/app`.
+
+Funcionalitats:
+- BD de cançons amb lletra i acords (tags semàntics `<ch>` i `<sec>`).
+- Cançoners personalitzats triant cançons, reordenant-les i transposant-les.
+- PDFs imprimibles amb portada, índex i pàgines de cançons.
+- Comptes Google OAuth amb cançoners guardats, compartir per enllaç públic i propostes.
+- Panell d'administració.
 
 L'app és en català. Tots els missatges d'UI, comentaris del codi i commits s'escriuen en català.
 
@@ -41,17 +45,26 @@ L'app és en català. Tots els missatges d'UI, comentaris del codi i commits s'e
 ```
 src/
 ├── app/
-│   ├── globals.css                         Tots els estils globals (≈3.000 línies)
-│   ├── page.tsx                            Pàgina principal
-│   ├── editor/page.tsx                     Pàgina /editor (crear/editar cançons, WYSIWYG)
-│   ├── library/page.tsx                    Pàgina /library (els meus cançoners)
-│   ├── admin/{layout,page}.tsx             Gate server-side admin + dashboard
-│   ├── c/[token]/page.tsx                  Vista pública compartida
+│   ├── globals.css                         Estils globals (≈4.800 línies, vegeu índex al capdamunt)
+│   ├── page.tsx                            Portada pública / — hero + SearchHero + Inspira't + recents
+│   ├── songs/page.tsx                      Índex /songs (lletra activa via ?letter=X, ?by=letter|artist)
+│   ├── songs/[artistSlug]/page.tsx         Pàgina pública d'un artista
+│   ├── songs/[artistSlug]/[songSlug]/page.tsx   Pàgina pública d'una cançó (SEO + CTA cançoner)
+│   ├── projecte/page.tsx, contacte/page.tsx     Pàgines estàtiques (banner + targeta blanca)
+│   ├── sitemap.ts, robots.ts               SEO dinàmic
+│   ├── app/page.tsx                        /app — editor de cançoners (antiga /)
+│   ├── app/editor/page.tsx                 /app/editor (crear/editar cançons, WYSIWYG)
+│   ├── app/library/page.tsx                /app/library (els meus cançoners)
+│   ├── app/admin/{layout,page}.tsx         Gate server-side admin + dashboard
+│   ├── c/[token]/page.tsx                  Vista pública compartida (queda a l'arrel)
 │   └── api/                                Route Handlers (songs, canconers, proposals, admin, pdf, import)
+│       └── songs/{search,index,random}/    Públics: cerca, índex per lletra, dau aleatori
 │
 ├── components/
-│   ├── songbook/                           Components de /
-│   ├── editor/                             Components de /editor (vegeu §1 sota)
+│   ├── public/                             PublicNav, SearchHero, InspiratSection, SongsIndexBar
+│   ├── songs/                              PublicSongView (vista pública d'una cançó)
+│   ├── songbook/                           Components de /app
+│   ├── editor/                             Components de /app/editor (vegeu §1 sota)
 │   ├── admin/                              StatsCards, ProposalsTab, SongsTab, UsersTab, CanconersTab
 │   └── shared/                             SharedIndex (scroll-spy), SharedPdfButton
 │
@@ -63,6 +76,8 @@ src/
 ├── lib/
 │   ├── auth.ts                             Config NextAuth (signIn/jwt/session callbacks)
 │   ├── session.ts                          getSessionUser, requireAuth, requireAdmin
+│   ├── site.ts                             getBaseUrl() — NEXT_PUBLIC_SITE_URL → AUTH_URL → guitarreo.cat
+│   ├── slugify.ts                          slug(text) + resolveCollision(base, taken)
 │   ├── transpose.ts                        Motor de transposició
 │   ├── editor/                             Lògica WYSIWYG: model.ts, sections.ts, chordFunctions.ts
 │   ├── schemas/                            Schemas Zod per validació API
@@ -81,7 +96,7 @@ src/
 
 ## Coses importants per situar-te
 
-### 1. Editor de cançons WYSIWYG (`/editor`)
+### 1. Editor de cançons WYSIWYG (`/app/editor`)
 
 L'editor és **WYSIWYG amb model intern**: l'usuari no veu els tags `<ch>` ni `<sec>`; els veu renderitzats. La BD però **conserva el format `<ch>X</ch>` i `<sec>X</sec>`** sense canvis.
 
@@ -128,9 +143,9 @@ Aquest format es **PRESERVA tal qual a la BD i NO s'ha de tocar**. La transposic
 
 Si l'usuari demana "canvia el color dels acords", el canvi va a `song.css` i es propaga a vista prèvia, /c/[token] i PDF. **No el toquis** llevat que el canvi sigui semànticament del format de sortida.
 
-### 4. Estat client de la pàgina principal
+### 4. Estat client de l'editor de cançoners
 
-`src/hooks/useSongbook.ts` és el store Zustand amb tota la lògica de `/`. Camps: `songs`, `canconer`, `selectedIdx`, `allowedKeys: Set<string>`, `previewActive`, etc. Actions: `addToCanconer`, `reorder`, `setSemitones`, `applyAllowedKeys`, etc.
+`src/hooks/useSongbook.ts` és el store Zustand amb tota la lògica de `/app`. Camps: `songs`, `canconer`, `selectedIdx`, `allowedKeys: Set<string>`, `previewActive`, etc. Actions: `addToCanconer`, `reorder`, `setSemitones`, `applyAllowedKeys`, etc.
 
 **Consum**: usa selectors fins per evitar re-renders massius.
 ```tsx
@@ -159,10 +174,13 @@ Puppeteer llança Chromium per cada PDF (no hi ha pool). Trigada típica: ~7s pe
 
 ### 9. Auth gate per pàgina
 
-- `/` → pública.
-- `/editor`, `/library` → gate al client (`useSession` + redirect).
-- `/admin` → gate al **server** (`src/app/admin/layout.tsx`).
+- `/`, `/songs/*`, `/projecte`, `/contacte` → públiques (àrea pública SEO).
+- `/app` → editor de cançoners. Pública (es pot fer feina sense login; només cal login per guardar).
+- `/app/editor`, `/app/library` → gate al client (`useSession` + redirect a `/app`).
+- `/app/admin` → gate al **server** (`src/app/app/admin/layout.tsx`).
 - `/c/[token]` → pública.
+- Redirects retro a `next.config.mjs`: `/editor`, `/library`, `/admin` (i subrutes) → `/app/...` amb 308.
+- `robots.txt` permet `/`, bloqueja `/app/`, `/api/`, `/c/`.
 
 ### 10. API: snake_case al JSON
 
@@ -203,6 +221,23 @@ L'editor té un mode "import URL" per a admins: `NewSongStartPopup` enganxa una 
 Vegeu `acordscatala.ts` com a exemple de referència (parsing en català amb negreta=tornada, conversió SOL→G, DO→C, etc.).
 
 **Provar un parser nou en local:** baixa una mostra amb `curl`, escriu un `.tmp-test.ts` que importi el parser i l'executi via `npx tsx`. Esborra `.tmp-*` quan acabis.
+
+### 13. Àrea pública i SEO
+
+**URLs canòniques:** `/songs/<artist-slug>/<song-slug>` (cançó) i `/songs/<artist-slug>` (artista). El mateix path resol artista o cançó segons quants segments.
+
+**Slugs:** `artist_slug` i `song_slug` són columnes a `songs` (úniques per parella, vegeu `0003_song_slugs.sql`). Es generen amb `slugify()` + `resolveCollision()` dins de `generateSlugsForNewSong()` a `createSong` i `createProposal`. **Sempre fora de la transacció** per evitar bloquejar la BD durant el càlcul.
+
+**Components públics clau:**
+- `PublicNav` — barra navegació sticky full-bleed amb logo + links + UserWidget. Apareix a totes les públiques (NO dins de `/app/*`).
+- `SearchHero` — input de cerca amb dropdown (debounce 200ms a `/api/songs/search`). Variant `compact` per a usos secundaris.
+- `InspiratSection` — fila de 4 cançons aleatòries, botó "Tira el dau" crida `/api/songs/random?count=4&exclude=...`.
+- `SongsIndexBar` — barra sticky full-bleed de `/songs`: A-Z al centre + toggle per cançó/artista + lupa que **expandeix** un input de cerca ocupant tota la barra amb overlay difuminat darrere.
+- `PublicSongView` — vista de la cançó: top bar amb transposició / mida / autoscroll + CTA "Comença un cançoner amb aquesta cançó" (handoff via `sessionStorage.start_with_song` a `/app`).
+
+**SEO:** `sitemap.ts` (`force-dynamic`) emet estàtiques + entrades per cada artista + cada cançó pública. `generateMetadata()` a les pàgines de cançó ompla title + meta description amb snippet de lletra.
+
+**Estil:** `body` té `overflow: hidden` per defecte (per a l'app); les pàgines públiques el desactiven via `body:has(.public-nav)`. El selector global `header { ... }` es sobreescriu amb `header.public-nav { display: block; padding: 0; }` perquè la nav arribi de costat a costat.
 
 ## Forma de treballar amb Claude
 

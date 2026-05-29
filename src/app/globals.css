@@ -6,10 +6,17 @@
                          (reutilitzats al PDF; mai els toquis
                           aquí, edita src/styles/song.css)
      2. style.css      → layout principal, columnes, toasts, login
-     3. editor.css     → pàgina /editor
-     4. admin.css      → pàgina /admin
-     5. library.css    → pàgina /library
+     3. editor.css     → pàgina /app/editor
+     4. admin.css      → pàgina /app/admin
+     5. library.css    → pàgina /app/library
      6. shared.css     → pàgina /c/[token]
+     7. public-song    → pàgina /songs/[artist]/[song]
+     8. public-artist  → pàgina /songs/[artist]
+     9. public-home    → portada /
+     A. public-nav     → barra nav pública (totes les pàgines públiques)
+     B. search-hero    → input de cerca de la portada
+     C. public-static  → pàgines /projecte i /contacte
+     D. songs-index    → índex /songs (per cançó o per artista)
    ════════════════════════════════════════════════════════════ */
 
 @import "../styles/song.css";
@@ -1632,7 +1639,7 @@ select:focus {
 .btn-ghost {
   background: transparent;
   color: #666;
-  border: 1px solid var(--border, #e5e5e3);
+  border: 1px solid var(--border);
   padding: 0.45rem 1rem;
   border-radius: 4px;
   cursor: pointer;
@@ -1647,15 +1654,18 @@ select:focus {
 }
 
 /* ════════════════════════════════════════════════════════════
-   2. EDITOR.CSS — pàgina /editor
+   2. EDITOR.CSS — pàgina /app/editor
    ════════════════════════════════════════════════════════════ */
 
-/* Override del body només per pàgines no-app (editor, admin, library, shared).
-   Es fa amb selector específic perquè body de la pàgina principal usa overflow:hidden. */
+/* Override del body només per pàgines no-app (editor, admin, library, shared)
+   i per a totes les pàgines públiques (portada, /songs/*, /projecte, /contacte).
+   Aquestes necessiten scroll vertical normal; el `overflow: hidden` per defecte
+   del body només aplica a la pàgina /app (cançoner amb columnes scrollables). */
 body:has(.editor-page),
 body:has(#admin-tabs),
 body:has(#mc-main),
-body:has(#shared-layout) {
+body:has(#shared-layout),
+body:has(.public-nav) {
   overflow: auto;
   height: auto;
   display: block;
@@ -1883,7 +1893,7 @@ body:has(#shared-layout) {
 }
 
 /* ════════════════════════════════════════════════════════════
-   3. ADMIN.CSS — pàgina /admin
+   3. ADMIN.CSS — pàgina /app/admin
    ════════════════════════════════════════════════════════════ */
 
 #admin-tabs {
@@ -2227,7 +2237,7 @@ tbody tr:hover {
 }
 
 /* ════════════════════════════════════════════════════════════
-   4. LIBRARY.CSS — pàgina /library
+   4. LIBRARY.CSS — pàgina /app/library
    ════════════════════════════════════════════════════════════ */
 
 /* Tabs superiors — alineades al mateix max-width que el contingut
@@ -3178,7 +3188,7 @@ tbody tr:hover {
   align-items: end;
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px dashed var(--border, #e5e5e3);
+  border-top: 1px dashed var(--border);
 }
 .more-options-field--inline {
   flex-direction: column;
@@ -3215,7 +3225,7 @@ tbody tr:hover {
 .more-options-input,
 .more-options-select {
   padding: 0.38rem 0.6rem;
-  border: 1px solid var(--border, #e5e5e3);
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.85rem;
   background: var(--surface, #fff);
@@ -3260,7 +3270,7 @@ tbody tr:hover {
   transition: border-color 0.15s;
 }
 .song-meta-part--editable:hover {
-  border-color: var(--border, #e5e5e3);
+  border-color: var(--border);
 }
 .song-meta-part--empty {
   font-style: italic;
@@ -3328,7 +3338,7 @@ tbody tr:hover {
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   background: white;
-  border: 1px solid var(--border, #e5e5e3);
+  border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
@@ -3350,12 +3360,12 @@ tbody tr:hover {
 .editor-toolbar-sep {
   width: 1px;
   height: 1.5em;
-  background: var(--border, #e5e5e3);
+  background: var(--border);
   margin: 0 0.3rem;
 }
 .toolbar-btn {
   background: white;
-  border: 1px solid var(--border, #e5e5e3);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0.35rem 0.75rem;
   font-size: 0.9rem;
@@ -3404,7 +3414,7 @@ tbody tr:hover {
 /* ── WysiwygEditor ──────────────────────────────────────────── */
 .wysiwyg-editor-wrap {
   position: relative;
-  border: 1px solid var(--border, #e5e5e3);
+  border: 1px solid var(--border);
   border-radius: 6px;
   background: white;
   min-height: 400px;
@@ -3573,7 +3583,7 @@ div[data-block="section"]:hover .wsec {
   position: fixed;
   z-index: 1000;
   background: white;
-  border: 1px solid var(--border, #e5e5e3);
+  border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   padding: 0.5rem;
@@ -3600,7 +3610,7 @@ div[data-block="section"]:hover .wsec {
 }
 .key-picker-cell {
   background: white;
-  border: 1px solid var(--border, #e5e5e3);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0.35rem 0.5rem;
   cursor: pointer;
@@ -3627,7 +3637,7 @@ div[data-block="section"]:hover .wsec {
   position: fixed;
   z-index: 200;
   background: var(--surface, #fff);
-  border: 1px solid var(--border, #e5e5e3);
+  border: 1px solid var(--border);
   border-radius: var(--radius, 8px);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
   min-width: 180px;
@@ -3690,12 +3700,12 @@ div[data-block="section"]:hover .wsec {
   flex-wrap: wrap;
   gap: 0.25rem;
   padding: 0.5rem 0.4rem;
-  border-top: 1px solid var(--border, #e5e5e3);
+  border-top: 1px solid var(--border);
 }
 .chord-modifier-chip {
   padding: 0.2rem 0.5rem;
   background: var(--bg, #f7f7f5);
-  border: 1px solid var(--border, #e5e5e3);
+  border: 1px solid var(--border);
   border-radius: 999px;
   cursor: pointer;
   font-size: 0.8rem;
@@ -3766,7 +3776,7 @@ div[data-block="section"]:hover .wsec {
 .chord-menu-chord-btn {
   padding: 0.3rem 0.4rem;
   background: var(--bg, #f7f7f5);
-  border: 1px solid var(--border, #e5e5e3);
+  border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
   font-family: monospace;
@@ -3837,11 +3847,1195 @@ div[data-block="section"]:hover .wsec {
 }
 .song-title--editable:hover,
 .song-artist--editable:hover {
-  border-color: var(--border, #cfcfcd);
+  border-color: var(--border);
   background: rgba(0, 0, 0, 0.02);
 }
 .song-title--editable:focus-visible,
 .song-artist--editable:focus-visible {
   border-color: var(--accent);
   outline: none;
+}
+
+/* ════════════════════════════════════════════════════════════
+   7. PUBLIC-SONG — pàgina pública /songs/[artist]/[song]
+   ════════════════════════════════════════════════════════════ */
+
+.public-song-page {
+  --song-font-size: 14px;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  padding-bottom: 4rem;
+}
+
+/* Barra sticky de controls */
+.public-song-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+
+.public-song-bar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.public-song-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.2rem;
+  height: 2rem;
+  padding: 0 0.6rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.public-song-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+}
+.public-song-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.public-song-btn-font-sm {
+  font-size: 0.8rem;
+}
+.public-song-btn-font-lg {
+  font-size: 1.15rem;
+}
+
+.public-song-semitones {
+  min-width: 3.4rem;
+  padding: 0 0.3rem;
+  height: 2rem;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.public-song-semitones:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.public-song-autoscroll-toggle.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+.public-song-autoscroll-toggle.is-active:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(0.95);
+}
+
+.public-song-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+.public-song-speed-btn {
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.public-song-speed-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+.public-song-speed-btn.is-active {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Cos principal */
+.public-song-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* La mida de font es propaga al song-body via la variable global del page */
+.public-song-page .song-body {
+  font-size: var(--song-font-size);
+}
+
+/* CTA inferior */
+.public-song-cta-wrap {
+  margin-top: 3rem;
+  text-align: center;
+  padding: 2rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.public-song-cta {
+  display: inline-block;
+  padding: 0.9rem 1.6rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: filter 0.1s, transform 0.05s;
+}
+.public-song-cta:hover {
+  filter: brightness(0.95);
+}
+.public-song-cta:active {
+  transform: translateY(1px);
+}
+
+.public-song-cta-hint {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Mòbil: la barra de controls passa a stack vertical compacte */
+@media (max-width: 640px) {
+  .public-song-bar {
+    gap: 0.4rem;
+    padding: 0.4rem 0.5rem;
+  }
+  .public-song-bar-group {
+    padding: 0.15rem 0.3rem;
+  }
+  .public-song-btn {
+    min-width: 1.9rem;
+    height: 1.8rem;
+    padding: 0 0.5rem;
+    font-size: 0.95rem;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   8. PUBLIC-ARTIST — pàgina pública /songs/[artist]
+   ════════════════════════════════════════════════════════════ */
+
+.public-artist-page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  padding-bottom: 4rem;
+}
+
+.public-artist-header {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 3rem 1rem 1.5rem;
+  text-align: center;
+}
+
+.public-artist-eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.public-artist-name {
+  margin: 0.3rem 0 0.5rem;
+  font-size: 2.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.public-artist-count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.public-artist-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.public-artist-songs {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+.public-artist-song {
+  border-bottom: 1px solid var(--border);
+}
+
+.public-artist-song-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 0.5rem;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.1s;
+}
+
+.public-artist-song-link:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.public-artist-song-title {
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.public-artist-song-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.public-artist-song-key {
+  display: inline-block;
+  min-width: 2rem;
+  padding: 0.1rem 0.5rem;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  text-align: center;
+}
+
+.public-artist-song-year {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .public-artist-name {
+    font-size: 2rem;
+  }
+  .public-artist-song-link {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   A. PUBLIC-NAV — barra de navegació pública
+   ════════════════════════════════════════════════════════════ */
+
+/* Cal sobreescriure el selector global `header { ... }` (línies ~98), que aplica
+   alçada fixa, padding lateral i `display: flex` directament al <header>. Aquí
+   volem que el <header.public-nav> sigui full-bleed (de costat a costat) i que
+   el contingut quedi centrat dins .public-nav-inner. */
+header.public-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(247, 247, 245, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  display: block;
+  height: auto;
+  padding: 0;
+  gap: 0;
+}
+
+.public-nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.6rem 1.25rem;
+}
+
+.public-nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.public-nav-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.public-nav-wordmark {
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.public-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0 auto;
+}
+
+.public-nav-link {
+  padding: 0.45rem 0.8rem;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.95rem;
+  border-radius: 999px;
+  transition: background 0.1s;
+}
+.public-nav-link:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.public-nav-link.is-active {
+  background: rgba(0, 0, 0, 0.07);
+  font-weight: 600;
+}
+
+.public-nav-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.public-nav-cta {
+  padding: 0.45rem 0.95rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.1s;
+}
+.public-nav-cta:hover {
+  background: var(--accent-hv);
+}
+
+/* Mòbil: amaga els links centrals — només brand + accions + UserWidget */
+@media (max-width: 720px) {
+  .public-nav-links {
+    display: none;
+  }
+  .public-nav-cta {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.85rem;
+  }
+  .public-nav-wordmark {
+    display: none;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   9. PUBLIC-HOME — portada /
+   ════════════════════════════════════════════════════════════ */
+
+.public-home {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 1rem 5rem;
+}
+
+.public-home-hero {
+  text-align: center;
+  padding: 4rem 0 2rem;
+}
+
+.public-home-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin: 0 auto 1.25rem;
+  display: block;
+  /* Lleu ombra circular per donar pes visual al logo */
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.08));
+}
+
+.public-home-title {
+  margin: 0 0 0.4rem;
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.public-home-claim {
+  margin: 0 0 2.5rem;
+  font-size: 1.15rem;
+  color: var(--muted);
+}
+
+.public-home-secondary {
+  margin-top: 1.25rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.public-home-secondary-cta {
+  display: inline-block;
+  padding: 0.6rem 1.1rem;
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: background 0.1s, color 0.1s;
+}
+.public-home-secondary-cta:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.public-home-secondary-sep {
+  margin: 0 0.5rem;
+  color: var(--muted);
+}
+
+.public-home-secondary-link {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 4px;
+}
+.public-home-secondary-link:hover {
+  text-decoration-color: var(--accent);
+}
+
+/* Secció genèrica (Últimes incorporades, etc.) */
+.public-home-section {
+  margin-top: 3.5rem;
+}
+
+.public-home-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 1.2rem;
+}
+
+.public-home-section-title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.public-home-section-link {
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.public-home-section-link:hover {
+  color: var(--accent);
+}
+
+.public-home-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.public-home-card {
+  /* nothing — el link és el contenidor estilable */
+}
+
+.public-home-card-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.1s, box-shadow 0.1s, transform 0.05s;
+  position: relative;
+}
+.public-home-card-link:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.public-home-card-title {
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.public-home-card-artist {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.public-home-card-key {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .public-home-hero {
+    padding: 2.5rem 0 1.5rem;
+  }
+  .public-home-title {
+    font-size: 2.3rem;
+  }
+  .public-home-claim {
+    font-size: 1rem;
+    margin-bottom: 1.75rem;
+  }
+}
+
+/* ── Inspira't (cançó aleatòria) ─────────────────────────────── */
+.inspirat-dice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.4rem 0.95rem 0.4rem 0.6rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, transform 0.05s;
+}
+.inspirat-dice:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: #fdf4f3;
+  color: var(--accent);
+}
+.inspirat-dice:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.inspirat-dice:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.inspirat-dice-emoji {
+  font-size: 1.2rem;
+  line-height: 1;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+.inspirat-dice.is-rolling .inspirat-dice-emoji {
+  transform: rotate(360deg);
+}
+
+.inspirat-card {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem 1.75rem;
+  background: linear-gradient(135deg, var(--surface) 0%, #fdf4f3 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.inspirat-card-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.inspirat-card-eyebrow {
+  display: inline-block;
+  margin-bottom: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.inspirat-card-title {
+  margin: 0 0 0.2rem;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.inspirat-card-artist {
+  margin: 0 0 0.8rem;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.inspirat-card-badges {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.inspirat-card-key {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--accent);
+  background: #fff;
+  border: 1px solid #f0c8c4;
+  border-radius: 999px;
+  padding: 0.15rem 0.65rem;
+  font-weight: 700;
+}
+
+.inspirat-card-year {
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.65rem;
+}
+
+.inspirat-card-cta {
+  flex-shrink: 0;
+  padding: 0.7rem 1.2rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: background 0.12s, transform 0.05s;
+}
+.inspirat-card-cta:hover {
+  background: var(--accent-hv);
+}
+.inspirat-card-cta:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 640px) {
+  .inspirat-card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1.25rem;
+    text-align: left;
+  }
+  .inspirat-card-cta {
+    text-align: center;
+  }
+  .inspirat-card-title {
+    font-size: 1.3rem;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   B. SEARCH-HERO — input de cerca prominent
+   ════════════════════════════════════════════════════════════ */
+
+.search-hero {
+  position: relative;
+  max-width: 760px;
+  margin: 0 auto;
+}
+/* Variant compacta (p. ex. dins de la pàgina /songs). Es pot usar afegint
+   la classe .search-hero--compact al wrapper. */
+.search-hero.search-hero--compact {
+  max-width: 100%;
+}
+
+.search-hero-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.search-hero-input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 6px 28px rgba(192, 57, 43, 0.18);
+}
+.search-hero--compact .search-hero-input-wrap {
+  box-shadow: var(--shadow);
+}
+
+.search-hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  padding: 0 0.5rem 0 1.5rem;
+  flex-shrink: 0;
+}
+.search-hero-icon svg {
+  width: 26px;
+  height: 26px;
+}
+.search-hero--compact .search-hero-icon {
+  padding: 0 0.4rem 0 1.1rem;
+}
+.search-hero--compact .search-hero-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.search-hero-input {
+  flex: 1;
+  padding: 1.35rem 0.5rem;
+  font-size: 1.25rem;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+}
+.search-hero--compact .search-hero-input {
+  padding: 0.9rem 0.4rem;
+  font-size: 1.02rem;
+}
+.search-hero-input::placeholder {
+  color: var(--muted);
+}
+
+.search-hero-clear {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1rem;
+  padding: 0 1.1rem;
+  cursor: pointer;
+  height: 100%;
+}
+.search-hero-clear:hover {
+  color: var(--text);
+}
+
+/* Dropdown */
+.search-hero-dropdown {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  padding: 0.4rem 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.search-hero-empty {
+  padding: 1rem 1.2rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.search-hero-section + .search-hero-section {
+  border-top: 1px solid var(--border);
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+}
+
+.search-hero-section-label {
+  padding: 0.4rem 1.2rem 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.search-hero-result {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1.2rem;
+  color: var(--text);
+  text-decoration: none;
+  transition: background 0.1s;
+}
+.search-hero-result.is-focused,
+.search-hero-result:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.search-hero-result-icon {
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  border-radius: 50%;
+  font-size: 0.9rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.search-hero-result-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.search-hero-result-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-hero-result-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-hero-result-key {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   C. PUBLIC-STATIC — /projecte, /contacte
+   ════════════════════════════════════════════════════════════ */
+
+.public-static {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 1rem 4rem;
+}
+
+.public-static-header {
+  padding: 3rem 0 2rem;
+}
+
+.public-static-eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.public-static-title {
+  margin: 0.3rem 0 0.8rem;
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.public-static-lede {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.public-static-section {
+  margin-top: 2.5rem;
+}
+
+.public-static-section h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.public-static-section p {
+  margin: 0 0 0.8rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.public-static-section a {
+  color: var(--accent);
+}
+
+.public-static-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  .public-static-title {
+    font-size: 1.9rem;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   D. SONGS-INDEX — índex /songs (per cançó o per artista)
+   ════════════════════════════════════════════════════════════ */
+
+.songs-index {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 1rem 4rem;
+}
+
+.songs-index-header {
+  padding: 3rem 0 1.5rem;
+  text-align: center;
+}
+
+.songs-index-eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.songs-index-title {
+  margin: 0.3rem 0 0.4rem;
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.songs-index-count {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.songs-index-toggle {
+  display: inline-flex;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.songs-index-toggle-btn {
+  padding: 0.45rem 1rem;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 999px;
+  transition: background 0.1s, color 0.1s;
+}
+.songs-index-toggle-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+.songs-index-toggle-btn.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+.songs-index-toggle-btn.is-active:hover {
+  background: var(--accent-hv);
+}
+
+/* Cerca dins de la capçalera */
+.songs-index-search {
+  max-width: 580px;
+  margin: 1.5rem auto 0;
+}
+
+/* Selector A-Z horitzontal — sticky just sota la PublicNav */
+.songs-index-az-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+  margin: 1.5rem -0.5rem 1.5rem;
+  padding: 0.5rem 0.5rem;
+  background: rgba(247, 247, 245, 0.92);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.songs-index-az-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.55rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  border-radius: 999px;
+  transition: color 0.1s, background 0.1s;
+}
+.songs-index-az-pill:hover {
+  color: var(--accent);
+  background: rgba(0, 0, 0, 0.04);
+}
+.songs-index-az-pill.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+.songs-index-az-pill.is-active:hover {
+  background: var(--accent-hv);
+  color: #fff;
+}
+
+/* Grup de la lletra activa */
+.songs-index-group {
+  margin-bottom: 2rem;
+}
+
+.songs-index-group-heading {
+  margin: 0 0 0.5rem;
+  padding: 0 0.5rem 0.4rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  border-bottom: 2px solid var(--border);
+}
+
+.songs-index-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.songs-index-item {
+  border-bottom: 1px solid var(--border);
+}
+.songs-index-item:last-child {
+  border-bottom: none;
+}
+
+.songs-index-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.5rem;
+  color: var(--text);
+  text-decoration: none;
+  transition: background 0.1s;
+}
+.songs-index-link:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.songs-index-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.songs-index-item-title {
+  font-size: 1rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.songs-index-item-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.songs-index-item-key {
+  flex-shrink: 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+}
+
+.songs-index-empty {
+  margin-top: 2rem;
+  text-align: center;
+  color: var(--muted);
+}
+.songs-index-empty a {
+  color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .songs-index-title {
+    font-size: 1.9rem;
+  }
+  .songs-index-az-pill {
+    min-width: 1.85rem;
+    height: 1.85rem;
+    font-size: 0.85rem;
+    padding: 0 0.4rem;
+  }
 }

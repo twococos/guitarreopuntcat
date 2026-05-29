@@ -4,8 +4,12 @@ import { AuthProvider } from "@/components/AuthProvider"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "El Cançoner",
-  description: "Cançoner personalitzable amb transposició i generació de PDF",
+  title: {
+    default: "guitarreo.cat — Acords i lletres en català",
+    template: "%s",
+  },
+  description:
+    "Acords, lletres i cançoners personalitzats en català. Cerca cançons, transposa-les i crea el teu llibret en PDF.",
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {

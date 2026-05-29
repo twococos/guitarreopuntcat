@@ -20,7 +20,11 @@ export function LoginPopup({ onClose }: Props) {
   }
 
   function handleGoogleLogin() {
-    signIn("google", { callbackUrl: "/" })
+    const callbackUrl =
+      typeof window !== "undefined"
+        ? window.location.pathname + window.location.search
+        : "/"
+    signIn("google", { callbackUrl })
   }
 
   return (
