@@ -4715,13 +4715,45 @@ input[type="text"].search-hero-input,
 input[type="text"].search-hero-input:focus {
   border-color: transparent;
 }
-.search-hero--compact .search-hero-input,
-input[type="text"].search-hero--compact .search-hero-input {
-  padding: 0.9rem 0.4rem;
-  font-size: 1.02rem;
+/* Cal el qualificador `input[type="text"]` per a guanyar especificitat sobre
+   `input[type="text"].search-hero-input` definit més amunt (especificitat 0,2,1). */
+.search-hero--compact input[type="text"].search-hero-input {
+  padding: 0.35rem 0.35rem;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+.search-hero--compact .search-hero-icon {
+  padding: 0 0.25rem 0 0.55rem;
+}
+.search-hero--compact .search-hero-icon svg {
+  width: 14px;
+  height: 14px;
+}
+.search-hero--compact .search-hero-clear {
+  width: 1.35rem;
+  height: 1.35rem;
+  font-size: 0.85rem;
 }
 .search-hero-input::placeholder {
   color: var(--muted);
+}
+
+/* Variant expandible (compacta): mantén z-index alt per al dropdown. */
+.search-hero--expandable.search-hero--compact {
+  z-index: 36;
+}
+/* Quan està expandit, fes que el camp s'assembli al hero gros: més arrodonit
+   i amb una mica més d'aire. */
+.search-hero--expandable.search-hero--compact.is-expanded .search-hero-input-wrap {
+  border-radius: 8px;
+  border-color: var(--accent);
+  box-shadow: 0 6px 28px rgba(192, 57, 43, 0.18);
+}
+.search-hero--expandable.search-hero--compact.is-expanded input[type="text"].search-hero-input {
+  /* Mantén el mateix alçat petit que en estat normal: l'expansió només
+     canvia l'amplada, no la mida del camp. */
+  padding: 0.35rem 0.35rem;
+  font-size: 0.82rem;
 }
 
 .search-hero-clear {
@@ -4981,13 +5013,31 @@ body:has(.search-hero:not(.search-hero--compact):focus-within) .search-hero-back
   text-align: center;
 }
 
-.songs-index-eyebrow {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
+.songs-index-banner-text {
+  min-width: 0;
+  text-align: left;
+}
+
+.songs-index-banner-search {
+  /* Sempre absolut, ancorat a la dreta del banner-inner i centrat
+     verticalment. En estat normal fa 220px d'amplada; quan el hero rep
+     focus, l'amplada creix cap a l'esquerra fins a omplir el banner. */
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 220px;
+  transition: width 0.28s ease;
+}
+.songs-index-banner-inner:has(.search-hero.is-expanded) .songs-index-banner-search {
+  width: calc(100% - 2rem);
+}
+.songs-index-banner-inner:has(.search-hero.is-expanded) .songs-index-banner-text {
+  /* Manté l'espai però amaga el contingut perquè el banner no canviï
+     d'alçada de cop quan s'amaga el text. */
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
 }
 
 .songs-index-title {
