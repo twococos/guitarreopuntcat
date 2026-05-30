@@ -73,7 +73,7 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
             <li key={p.id}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={p.proposer_avatar ?? ""}
+                src={p.proposer_avatar || "/img/Logo.png"}
                 className="user-row-avatar"
                 alt=""
               />

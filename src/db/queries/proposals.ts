@@ -117,6 +117,89 @@ export async function createProposal(userId: number, data: ProposalInput) {
   return { songId, proposalId }
 }
 
+// ─── Bulk import (admin: /app/admin/import) ──────────────────
+// Variant de createProposal sense schema Zod estricte: accepta YouTube/Spotify
+// buits (null) i el revisor els podrà afegir manualment. Reutilitza
+// generateSlugsForNewSong i el mateix flux d'inserció.
+
+export interface BulkProposalInput {
+  title: string
+  artist: string
+  key: string
+  capo: number
+  content: string
+  language: string
+  tags: string
+  album: string | null
+  year: number | null
+  youtubeUrl: string | null
+  spotifyUrl: string | null
+}
+
+export function createBulkProposal(
+  userId: number,
+  data: BulkProposalInput,
+): { songId: number; proposalId: number } {
+  let songId!: number
+  let proposalId!: number
+
+  const { artistSlug, songSlug } = generateSlugsForNewSong(data.artist, data.title)
+
+  db.transaction((tx) => {
+    const songResult = tx
+      .insert(schema.songs)
+      .values({
+        title: data.title,
+        artist: data.artist,
+        artistSlug,
+        songSlug,
+        key: data.key,
+        capo: data.capo,
+        content: data.content,
+        language: data.language,
+        tags: data.tags,
+        album: data.album,
+        year: data.year,
+        youtubeUrl: data.youtubeUrl,
+        spotifyUrl: data.spotifyUrl,
+        state: 2,
+      })
+      .run()
+
+    songId = Number(songResult.lastInsertRowid)
+
+    const proposalResult = tx
+      .insert(schema.songProposals)
+      .values({ userId, songId })
+      .run()
+
+    proposalId = Number(proposalResult.lastInsertRowid)
+  })
+
+  return { songId, proposalId }
+}
+
+/**
+ * Comprova si ja existeix una cançó amb el mateix artista+títol (ignorant
+ * majúscules/espais) que NO estigui en estat rebutjat/cancel·lat. Útil per
+ * a la importació massiva: si en trobem una pública, privada o pendent,
+ * saltem la fila i marquem com a duplicat.
+ */
+export function findExistingSongByArtistTitle(
+  artist: string,
+  title: string,
+): { id: number; state: number } | null {
+  const norm = (s: string) => s.trim().toLowerCase()
+  const a = norm(artist)
+  const t = norm(title)
+  const row = db
+    .select({ id: schema.songs.id, artist: schema.songs.artist, title: schema.songs.title, state: schema.songs.state })
+    .from(schema.songs)
+    .all()
+    .find((r) => norm(r.artist) === a && norm(r.title) === t && r.state !== 3 && r.state !== 4)
+  return row ? { id: row.id, state: row.state } : null
+}
+
 // ─── PATCH /api/proposals/[id] ───────────────────────────────
 
 export async function reviewProposal(
