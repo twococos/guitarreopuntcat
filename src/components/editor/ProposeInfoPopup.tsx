@@ -18,7 +18,7 @@ export function ProposeInfoPopup({ onAccept }: ProposeInfoPopupProps) {
           <li>
             🎵 La lletra i els acords han de ser <strong>fidedignes a la cançó original</strong>.
           </li>
-          <li>🎸 Ha d&apos;estar en la <strong>tonalitat correcta</strong> (o amb cejilla si escau).</li>
+          <li>🎸 Ha d&apos;estar en la <strong>tonalitat correcta</strong> (o amb celleta si escau).</li>
           <li>
             📋 Com més completa sigui la cançó (estrofes, tornades, ponts…),{" "}
             <strong>més probable és que s&apos;accepti</strong>.

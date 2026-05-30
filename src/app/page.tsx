@@ -3,6 +3,7 @@ import { listRecentPublicSongs, getRandomPublicSongs } from "@/db/queries/songs"
 import { PublicNav } from "@/components/public/PublicNav"
 import { SearchHero } from "@/components/public/SearchHero"
 import { InspiratSection } from "@/components/public/InspiratSection"
+import { MobileGateLink } from "@/components/public/MobileGateLink"
 
 const INSPIRAT_COUNT = 3
 
@@ -31,8 +32,6 @@ export default async function HomePage() {
     <>
       <PublicNav />
 
-      <div className="search-hero-backdrop" aria-hidden="true" />
-
       <main className="public-home">
         <section className="public-home-hero">
           <img src="/img/Logo.png" alt="" className="public-home-logo" />
@@ -44,9 +43,9 @@ export default async function HomePage() {
           <SearchHero />
 
           <div className="public-home-secondary">
-            <Link href="/app" className="public-home-secondary-cta">
+            <MobileGateLink href="/app" className="public-home-secondary-cta">
               Crea un cançoner
-            </Link>
+            </MobileGateLink>
             <span className="public-home-secondary-sep">·</span>
             <Link href="/songs" className="public-home-secondary-link">
               Explora el catàleg

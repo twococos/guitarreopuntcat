@@ -36,7 +36,7 @@ export interface SongViewProps {
 }
 
 /** Construeix la sublínia de l'artista amb separadors `·` només
- *  quan el camp existeix: artista · àlbum (any) · Cejilla X. */
+ *  quan el camp existeix: artista · àlbum (any) · Celleta X. */
 function formatArtistLine(
   artist: string,
   album: string | null | undefined,
@@ -47,7 +47,7 @@ function formatArtistLine(
   if (album && year) parts.push(`${album} (${year})`)
   else if (album) parts.push(album)
   else if (year) parts.push(String(year))
-  if (capo) parts.push(`Cejilla ${capo}`)
+  if (capo) parts.push(`Celleta ${capo}`)
   return parts.join(" · ")
 }
 

@@ -11,14 +11,19 @@ export default function ProjectePage() {
   return (
     <>
       <PublicNav />
+
+      <header className="public-static-banner">
+        <div className="public-static-banner-inner">
+          <h1 className="public-static-title">
+            El projecte
+            <span className="public-static-lede">
+              Una eina lliure per llegir, transposar i organitzar cançons amb acords en català.
+            </span>
+          </h1>
+        </div>
+      </header>
+
       <main className="public-static">
-        <header className="public-static-header">
-          <p className="public-static-eyebrow">El projecte</p>
-          <h1 className="public-static-title">guitarreo.cat</h1>
-          <p className="public-static-lede">
-            Una eina lliure per llegir, transposar i organitzar cançons amb acords en català.
-          </p>
-        </header>
 
         <section className="public-static-section">
           <h2>Què és</h2>

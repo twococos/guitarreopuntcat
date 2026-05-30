@@ -1,11 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import {
-  getPublicSongsByLetter,
-  getPublicArtistsByLetter,
-} from "@/db/queries/songs"
+import { getPublicSongsByLetter, getPublicArtistsByLetter } from "@/db/queries/songs"
 import { PublicNav } from "@/components/public/PublicNav"
-import { SearchHero } from "@/components/public/SearchHero"
+import { MobileGateLink } from "@/components/public/MobileGateLink"
 
 export const metadata: Metadata = {
   title: "Cançons — guitarreo.cat",
@@ -20,18 +17,16 @@ interface Props {
 /**
  * /songs — índex del catàleg amb dos modes (per cançó / per artista).
  *
- * Tot al servidor: només es renderitza la lletra activa (de l'URL `?letter=X`,
- * o la primera disponible per defecte). El selector A-Z viu en horitzontal
- * just sota la capçalera amb cerca, i és el que canvia la lletra activa.
+ * La capçalera és full-bleed (banner d'ample complet), amb el contingut
+ * (títol + SearchHero compacte a la dreta) limitat als marges del catàleg.
+ * El selector A-Z ocupa el centre de la barra següent i el toggle
+ * cançó/artista s'hi alinea a la dreta.
  */
 export default async function SongsIndexPage({ searchParams }: Props) {
   const { by: byParam, letter: letterParam } = await searchParams
   const by: "letter" | "artist" = byParam === "artist" ? "artist" : "letter"
 
-  const data =
-    by === "artist"
-      ? await getPublicArtistsByLetter()
-      : await getPublicSongsByLetter()
+  const data = by === "artist" ? await getPublicArtistsByLetter() : await getPublicSongsByLetter()
 
   const letters = Object.keys(data).sort(sortLetterKeys)
   const total = Object.values(data).reduce((acc, arr) => acc + arr.length, 0)
@@ -39,9 +34,7 @@ export default async function SongsIndexPage({ searchParams }: Props) {
   // Lletra activa: la de l'URL si existeix i té contingut, si no la primera.
   const requestedLetter = letterParam?.toUpperCase()
   const activeLetter =
-    requestedLetter && letters.includes(requestedLetter)
-      ? requestedLetter
-      : letters[0] ?? null
+    requestedLetter && letters.includes(requestedLetter) ? requestedLetter : (letters[0] ?? null)
 
   const activeEntries = activeLetter ? data[activeLetter] : []
   const letterHref = (l: string) =>
@@ -50,72 +43,70 @@ export default async function SongsIndexPage({ searchParams }: Props) {
   return (
     <>
       <PublicNav />
-      <div className="songs-index">
-        <header className="songs-index-header">
-          <p className="songs-index-eyebrow">Catàleg</p>
-          <h1 className="songs-index-title">
-            {by === "artist" ? "Artistes" : "Cançons"}
-          </h1>
-          <p className="songs-index-count">
-            {total === 0
-              ? "Encara no hi ha res publicat."
-              : by === "artist"
-                ? `${total} ${total === 1 ? "artista" : "artistes"}`
-                : `${total} ${total === 1 ? "cançó" : "cançons"}`}
-          </p>
 
-          <nav className="songs-index-toggle" aria-label="Mode d'índex">
-            <Link
-              href="/songs"
-              className={`songs-index-toggle-btn ${by === "letter" ? "is-active" : ""}`}
-              prefetch={false}
-            >
-              Per cançó
-            </Link>
-            <Link
-              href="/songs?by=artist"
-              className={`songs-index-toggle-btn ${by === "artist" ? "is-active" : ""}`}
-              prefetch={false}
-            >
-              Per artista
-            </Link>
-          </nav>
-
-          <div className="songs-index-search">
-            <SearchHero
-              compact
-              placeholder={
-                by === "artist"
-                  ? "Cerca un artista o cançó…"
-                  : "Cerca una cançó o un artista…"
-              }
-            />
+      {/* Capçalera full-bleed amb el títol del catàleg. La cerca viu ara a la
+          PublicNav (compartida amb la resta de pàgines públiques). */}
+      <header className="songs-index-banner">
+        <div className="songs-index-banner-inner">
+          <div className="songs-index-banner-text">
+            <h1 className="songs-index-title">
+              <span className="songs-index-title-main">
+                {by === "artist" ? "Catàleg d'artistes" : "Catàleg de cançons"}
+              </span>
+              {total > 0 && (
+                <span className="songs-index-count">
+                  {by === "artist"
+                    ? `${total} ${total === 1 ? "artista" : "artistes"}`
+                    : `${total} ${total === 1 ? "cançó" : "cançons"}`}
+                </span>
+              )}
+              {total === 0 && (
+                <span className="songs-index-count">Encara no hi ha res publicat</span>
+              )}
+            </h1>
           </div>
-        </header>
+        </div>
+      </header>
 
+      <div className="songs-index">
         {letters.length > 0 && (
           <>
-            {/* Selector A-Z horitzontal — sticky, sota la nav */}
+            {/* Selector A-Z horitzontal amb el toggle cançó/artista a la dreta */}
             <nav className="songs-index-az-bar" aria-label="Saltar a inicial">
-              {letters.map((l) => (
+              <div className="songs-index-az-pills">
+                {letters.map((l) => (
+                  <Link
+                    key={l}
+                    href={letterHref(l)}
+                    scroll={false}
+                    prefetch={false}
+                    className={`songs-index-az-pill ${l === activeLetter ? "is-active" : ""}`}
+                    aria-current={l === activeLetter ? "page" : undefined}
+                  >
+                    {l}
+                  </Link>
+                ))}
+              </div>
+              <div className="songs-index-toggle" aria-label="Mode d'índex" role="group">
                 <Link
-                  key={l}
-                  href={letterHref(l)}
-                  scroll={false}
+                  href="/songs"
+                  className={`songs-index-toggle-btn ${by === "letter" ? "is-active" : ""}`}
                   prefetch={false}
-                  className={`songs-index-az-pill ${l === activeLetter ? "is-active" : ""}`}
-                  aria-current={l === activeLetter ? "page" : undefined}
                 >
-                  {l}
+                  Per cançó
                 </Link>
-              ))}
+                <Link
+                  href="/songs?by=artist"
+                  className={`songs-index-toggle-btn ${by === "artist" ? "is-active" : ""}`}
+                  prefetch={false}
+                >
+                  Per artista
+                </Link>
+              </div>
             </nav>
 
             {activeLetter && (
-              <section
-                className="songs-index-group"
-                aria-labelledby="active-letter-heading"
-              >
+              <section className="songs-index-group" aria-labelledby="active-letter-heading">
                 <h2 id="active-letter-heading" className="songs-index-group-heading">
                   {activeLetter}
                 </h2>
@@ -123,15 +114,10 @@ export default async function SongsIndexPage({ searchParams }: Props) {
                   {by === "artist"
                     ? (activeEntries as ArtistEntry[]).map((a) => (
                         <li key={a.slug} className="songs-index-item">
-                          <Link
-                            href={`/songs/${a.slug}`}
-                            className="songs-index-link"
-                          >
+                          <Link href={`/songs/${a.slug}`} className="songs-index-link">
                             <span className="songs-index-item-title">{a.name}</span>
                             <span className="songs-index-item-sub">
-                              {a.song_count === 1
-                                ? "1 cançó"
-                                : `${a.song_count} cançons`}
+                              {a.song_count === 1 ? "1 cançó" : `${a.song_count} cançons`}
                             </span>
                           </Link>
                         </li>
@@ -159,7 +145,7 @@ export default async function SongsIndexPage({ searchParams }: Props) {
         {total === 0 && (
           <p className="songs-index-empty">
             Quan hi hagi cançons publicades, apareixeran aquí.{" "}
-            <Link href="/app">Vés a l&apos;editor</Link> per proposar-ne.
+            <MobileGateLink href="/app">Vés a l&apos;editor</MobileGateLink> per proposar-ne.
           </p>
         )}
       </div>

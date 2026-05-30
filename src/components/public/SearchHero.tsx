@@ -32,6 +32,13 @@ interface SearchHeroProps {
   compact?: boolean
   /** Placeholder customitzable. */
   placeholder?: string
+  /**
+   * Si està activat, el wrapper rep la classe `is-expanded` mentre l'input té
+   * focus. Per a la variant compacta, això permet que CSS l'expandeixi a
+   * ocupar tota l'amplada disponible i activi el backdrop difuminat —
+   * imitant el comportament de l'hero gros de la portada.
+   */
+  expandOnFocus?: boolean
 }
 
 /**
@@ -41,11 +48,16 @@ interface SearchHeroProps {
  * amb dues seccions (Artistes + Cançons) i permet navegació amb teclat
  * (↑/↓/Enter/Escape). Si l'usuari clica fora, es tanca.
  */
-export function SearchHero({ compact = false, placeholder }: SearchHeroProps = {}) {
+export function SearchHero({
+  compact = false,
+  placeholder,
+  expandOnFocus = false,
+}: SearchHeroProps = {}) {
   const router = useRouter()
   const [q, setQ] = useState("")
   const [results, setResults] = useState<SearchResponse | null>(null)
   const [open, setOpen] = useState(false)
+  const [focused, setFocused] = useState(false)
   const [focusedIdx, setFocusedIdx] = useState(-1)
   const [loading, setLoading] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -148,15 +160,26 @@ export function SearchHero({ compact = false, placeholder }: SearchHeroProps = {
     [items, focusedIdx, router],
   )
 
-  const showDropdown = open && (loading || (results !== null && items.length === 0) || items.length > 0)
+  const showDropdown =
+    open && (loading || (results !== null && items.length === 0) || items.length > 0)
 
   return (
-    <div className={`search-hero ${compact ? "search-hero--compact" : ""}`} ref={wrapRef}>
+    <div
+      className={`search-hero ${compact ? "search-hero--compact" : ""} ${expandOnFocus ? "search-hero--expandable" : ""} ${expandOnFocus && focused ? "is-expanded" : ""}`}
+      ref={wrapRef}
+    >
       <div className="search-hero-input-wrap">
         {compact && (
           <span className="search-hero-icon" aria-hidden="true">
             {/* Icona lupa inline — només a la variant compacta (/songs) */}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <circle cx="11" cy="11" r="7" />
               <path d="m20 20-3.5-3.5" />
             </svg>
@@ -166,13 +189,17 @@ export function SearchHero({ compact = false, placeholder }: SearchHeroProps = {
           ref={inputRef}
           type="text"
           className="search-hero-input"
-          placeholder={placeholder ?? "Cerca una cançó o un artista…"}
+          placeholder={placeholder ?? "Cerca cançons o artistes..."}
           value={q}
           onChange={(e) => {
             setQ(e.target.value)
             setOpen(true)
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true)
+            setFocused(true)
+          }}
+          onBlur={() => setFocused(false)}
           onKeyDown={onKeyDown}
           aria-label="Cerca de cançons i artistes"
           aria-autocomplete="list"
@@ -207,9 +234,7 @@ export function SearchHero({ compact = false, placeholder }: SearchHeroProps = {
             e.preventDefault()
           }}
         >
-          {loading && items.length === 0 && (
-            <div className="search-hero-empty">Cercant…</div>
-          )}
+          {loading && items.length === 0 && <div className="search-hero-empty">Cercant…</div>}
 
           {!loading && results !== null && items.length === 0 && (
             <div className="search-hero-empty">No hi ha resultats per a “{q}”.</div>
@@ -232,7 +257,9 @@ export function SearchHero({ compact = false, placeholder }: SearchHeroProps = {
                     role="option"
                     aria-selected={focused}
                   >
-                    <span className="search-hero-result-icon" aria-hidden="true">♪</span>
+                    <span className="search-hero-result-icon" aria-hidden="true">
+                      ♪
+                    </span>
                     <span className="search-hero-result-main">
                       <span className="search-hero-result-title">{a.name}</span>
                       <span className="search-hero-result-sub">

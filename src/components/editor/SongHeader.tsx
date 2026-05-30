@@ -279,7 +279,7 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
             {value.capo > 0 && (
               <>
                 <span className="song-meta-sep"> · </span>
-                <span className="song-meta-part">Cejilla {value.capo}</span>
+                <span className="song-meta-part">Celleta {value.capo}</span>
               </>
             )}
           </div>
@@ -332,7 +332,7 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
       {/* Camps secundaris sempre visibles: cejilla, idioma, etiquetes */}
       <div className="more-options-row">
         <label className="more-options-field more-options-field--inline">
-          <span className="more-options-label">Cejilla</span>
+          <span className="more-options-label">Celleta</span>
           <input
             type="number"
             min={0}

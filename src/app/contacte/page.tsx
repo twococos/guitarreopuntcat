@@ -11,14 +11,19 @@ export default function ContactePage() {
   return (
     <>
       <PublicNav />
+
+      <header className="public-static-banner">
+        <div className="public-static-banner-inner">
+          <h1 className="public-static-title">
+            Contacte
+            <span className="public-static-lede">
+              Suggeriments, errades, propostes de cançons o qualsevol altra cosa.
+            </span>
+          </h1>
+        </div>
+      </header>
+
       <main className="public-static">
-        <header className="public-static-header">
-          <p className="public-static-eyebrow">Contacte</p>
-          <h1 className="public-static-title">Posa&apos;t en contacte</h1>
-          <p className="public-static-lede">
-            Suggeriments, errades, propostes de cançons o qualsevol altra cosa: escolta sempre.
-          </p>
-        </header>
 
         <section className="public-static-section">
           <h2>Email</h2>

@@ -1,14 +1,21 @@
 "use client"
 import { signOut, useSession } from "next-auth/react"
+import { usePathname } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { LoginPopup } from "./LoginPopup"
 import { IconLibrary, IconSettings } from "./shared/Icons"
+import { guardMobileApp } from "@/components/public/MobileGateLink"
 
 export function UserWidget() {
   const { data: session, status } = useSession()
+  const pathname = usePathname() || "/"
   const [showLogin, setShowLogin] = useState(false)
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+
+  // A les pàgines públiques, oferim un accés ràpid a l'editor de cançoners
+  // com a primera opció del menú, ja que des d'allà no s'hi accedeix per nav.
+  const isPublic = !pathname.startsWith("/app")
 
   useEffect(() => {
     if (!open) return
@@ -67,6 +74,21 @@ export function UserWidget() {
             </div>
           </div>
           <div className="user-dropdown-sep" />
+          {isPublic && (
+            <a
+              href="/app"
+              className="user-dropdown-item"
+              onClick={(e) => {
+                if (guardMobileApp()) {
+                  e.preventDefault()
+                  setOpen(false)
+                }
+              }}
+            >
+              <IconLibrary />
+              <span>Editor de cançoners</span>
+            </a>
+          )}
           <a href="/app/library" className="user-dropdown-item">
             <IconLibrary />
             <span>La teva Biblioteca</span>
