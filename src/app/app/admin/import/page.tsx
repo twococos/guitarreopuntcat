@@ -100,12 +100,17 @@ export default function ImportMassiuPage() {
   // Plegar/desplegar la llista de cançons
   const [listCollapsed, setListCollapsed] = useState(false)
 
+  // Índex de la fila que té obert l'editor inline (-1 = cap).
+  const [editingIndex, setEditingIndex] = useState<number>(-1)
+
   // Generador de CSV des d'una pàgina d'artista
   const [scrapeUrl, setScrapeUrl] = useState("")
   const [scrapeLoading, setScrapeLoading] = useState(false)
   const [scrapeResult, setScrapeResult] = useState<ScrapeResponse | null>(null)
   const [scrapeCsv, setScrapeCsv] = useState("")
   const [scrapeError, setScrapeError] = useState<string | null>(null)
+  // Nombre de cançons a importar quan la URL és d'ultimate-guitar (per defecte 20).
+  const [scrapeLimit, setScrapeLimit] = useState(20)
 
   const totals = useMemo(() => {
     let ok = 0
@@ -276,12 +281,16 @@ export default function ImportMassiuPage() {
     setFindingLinks(true)
     setFindProgress({ done: 0, total: rows.length })
     try {
+      const isFilled = (v: string | null) => !!v && v.trim().length > 0
       const payload = {
         rows: rows.map((r) => ({
           title: r.title,
           artist: r.artist,
-          hasYoutube: !!r.youtubeUrl && r.youtubeUrl.trim().length > 0,
-          hasSpotify: !!r.spotifyUrl && r.spotifyUrl.trim().length > 0,
+          hasYoutube: isFilled(r.youtubeUrl),
+          hasSpotify: isFilled(r.spotifyUrl),
+          hasAlbum: isFilled(r.album),
+          hasYear: isFilled(r.year),
+          hasLanguage: isFilled(r.language),
         })),
       }
       const res = await fetch("/api/admin/find-links", {
@@ -320,6 +329,9 @@ export default function ImportMassiuPage() {
                   index: number
                   youtubeUrl?: string | null
                   spotifyUrl?: string | null
+                  album?: string | null
+                  year?: number | null
+                  language?: string | null
                 }
               | { type: "done" }
 
@@ -327,7 +339,7 @@ export default function ImportMassiuPage() {
               spotifyAvailable = ev.spotifyAvailable
               if (!spotifyAvailable) {
                 toast(
-                  "Spotify no configurat (falta SPOTIFY_CLIENT_ID/SECRET). Només es buscarà YouTube.",
+                  "Spotify no configurat (falta SPOTIFY_CLIENT_ID/SECRET). Només es buscarà YouTube i idioma.",
                   { type: "info" },
                 )
               }
@@ -347,6 +359,18 @@ export default function ImportMassiuPage() {
                   updated.spotifyUrl = ev.spotifyUrl
                   found++
                 }
+                if (ev.album) {
+                  updated.album = ev.album
+                  found++
+                }
+                if (ev.year != null) {
+                  updated.year = String(ev.year)
+                  found++
+                }
+                if (ev.language) {
+                  updated.language = ev.language
+                  found++
+                }
                 next[ev.index] = updated
                 return next
               })
@@ -357,7 +381,7 @@ export default function ImportMassiuPage() {
         }
       }
 
-      toast(`Cerca acabada · ${found} links trobats`, { type: "success" })
+      toast(`Cerca acabada · ${found} camps omplerts`, { type: "success" })
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error de xarxa"
       toast(msg, { type: "error" })
@@ -385,6 +409,57 @@ export default function ImportMassiuPage() {
     })
   }, [])
 
+  /**
+   * Treu una fila de la cua. Splice canvia els índexs de les files
+   * posteriors, així que remapeixem `overrideIndexes` (que indexa cap a
+   * `rows`) per descomptar 1 a tot el que estigués per sota del removed.
+   * També ajustem `editingIndex` per no quedar apuntant a una altra fila.
+   */
+  const removeRow = useCallback((index: number) => {
+    setRows((prev) => {
+      if (index < 0 || index >= prev.length) return prev
+      return [...prev.slice(0, index), ...prev.slice(index + 1)]
+    })
+    setOverrideIndexes((prev) => {
+      const next = new Set<number>()
+      for (const v of prev) {
+        if (v === index) continue
+        next.add(v > index ? v - 1 : v)
+      }
+      return next
+    })
+    setEditingIndex((prev) => {
+      if (prev === index) return -1
+      if (prev > index) return prev - 1
+      return prev
+    })
+  }, [])
+
+  /**
+   * Actualitza un camp d'una fila. Si la fila estava en error o duplicada,
+   * la tornem a "pending" perquè el següent "Importar" la torni a intentar
+   * (l'usuari ha modificat dades, l'estat anterior ja no és vàlid).
+   */
+  const updateRowField = useCallback(
+    <K extends keyof ParsedRow>(index: number, key: K, value: ParsedRow[K]) => {
+      setRows((prev) => {
+        const next = prev.slice()
+        const cur = next[index]
+        if (!cur) return prev
+        const updated: RowState = { ...cur, [key]: value }
+        if (cur.status === "error" || cur.status === "duplicate") {
+          updated.status = "pending"
+          updated.error = undefined
+        }
+        next[index] = updated
+        return next
+      })
+    },
+    [],
+  )
+
+  const isUgUrl = useMemo(() => isUltimateGuitarArtistUrl(scrapeUrl), [scrapeUrl])
+
   const runScrape = useCallback(async () => {
     setScrapeError(null)
     setScrapeResult(null)
@@ -396,10 +471,14 @@ export default function ImportMassiuPage() {
     }
     setScrapeLoading(true)
     try {
+      const body: { url: string; limit?: number } = { url }
+      if (isUltimateGuitarArtistUrl(url)) {
+        body.limit = scrapeLimit
+      }
       const res = await fetch("/api/admin/scrape-artist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify(body),
       })
       const data = (await res.json().catch(() => null)) as
         | (ScrapeResponse & { error?: never })
@@ -421,7 +500,7 @@ export default function ImportMassiuPage() {
     } finally {
       setScrapeLoading(false)
     }
-  }, [scrapeUrl])
+  }, [scrapeUrl, scrapeLimit])
 
   const copyScrapeCsv = useCallback(async () => {
     if (!scrapeCsv) return
@@ -518,7 +597,9 @@ export default function ImportMassiuPage() {
         <p className="bulk-scrape-hint">
           Introdueix un link d&apos;un artista d&apos;acordscatala.cat
           (p. ex. <code>https://www.acordscatala.cat/ca/txarango</code>)
-          i es generaran les files CSV de totes les cançons llistades.
+          o d&apos;ultimate-guitar.com
+          (p. ex. <code>https://www.ultimate-guitar.com/artist/bruno_mars_28280</code>)
+          i es generaran les files CSV de les cançons llistades.
           {phase === "preview" && (
             <> Les noves files s&apos;afegiran a la cua actual.</>
           )}
@@ -528,7 +609,7 @@ export default function ImportMassiuPage() {
       <div className="bulk-scrape-row">
         <input
           type="url"
-          placeholder="https://www.acordscatala.cat/ca/artista"
+          placeholder="https://www.acordscatala.cat/ca/artista o https://www.ultimate-guitar.com/artist/…"
           value={scrapeUrl}
           onChange={(e) => setScrapeUrl(e.target.value)}
           onKeyDown={(e) => {
@@ -536,12 +617,28 @@ export default function ImportMassiuPage() {
           }}
           disabled={scrapeLoading}
         />
+        {isUgUrl && (
+          <input
+            type="number"
+            className="bulk-scrape-limit"
+            min={1}
+            max={100}
+            step={1}
+            value={scrapeLimit}
+            onChange={(e) => {
+              const n = parseInt(e.target.value, 10)
+              if (Number.isFinite(n)) setScrapeLimit(Math.min(100, Math.max(1, n)))
+            }}
+            disabled={scrapeLoading}
+            title="Nombre de cançons a importar (1-100)"
+          />
+        )}
         <button
-          className="btn-primary"
+          className={`btn-primary${isUgUrl ? " is-compact" : ""}`}
           onClick={runScrape}
           disabled={scrapeLoading || !scrapeUrl.trim()}
         >
-          {scrapeLoading ? "Buscant…" : "Buscar"}
+          {scrapeLoading ? "Buscant…" : isUgUrl ? "Cercar" : "Buscar"}
         </button>
       </div>
 
@@ -731,64 +828,87 @@ export default function ImportMassiuPage() {
             >
               {rows.map((r, i) => {
                 const isOverridden = overrideIndexes.has(i)
+                const isEditing = editingIndex === i
                 return (
                   <li key={i} className={`bulk-row bulk-row-${r.status}`}>
-                    <div className="bulk-row-icon">{iconFor(r.status)}</div>
-                    <div className="bulk-row-info">
-                      <div className="bulk-row-title">
-                        <strong>{r.title}</strong> — {r.artist}
-                        {isOverridden && (
-                          <span className="bulk-row-override-tag">
-                            sense validar
-                          </span>
+                    <div className="bulk-row-main">
+                      <div className="bulk-row-icon">{iconFor(r.status)}</div>
+                      <div className="bulk-row-info">
+                        <div className="bulk-row-title">
+                          <strong>{r.title}</strong> — {r.artist}
+                          {isOverridden && (
+                            <span className="bulk-row-override-tag">
+                              sense validar
+                            </span>
+                          )}
+                        </div>
+                        <div className="bulk-row-meta">
+                          <a href={r.url} target="_blank" rel="noopener noreferrer">
+                            {r.url}
+                          </a>
+                          {!isSupportedUrl(r.url) && (
+                            <span className="bulk-row-warn"> (host no suportat)</span>
+                          )}
+                        </div>
+                        <div className="bulk-row-pills">
+                          {OPTIONAL_FIELDS.map((f) => (
+                            <FieldPill
+                              key={f.key}
+                              label={f.label}
+                              value={r[f.key]}
+                              required={requiredFields.has(f.key)}
+                            />
+                          ))}
+                        </div>
+                        {r.error && (
+                          <div className="bulk-row-error-msg">{r.error}</div>
                         )}
                       </div>
-                      <div className="bulk-row-meta">
-                        <a href={r.url} target="_blank" rel="noopener noreferrer">
-                          {r.url}
-                        </a>
-                        {!isSupportedUrl(r.url) && (
-                          <span className="bulk-row-warn"> (host no suportat)</span>
-                        )}
-                        {r.youtubeUrl && (
-                          <>
-                            {" · "}
-                            <a
-                              href={r.youtubeUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="YouTube"
+                      <div className="bulk-row-actions">
+                        {r.status === "error" &&
+                          phase !== "importing" &&
+                          !isUnsupportedHostError(r.error) && (
+                            <button
+                              className="btn-xs"
+                              onClick={() => importRowAnyway(i)}
+                              title="Marca aquesta fila per importar saltant la validació de camps requerits al següent 'Importar'"
                             >
-                              YT
-                            </a>
-                          </>
+                              Importar igualment
+                            </button>
+                          )}
+                        {phase !== "importing" && (
+                          <button
+                            type="button"
+                            className={`bulk-row-edit${isEditing ? " is-active" : ""}`}
+                            onClick={() =>
+                              setEditingIndex((prev) => (prev === i ? -1 : i))
+                            }
+                            title={isEditing ? "Tancar editor" : "Editar camps"}
+                            aria-label="Editar camps"
+                            aria-expanded={isEditing}
+                          >
+                            ✏️
+                          </button>
                         )}
-                        {r.spotifyUrl && (
-                          <>
-                            {" · "}
-                            <a
-                              href={r.spotifyUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Spotify"
-                            >
-                              SP
-                            </a>
-                          </>
+                        {phase !== "importing" && (
+                          <button
+                            type="button"
+                            className="bulk-row-remove"
+                            onClick={() => removeRow(i)}
+                            title="Treure aquesta fila de la cua"
+                            aria-label="Treure de la cua"
+                          >
+                            ×
+                          </button>
                         )}
                       </div>
-                      {r.error && (
-                        <div className="bulk-row-error-msg">{r.error}</div>
-                      )}
                     </div>
-                    {r.status === "error" && phase !== "importing" && (
-                      <button
-                        className="btn-xs"
-                        onClick={() => importRowAnyway(i)}
-                        title="Marca aquesta fila per importar saltant la validació de camps requerits al següent 'Importar'"
-                      >
-                        Importar igualment
-                      </button>
+                    {isEditing && phase !== "importing" && (
+                      <RowEditor
+                        row={r}
+                        onChange={(key, value) => updateRowField(i, key, value)}
+                        onClose={() => setEditingIndex(-1)}
+                      />
                     )}
                   </li>
                 )
@@ -800,6 +920,149 @@ export default function ImportMassiuPage() {
         )}
       </div>
     </>
+  )
+}
+
+/**
+ * Pill que mostra l'estat d'un camp opcional a la targeta de la fila:
+ *   - omplert → verd amb el valor truncat (per a album/year/language/tags)
+ *     o només l'etiqueta (per a youtubeUrl/spotifyUrl, que són URLs llargues).
+ *   - buit i no requerit → gris ratllat.
+ *   - buit i requerit per l'usuari → vermell.
+ */
+function FieldPill({
+  label,
+  value,
+  required,
+}: {
+  label: string
+  value: string | null
+  required: boolean
+}) {
+  const filled = !!value && value.trim().length > 0
+  const state = filled ? "filled" : required ? "missing-required" : "missing"
+  const display =
+    filled && value && value.length <= 24 && !/^https?:\/\//i.test(value)
+      ? `${label}: ${value}`
+      : label
+  const title = filled
+    ? value ?? undefined
+    : required
+      ? `${label} (requerit) — falta`
+      : `${label} — buit`
+  return (
+    <span className={`bulk-pill bulk-pill-${state}`} title={title}>
+      {display}
+    </span>
+  )
+}
+
+/**
+ * Formulari inline per editar els camps d'una fila ja parsejada. Cada onChange
+ * actualitza l'estat del pare via `onChange(key, value)`. No té botó de
+ * guardar — els canvis es persisteixen immediatament a `rows`.
+ */
+function RowEditor({
+  row,
+  onChange,
+  onClose,
+}: {
+  row: RowState
+  onChange: <K extends keyof ParsedRow>(key: K, value: ParsedRow[K]) => void
+  onClose: () => void
+}) {
+  const text = (v: string | null) => v ?? ""
+  const setStr = <K extends keyof ParsedRow>(key: K) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const v = e.target.value
+      onChange(key, (v.trim() === "" ? null : v) as ParsedRow[K])
+    }
+
+  return (
+    <div className="bulk-row-editor">
+      <div className="bulk-row-editor-grid">
+        <label className="bulk-edit-field">
+          <span>URL</span>
+          <input type="url" value={row.url} onChange={setStr("url")} />
+        </label>
+        <label className="bulk-edit-field">
+          <span>Títol *</span>
+          <input
+            type="text"
+            value={row.title}
+            onChange={(e) => onChange("title", e.target.value)}
+          />
+        </label>
+        <label className="bulk-edit-field">
+          <span>Artista *</span>
+          <input
+            type="text"
+            value={row.artist}
+            onChange={(e) => onChange("artist", e.target.value)}
+          />
+        </label>
+        <label className="bulk-edit-field">
+          <span>Àlbum</span>
+          <input type="text" value={text(row.album)} onChange={setStr("album")} />
+        </label>
+        <label className="bulk-edit-field bulk-edit-field-narrow">
+          <span>Any</span>
+          <input
+            type="number"
+            min={1000}
+            max={2100}
+            value={text(row.year)}
+            onChange={setStr("year")}
+          />
+        </label>
+        <label className="bulk-edit-field bulk-edit-field-narrow">
+          <span>Idioma</span>
+          <select value={text(row.language)} onChange={setStr("language")}>
+            <option value="">(buit)</option>
+            <option value="ca">ca · Català</option>
+            <option value="es">es · Castellà</option>
+            <option value="en">en · Anglès</option>
+            <option value="pt">pt · Portuguès</option>
+            <option value="fr">fr · Francès</option>
+            <option value="it">it · Italià</option>
+            <option value="de">de · Alemany</option>
+            <option value="other">other · Altre</option>
+          </select>
+        </label>
+        <label className="bulk-edit-field bulk-edit-field-wide">
+          <span>YouTube</span>
+          <input
+            type="url"
+            value={text(row.youtubeUrl)}
+            onChange={setStr("youtubeUrl")}
+            placeholder="https://www.youtube.com/watch?v=…"
+          />
+        </label>
+        <label className="bulk-edit-field bulk-edit-field-wide">
+          <span>Spotify</span>
+          <input
+            type="url"
+            value={text(row.spotifyUrl)}
+            onChange={setStr("spotifyUrl")}
+            placeholder="https://open.spotify.com/track/…"
+          />
+        </label>
+        <label className="bulk-edit-field bulk-edit-field-wide">
+          <span>Etiquetes</span>
+          <input
+            type="text"
+            value={text(row.tags)}
+            onChange={setStr("tags")}
+            placeholder="separades per comes"
+          />
+        </label>
+      </div>
+      <div className="bulk-row-editor-actions">
+        <button type="button" className="btn-ghost" onClick={onClose}>
+          Tancar
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -926,9 +1189,13 @@ function emptyToNull(v: string | undefined): string | null {
 /**
  * Construeix les files CSV (sense capçalera) a partir del resultat del scrape.
  * Columnes: link, títol, artista, àlbum, any, youtube, spotify, idioma, tags.
- * Idioma="ca" per defecte (acordscatala = català). YouTube/Spotify/tags buits.
+ *
+ * Idioma: "ca" per acordscatala (és un cançoner exclusivament en català); buit
+ * per a la resta de fonts (ex. ultimate-guitar, que té cançons en molts
+ * idiomes). El detector de la cerca de links omplirà el camp via franc.
  */
 function buildCsvFromScrape(r: ScrapeResponse): string {
+  const defaultLanguage = r.source === "acordscatala" ? "ca" : ""
   const lines: string[] = []
   for (const s of r.songs) {
     const fields = [
@@ -939,7 +1206,7 @@ function buildCsvFromScrape(r: ScrapeResponse): string {
       s.year != null ? String(s.year) : "",
       "", // youtube
       "", // spotify
-      "ca",
+      defaultLanguage,
       "", // tags
     ]
     lines.push(fields.map(csvEscape).join(","))
@@ -962,4 +1229,38 @@ function slugify(s: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     || "artista"
+}
+
+/**
+ * El backend retorna "Web no suportada" quan el host del CSV no encaixa amb
+ * cap importador. En aquest cas no té sentit oferir "Importar igualment":
+ * no és una validació que es pugui saltar, la cançó simplement no es pot
+ * descarregar. Comparem per substring per tolerar variants de format.
+ */
+function isUnsupportedHostError(err: string | null | undefined): boolean {
+  if (!err) return false
+  return /web\s+no\s+suportada/i.test(err)
+}
+
+/**
+ * Detecta si l'usuari ha introduït una URL d'artista d'ultimate-guitar, per
+ * mostrar el selector de N cançons. Cobreix variants regionals (es.*, fr.*,
+ * etc.) i tolerant a espais.
+ */
+function isUltimateGuitarArtistUrl(raw: string): boolean {
+  const t = raw.trim()
+  if (!t) return false
+  try {
+    const u = new URL(t)
+    const h = u.hostname.toLowerCase()
+    const isUg =
+      h === "ultimate-guitar.com" ||
+      h === "www.ultimate-guitar.com" ||
+      h.endsWith(".ultimate-guitar.com")
+    if (!isUg) return false
+    const segs = u.pathname.split("/").filter(Boolean)
+    return segs.length >= 2 && segs[0] === "artist"
+  } catch {
+    return false
+  }
 }

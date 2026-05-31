@@ -35,12 +35,11 @@ export const ultimateGuitar: Importer = {
   host: "tabs.ultimate-guitar.com",
 
   match(url) {
+    // Acceptem qualsevol subdomini de ultimate-guitar.com — UG redirigeix
+    // els visitants al host regional segons IP (es., de., fr., pt., it.…)
+    // i totes les variants serveixen el mateix HTML.
     const h = url.hostname.toLowerCase()
-    return (
-      h === "tabs.ultimate-guitar.com" ||
-      h === "www.ultimate-guitar.com" ||
-      h === "ultimate-guitar.com"
-    )
+    return h === "ultimate-guitar.com" || h.endsWith(".ultimate-guitar.com")
   },
 
   async fetch(url) {

@@ -22,6 +22,8 @@ export async function listProposals(isAdmin: boolean, userId: number) {
       resubmittedAt: schema.songProposals.resubmittedAt,
       songTitle: schema.songs.title,
       songArtist: schema.songs.artist,
+      songAlbum: schema.songs.album,
+      songYear: schema.songs.year,
       proposerName: schema.users.name,
       proposerAvatar: schema.users.avatarUrl,
     })
@@ -69,6 +71,8 @@ export async function listProposals(isAdmin: boolean, userId: number) {
     resubmitted_at: r.resubmittedAt,
     song_title: r.songTitle,
     song_artist: r.songArtist,
+    song_album: r.songAlbum,
+    song_year: r.songYear,
     proposer_name: r.proposerName,
     proposer_avatar: r.proposerAvatar,
     reviewer_name: r.reviewerId ? (reviewerMap[r.reviewerId] ?? null) : null,

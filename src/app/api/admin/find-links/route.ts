@@ -1,20 +1,31 @@
 /**
- * Cerca links de YouTube i Spotify per a una llista de files (artista + títol).
- * Només omple camps en blanc — si la fila ja porta link, no es toca.
+ * Cerca metadades complementàries per a una llista de files (artista + títol):
+ *   - Link de YouTube (scrape de la pàgina de resultats).
+ *   - Link de Spotify + àlbum + any (Web API).
+ *   - Idioma (detecció via `franc` a partir de artista + títol + àlbum).
+ *
+ * Només omple camps en blanc — si la fila ja porta un valor, no es toca.
  *
  * Respon amb SSE perquè la cerca pot trigar uns segons per fila:
- *   { type: "progress", index, youtubeUrl?: string|null, spotifyUrl?: string|null }
+ *   { type: "meta", spotifyAvailable }
+ *   { type: "progress", index, youtubeUrl?, spotifyUrl?, album?, year?, language? }
  *   { type: "done" }
  *
- * `null` significa "buscat però no trobat". `undefined` (omès) significa
- * "no s'ha buscat perquè ja en tenia un".
+ * Per a cada camp opcional retornat:
+ *   `string|number` → trobat
+ *   `null`          → "buscat però no trobat"
+ *   absent (undef.) → "no s'ha buscat perquè ja tenia valor"
  */
 
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { requireAdmin } from "@/lib/session"
 import { findYoutubeUrl } from "@/lib/bulkImport/findYoutube"
-import { findSpotifyUrl, isSpotifyConfigured } from "@/lib/bulkImport/findSpotify"
+import {
+  findSpotifyTrack,
+  isSpotifyConfigured,
+} from "@/lib/bulkImport/findSpotify"
+import { detectSongLanguage } from "@/lib/bulkImport/detectLanguage"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -28,6 +39,9 @@ const rowSchema = z.object({
   artist: z.string().min(1),
   hasYoutube: z.boolean(),
   hasSpotify: z.boolean(),
+  hasAlbum: z.boolean(),
+  hasYear: z.boolean(),
+  hasLanguage: z.boolean(),
 })
 
 const bodySchema = z.object({
@@ -58,6 +72,10 @@ export async function POST(req: Request): Promise<Response> {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i]
         const willSearchYt = !row.hasYoutube
+        // Crida a Spotify si falten camps que pot omplir: link, àlbum o any.
+        const willSearchSp =
+          spotifyAvailable &&
+          (!row.hasSpotify || !row.hasAlbum || !row.hasYear)
 
         // Throttling YouTube: el scraping ràpid es detecta com a bot. Esperem
         // 800-1500ms aleatoris entre cerques perquè sembli tràfic humà.
@@ -74,21 +92,50 @@ export async function POST(req: Request): Promise<Response> {
         const ytPromise = willSearchYt
           ? findYoutubeUrl(row.artist, row.title).catch(() => null)
           : Promise.resolve(undefined)
-        const spPromise =
-          row.hasSpotify || !spotifyAvailable
-            ? Promise.resolve(undefined)
-            : findSpotifyUrl(row.artist, row.title).catch(() => null)
+        const spPromise = willSearchSp
+          ? findSpotifyTrack(row.artist, row.title).catch(() => null)
+          : Promise.resolve(undefined)
 
-        const [youtubeUrl, spotifyUrl] = await Promise.all([ytPromise, spPromise])
+        const [youtubeUrl, spotifyTrack] = await Promise.all([
+          ytPromise,
+          spPromise,
+        ])
 
         if (willSearchYt) lastYtAt = Date.now()
 
-        send({
+        // Desglossem el resultat de Spotify als camps individuals que ens
+        // demana el frontend. Per cada un només l'enviem si el feiem servir
+        // (la fila no en tenia) — així el frontend distingeix "no buscat"
+        // de "buscat i no trobat".
+        const event: {
+          type: "progress"
+          index: number
+          youtubeUrl?: string | null
+          spotifyUrl?: string | null
+          album?: string | null
+          year?: number | null
+          language?: string | null
+        } = {
           type: "progress",
           index: i,
-          youtubeUrl,
-          spotifyUrl,
-        })
+        }
+        if (willSearchYt) event.youtubeUrl = youtubeUrl ?? null
+        if (willSearchSp) {
+          if (!row.hasSpotify) event.spotifyUrl = spotifyTrack?.url ?? null
+          if (!row.hasAlbum) event.album = spotifyTrack?.album ?? null
+          if (!row.hasYear) event.year = spotifyTrack?.year ?? null
+        }
+
+        // Detecció d'idioma: si falta, alimentem franc amb artista + títol
+        // + àlbum (si l'acabem de treure de Spotify, sumem més senyal de
+        // text — els títols sols són massa curts per a una detecció fiable).
+        if (!row.hasLanguage) {
+          const albumHint = spotifyTrack?.album ?? null
+          const lang = detectSongLanguage(row.artist, row.title, albumHint)
+          event.language = lang
+        }
+
+        send(event)
       }
 
       send({ type: "done" })

@@ -5827,13 +5827,26 @@ header.songs-index-banner {
 
 .bulk-row {
   display: flex;
-  align-items: flex-start;
-  gap: 0.7rem;
+  flex-direction: column;
+  gap: 0.6rem;
   padding: 0.6rem 0.85rem;
   border: 1px solid var(--border, #e2e8f0);
   border-radius: 8px;
   background: var(--card, #fff);
   transition: border-color 0.15s, background 0.15s;
+}
+
+.bulk-row-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.bulk-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
 }
 
 .bulk-row-pending {
@@ -5947,6 +5960,143 @@ header.songs-index-banner {
   vertical-align: middle;
 }
 
+.bulk-row-remove {
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.bulk-row-remove:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.bulk-row-edit {
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.bulk-row-edit:hover,
+.bulk-row-edit.is-active {
+  background: #e0e7ff;
+  border-color: #c7d2fe;
+}
+
+/* Pills d'estat dels camps opcionals */
+.bulk-row-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.bulk-pill {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bulk-pill-filled {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.bulk-pill-missing {
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  border-color: var(--border, #e2e8f0);
+  text-decoration: line-through;
+  text-decoration-color: #cbd5e1;
+}
+
+.bulk-pill-missing-required {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+/* Editor inline de la fila */
+.bulk-row-editor {
+  padding: 0.7rem 0.85rem;
+  border-top: 1px dashed var(--border, #e2e8f0);
+  background: color-mix(in srgb, var(--card, #fff) 60%, transparent);
+  border-radius: 6px;
+  margin-top: 0.1rem;
+}
+
+.bulk-row-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.55rem 0.7rem;
+}
+
+.bulk-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--text-muted, #64748b);
+}
+
+.bulk-edit-field-wide {
+  grid-column: span 2;
+}
+
+.bulk-edit-field-narrow {
+  max-width: 9rem;
+}
+
+.bulk-edit-field input,
+.bulk-edit-field select {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 6px;
+  background: var(--bg, #fff);
+  color: var(--text, #0f172a);
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.bulk-edit-field input:focus,
+.bulk-edit-field select:focus {
+  outline: none;
+  border-color: var(--accent, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.bulk-row-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.55rem;
+}
+
 /* ──────────────── Generador de CSV (scrape d'artista) ──────────────── */
 
 .bulk-scrape-panel {
@@ -5996,6 +6146,28 @@ header.songs-index-banner {
   outline: none;
   border-color: var(--accent, #2563eb);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.bulk-scrape-row .bulk-scrape-limit {
+  width: 5rem;
+  padding: 0.55rem 0.5rem;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--bg, #fff);
+  color: var(--text, #0f172a);
+  text-align: center;
+}
+
+.bulk-scrape-row .bulk-scrape-limit:focus {
+  outline: none;
+  border-color: var(--accent, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.bulk-scrape-row .btn-primary.is-compact {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }
 
 .bulk-scrape-meta {

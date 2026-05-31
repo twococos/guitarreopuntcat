@@ -26,12 +26,25 @@ export const SUPPORTED_HOSTS: readonly string[] = [
   "www.guitartuna.com",
 ]
 
+/**
+ * UG redirigeix els visitants a un host regional segons la IP (es., de., fr.,
+ * pt., it., ja., ko., zh., ru.…). Tots aquests subdominis serveixen el
+ * mateix contingut amb només la UI traduïda — el parser funciona igualment.
+ * Per evitar haver d'enumerar tots els codis ISO, acceptem qualsevol
+ * subdomini de `ultimate-guitar.com`.
+ */
+function isUltimateGuitarHost(host: string): boolean {
+  return host === "ultimate-guitar.com" || host.endsWith(".ultimate-guitar.com")
+}
+
 /** Comprovació ràpida (client-safe) — només mira host i protocol. */
 export function isSupportedUrl(rawUrl: string): boolean {
   try {
     const u = new URL(rawUrl)
     if (u.protocol !== "http:" && u.protocol !== "https:") return false
-    return SUPPORTED_HOSTS.includes(u.hostname.toLowerCase())
+    const host = u.hostname.toLowerCase()
+    if (SUPPORTED_HOSTS.includes(host)) return true
+    return isUltimateGuitarHost(host)
   } catch {
     return false
   }
