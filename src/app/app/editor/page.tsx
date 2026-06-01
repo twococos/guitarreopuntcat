@@ -20,6 +20,7 @@ import { ConfirmToast } from "@/components/editor/ConfirmToast"
 import { ProposeInfoPopup } from "@/components/editor/ProposeInfoPopup"
 import { NewSongStartPopup } from "@/components/editor/NewSongStartPopup"
 import { RejectProposalPopup } from "@/components/editor/RejectProposalPopup"
+import { IconPencil } from "@/components/shared/Icons"
 import { useEditorHistory } from "@/hooks/useEditorHistory"
 import { useToastStore } from "@/hooks/useToasts"
 import type { ImportResult } from "@/lib/importers"
@@ -822,7 +823,7 @@ export default function EditorPage() {
         <a href={backHref} className="back-link">
           {backLabel}
         </a>
-        <h1 id="editor-title">{pageTitle}</h1>
+        <h1 id="editor-title"><IconPencil /> {pageTitle}</h1>
         <p className="subtitle" id="editor-subtitle">
           {pageSubtitle}
         </p>

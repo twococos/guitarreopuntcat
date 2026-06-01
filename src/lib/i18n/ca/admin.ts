@@ -2,18 +2,18 @@
 
 export const admin = {
   dashboard: {
-    titol: "⚙️ Panell d'administració",
+    titol: "Panell d'administració",
     benvingut: (nom: string) => `Benvingut, ${nom}`,
     backLink: "← Cançoner",
     backImportLink: "← Panell d'administració",
   },
 
   tabs: {
-    resum: "📊 Resum",
-    propostes: "📝 Propostes",
-    cancons: "🎵 Cançons",
-    usuaris: "👥 Usuaris",
-    canconers: "📚 Cançoners",
+    resum: "Resum",
+    propostes: "Propostes",
+    cancons: "Cançons",
+    usuaris: "Usuaris",
+    canconers: "Cançoners",
   },
 
   statsCards: {
@@ -112,7 +112,7 @@ export const admin = {
   },
 
   import: {
-    titol: "📥 Importació massiva",
+    titol: "Importació massiva",
     subtitol:
       "Importa cançons des d'un .csv. Es crearan propostes pendents de revisió a nom de l'usuari «Importador».",
     dropzone: {
@@ -120,7 +120,7 @@ export const admin = {
       hint: "Format: link, títol, artista, àlbum, any, youtube, spotify, idioma, etiquetes",
     },
     scrapePanel: {
-      titol: "🪄 Generador de CSV des d'una pàgina d'artista",
+      titol: "Generador de CSV des d'una pàgina d'artista",
       hint: "Introdueix un link d'un artista d'acordscatala.cat o d'ultimate-guitar.com i es generaran les files CSV de les cançons llistades.",
       urlPlaceholder:
         "https://www.acordscatala.cat/ca/artista o https://www.ultimate-guitar.com/artist/…",
@@ -139,14 +139,14 @@ export const admin = {
       cancellar: "Cancel·lar",
       buscarLinksTitle:
         "Cerca a YouTube i Spotify els links que falten (només omple buits)",
-      buscarLinksFalten: "🔎 Buscar links que falten",
+      buscarLinksFalten: "Buscar links que falten",
       buscantLinks: (fet: number, total: number) =>
         `Buscant… ${fet}/${total}`,
       importar: "Importar",
-      importantProgres: (fet: number, total: number, ok: number, dup: number, err: number) =>
-        `${fet} / ${total} · ✅ ${ok} · ⚠️ ${dup} · ❌ ${err}`,
-      acabat: (ok: number, dup: number, err: number) =>
-        `Acabat: ✅ ${ok} · ⚠️ ${dup} duplicades · ❌ ${err} errors`,
+      importantProgres: (fet: number, total: number) => `${fet} / ${total}`,
+      acabatPrefix: "Acabat:",
+      acabatDuplicades: (dup: number) => `${dup} duplicades`,
+      acabatErrors: (err: number) => `${err} errors`,
       novaImportacio: "Nova importació",
       campsObligatoris:
         "Camps obligatoris (les files que no compleixin se saltaran):",

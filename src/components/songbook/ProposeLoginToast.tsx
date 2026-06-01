@@ -2,6 +2,7 @@
 import { useUiStore } from "@/hooks/useUi"
 import { LoginPopup } from "@/components/LoginPopup"
 import { getT } from "@/lib/i18n"
+import { IconLock, IconX } from "@/components/shared/Icons"
 
 export function ProposeLoginToast() {
   const t = getT()
@@ -14,7 +15,7 @@ export function ProposeLoginToast() {
     <>
       {proposeLoginVisible && (
         <div id="propose-login-toast" className="propose-toast">
-          <span>🔒</span>
+          <span><IconLock /></span>
           <p>{t.app.songbook.proposeLoginToast.missatge}</p>
           <button
             id="propose-login-btn"
@@ -25,8 +26,12 @@ export function ProposeLoginToast() {
           >
             {t.app.songbook.proposeLoginToast.iniciaSessio}
           </button>
-          <button id="propose-toast-close" onClick={() => setProposeLogin(false)}>
-            ✕
+          <button
+            id="propose-toast-close"
+            onClick={() => setProposeLogin(false)}
+            aria-label="Tancar"
+          >
+            <IconX />
           </button>
         </div>
       )}

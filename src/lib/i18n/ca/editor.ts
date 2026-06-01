@@ -3,14 +3,14 @@
 export const editor = {
   page: {
     titols: {
-      novaCancoTitol: "✏️ Nova cançó",
+      novaCancoTitol: "Nova cançó",
       novaCancoSubtitol: "Escriu la lletra de la cançó",
-      editarCancoTitol: "✏️ Editar cançó",
+      editarCancoTitol: "Editar cançó",
       editarCancoSubtitol: "Modifica i guarda els canvis",
-      modificarPropostaTitol: "✏️ Modificar proposta",
+      modificarPropostaTitol: "Modificar proposta",
       modificarPropostaSubtitol:
         "Modifica la teva proposta i torna a enviar-la perquè un admin la revisi.",
-      revisarPropostaTitol: "✏️ Revisar proposta",
+      revisarPropostaTitol: "Revisar proposta",
       revisarPropostaCarregant: "Carregant proposta…",
       revisarPropostaDe: (nom: string) => `Proposta de ${nom}`,
     },

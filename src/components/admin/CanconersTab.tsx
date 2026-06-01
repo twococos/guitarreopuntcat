@@ -1,6 +1,7 @@
 "use client"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { getT } from "@/lib/i18n"
+import { IconLink } from "@/components/shared/Icons"
 
 interface CanconerRow {
   id: number
@@ -105,7 +106,7 @@ export function CanconersTab() {
                       rel="noreferrer"
                       className="btn-xs success"
                     >
-                      🔗 {t.admin.canconersTab.veure}
+                      <IconLink /> {t.admin.canconersTab.veure}
                     </a>
                   ) : (
                     <span style={{ color: "var(--muted)", fontSize: ".78rem" }}>{t.admin.canconersTab.no}</span>

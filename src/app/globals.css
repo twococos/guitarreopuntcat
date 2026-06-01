@@ -132,6 +132,41 @@ header .subtitle {
   gap: 0.6rem;
   flex-shrink: 0;
 }
+
+/* AppHeader — capçalera homogènia de /app: logo + wordmark + subtítol contextual */
+.app-header-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+}
+.app-header-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+.app-header-wordmark {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+}
+.app-header-sep {
+  color: var(--muted);
+  font-weight: 400;
+  margin: 0 0.1rem;
+}
+.app-header-subtitle {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+}
+.app-header .back-link + .app-header-brand {
+  margin-left: 0.25rem;
+}
 .btn-new-song {
   padding: 0.36rem 0.8rem;
   background: var(--accent);

@@ -18,6 +18,7 @@ import { OverwriteToast } from "./OverwriteToast"
 import { ProposeLoginToast } from "./ProposeLoginToast"
 import { NewSongButton } from "./NewSongButton"
 import { ResizeHandles } from "./ResizeHandles"
+import { AppHeader } from "./AppHeader"
 import { getT } from "@/lib/i18n"
 import type { CSSProperties } from "react"
 import type { CanconerListItem, CanconerStyle } from "@/types/song"
@@ -278,14 +279,15 @@ export function SongbookEditor() {
 
   return (
     <>
-      <header>
-        <h1>🎵 {t.app.songbook.editor.titol}</h1>
-        <p className="subtitle">{t.app.songbook.editor.subtitol}</p>
-        <div className="header-actions">
-          <NewSongButton />
-          <UserWidget />
-        </div>
-      </header>
+      <AppHeader
+        subtitle={t.app.songbook.editor.titol}
+        actions={
+          <>
+            <NewSongButton />
+            <UserWidget />
+          </>
+        }
+      />
       <main
         id="main-layout"
         className={!previewActive ? "no-preview" : ""}

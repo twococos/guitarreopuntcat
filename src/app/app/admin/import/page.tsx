@@ -18,10 +18,21 @@
  */
 
 import { useCallback, useMemo, useRef, useState } from "react"
-import Link from "next/link"
 import { getT } from "@/lib/i18n"
 import { useToastStore } from "@/hooks/useToasts"
 import { isSupportedUrl } from "@/lib/importers"
+import {
+  IconFileText,
+  IconPencil,
+  IconClock,
+  IconPlay,
+  IconCheckCircle,
+  IconAlertTriangle,
+  IconX,
+  IconWand,
+  IconSearch,
+} from "@/components/shared/Icons"
+import { AppHeader } from "@/components/songbook/AppHeader"
 
 type RowStatus = "pending" | "running" | "ok" | "error" | "duplicate"
 
@@ -592,7 +603,7 @@ export default function ImportMassiuPage() {
   const scrapePanel = (
     <div className="bulk-scrape-panel">
       <div className="bulk-scrape-header">
-        <h2>{t.admin.import.scrapePanel.titol}</h2>
+        <h2><IconWand /> {t.admin.import.scrapePanel.titol}</h2>
         <p className="bulk-scrape-hint">
           {t.admin.import.scrapePanel.hint}
           {phase === "preview" && (
@@ -674,15 +685,11 @@ export default function ImportMassiuPage() {
 
   return (
     <>
-      <header>
-        <Link href="/app/admin" className="back-link">
-          {t.admin.dashboard.backImportLink}
-        </Link>
-        <h1>{t.admin.import.titol}</h1>
-        <p className="subtitle">
-          {t.admin.import.subtitol}
-        </p>
-      </header>
+      <AppHeader
+        subtitle={t.admin.import.titol}
+        backLink={{ href: "/app/admin", label: t.admin.dashboard.backImportLink }}
+      />
+      <p className="bulk-import-intro">{t.admin.import.subtitol}</p>
 
       <div className="bulk-import-page">
         {phase === "idle" && (
@@ -702,7 +709,7 @@ export default function ImportMassiuPage() {
                 if (e.key === "Enter" || e.key === " ") onPickClick()
               }}
             >
-              <div className="bulk-dropzone-icon">📄</div>
+              <div className="bulk-dropzone-icon"><IconFileText /></div>
               <div className="bulk-dropzone-text">
                 {t.admin.import.dropzone.text}
               </div>
@@ -740,9 +747,13 @@ export default function ImportMassiuPage() {
                     disabled={findingLinks}
                     title={t.admin.import.preview.buscarLinksTitle}
                   >
-                    {findingLinks
-                      ? t.admin.import.preview.buscantLinks(findProgress.done, findProgress.total)
-                      : t.admin.import.preview.buscarLinksFalten}
+                    {findingLinks ? (
+                      t.admin.import.preview.buscantLinks(findProgress.done, findProgress.total)
+                    ) : (
+                      <>
+                        <IconSearch /> {t.admin.import.preview.buscarLinksFalten}
+                      </>
+                    )}
                   </button>
                   <button
                     className="btn-primary"
@@ -755,13 +766,25 @@ export default function ImportMassiuPage() {
               )}
               {phase === "importing" && (
                 <div className="bulk-progress-summary">
-                  {t.admin.import.preview.importantProgres(totals.ok + totals.dup + totals.err, totals.total, totals.ok, totals.dup, totals.err)}
+                  {t.admin.import.preview.importantProgres(totals.ok + totals.dup + totals.err, totals.total)}
+                  {" · "}
+                  <IconCheckCircle /> {totals.ok}
+                  {" · "}
+                  <IconAlertTriangle /> {totals.dup}
+                  {" · "}
+                  <IconX /> {totals.err}
                 </div>
               )}
               {phase === "done" && (
                 <div className="bulk-actions">
                   <div className="bulk-progress-summary">
-                    {t.admin.import.preview.acabat(totals.ok, totals.dup, totals.err)}
+                    {t.admin.import.preview.acabatPrefix}
+                    {" "}
+                    <IconCheckCircle /> {totals.ok}
+                    {" · "}
+                    <IconAlertTriangle /> {t.admin.import.preview.acabatDuplicades(totals.dup)}
+                    {" · "}
+                    <IconX /> {t.admin.import.preview.acabatErrors(totals.err)}
                   </div>
                   <button className="btn-primary" onClick={resetAll}>
                     {t.admin.import.preview.novaImportacio}
@@ -825,7 +848,7 @@ export default function ImportMassiuPage() {
                 return (
                   <li key={i} className={`bulk-row bulk-row-${r.status}`}>
                     <div className="bulk-row-main">
-                      <div className="bulk-row-icon">{iconFor(r.status)}</div>
+                      <div className="bulk-row-icon"><StatusIcon status={r.status} /></div>
                       <div className="bulk-row-info">
                         <div className="bulk-row-title">
                           <strong>{r.title}</strong> — {r.artist}
@@ -880,7 +903,7 @@ export default function ImportMassiuPage() {
                             aria-label={t.admin.import.preview.editarCampsAriaLabel}
                             aria-expanded={isEditing}
                           >
-                            ✏️
+                            <IconPencil />
                           </button>
                         )}
                         {phase !== "importing" && (
@@ -1061,18 +1084,18 @@ function RowEditor({
   )
 }
 
-function iconFor(s: RowStatus): string {
-  switch (s) {
+function StatusIcon({ status }: { status: RowStatus }) {
+  switch (status) {
     case "pending":
-      return "⏳"
+      return <IconClock />
     case "running":
-      return "⏵"
+      return <IconPlay />
     case "ok":
-      return "✅"
+      return <IconCheckCircle />
     case "duplicate":
-      return "⚠️"
+      return <IconAlertTriangle />
     case "error":
-      return "❌"
+      return <IconX />
   }
 }
 

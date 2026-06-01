@@ -4,6 +4,7 @@ import { useState } from "react"
 import type { ImportResult } from "@/lib/importers"
 import { isSupportedUrl, SUPPORTED_HOSTS } from "@/lib/importers"
 import { getT } from "@/lib/i18n"
+import { IconMusic } from "@/components/shared/Icons"
 
 interface NewSongStartPopupProps {
   onManual: () => void
@@ -67,7 +68,7 @@ export function NewSongStartPopup({ onManual, onImported }: NewSongStartPopupPro
   return (
     <div id="new-song-overlay">
       <div id="new-song-box">
-        <div id="new-song-logo">🎵</div>
+        <div id="new-song-logo"><IconMusic /></div>
         <h2>{t.editor.newSong.titol}</h2>
 
         <div className="new-song-section">

@@ -19,6 +19,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { useSongbookStore, type CanconerEntry } from "@/hooks/useSongbook"
 import { transposeKey } from "@/lib/transpose"
 import { getT } from "@/lib/i18n"
+import { IconX } from "@/components/shared/Icons"
 
 function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
   const t = getT()
@@ -100,8 +101,9 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
           remove(idx)
         }}
         onPointerDown={(e) => e.stopPropagation()}
+        aria-label={t.app.songbook.canconerList.treureTitle}
       >
-        ✕
+        <IconX />
       </button>
     </li>
   )

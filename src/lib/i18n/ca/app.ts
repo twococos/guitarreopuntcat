@@ -67,7 +67,6 @@ export const app = {
   songbook: {
     editor: {
       titol: "Cançoner",
-      subtitol: "Tria les cançons i genera el teu PDF",
     },
     detailPanel: {
       colorAccentTitle: "Color d'accent",

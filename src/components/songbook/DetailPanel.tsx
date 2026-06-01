@@ -6,6 +6,7 @@ import { useToastStore } from "@/hooks/useToasts"
 import { SongView } from "@/components/song/SongView"
 import { AccentPicker } from "./AccentPicker"
 import { getT } from "@/lib/i18n"
+import { IconEye, IconSettings, IconShuffle } from "@/components/shared/Icons"
 import {
   CANCONER_STYLES,
   STYLE_LABELS,
@@ -262,8 +263,9 @@ function SortControls() {
           className="btn-sort-extra"
           title={t.app.songbook.detailPanel.tornarAAleatorizarTitle}
           onClick={reshuffle}
+          aria-label={t.app.songbook.detailPanel.tornarAAleatorizarTitle}
         >
-          🎲
+          <IconShuffle />
         </button>
       )}
     </div>
@@ -526,13 +528,13 @@ export function DetailPanel() {
               className={`detail-tab${activeTab === "preview" ? " active" : ""}`}
               onClick={() => setActiveTab("preview")}
             >
-              👁 {t.app.songbook.detailPanel.tabVistaPreviа}
+              <IconEye /> {t.app.songbook.detailPanel.tabVistaPreviа}
             </button>
             <button
               className={`detail-tab${activeTab === "options" ? " active" : ""}`}
               onClick={() => setActiveTab("options")}
             >
-              ⚙ {t.app.songbook.detailPanel.tabOpcions}
+              <IconSettings /> {t.app.songbook.detailPanel.tabOpcions}
             </button>
           </div>
           {activeTab === "preview" && <PreviewTab />}

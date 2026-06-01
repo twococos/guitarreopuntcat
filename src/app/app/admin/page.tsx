@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
-import Link from "next/link"
 import { getT } from "@/lib/i18n"
 import { UserWidget } from "@/components/UserWidget"
 import { StatsCards } from "@/components/admin/StatsCards"
@@ -10,6 +9,14 @@ import { ProposalsTab } from "@/components/admin/ProposalsTab"
 import { SongsTab } from "@/components/admin/SongsTab"
 import { UsersTab } from "@/components/admin/UsersTab"
 import { CanconersTab } from "@/components/admin/CanconersTab"
+import {
+  IconBarChart,
+  IconProposal,
+  IconMusic,
+  IconUsers,
+  IconBookOpen,
+} from "@/components/shared/Icons"
+import { AppHeader } from "@/components/songbook/AppHeader"
 
 type Tab = "stats" | "proposals" | "songs" | "users" | "canconers"
 
@@ -49,50 +56,50 @@ export default function AdminPage() {
 
   return (
     <>
-      <header>
-        <Link href="/app" className="back-link">
-          {t.admin.dashboard.backLink}
-        </Link>
-        <h1>{t.admin.dashboard.titol}</h1>
-        <p className="subtitle" id="admin-welcome">
-          {t.admin.dashboard.benvingut(user?.name ?? "")}
-        </p>
-        <div className="header-actions">
-          <UserWidget />
-        </div>
-      </header>
+      <AppHeader
+        subtitle={t.admin.dashboard.titol}
+        backLink={{ href: "/app", label: t.admin.dashboard.backLink }}
+        actions={
+          <>
+            <span className="subtitle" id="admin-welcome">
+              {t.admin.dashboard.benvingut(user?.name ?? "")}
+            </span>
+            <UserWidget />
+          </>
+        }
+      />
 
       <div id="admin-tabs">
         <button
           className={`tab ${tab === "stats" ? "active" : ""}`}
           onClick={() => setTab("stats")}
         >
-          {t.admin.tabs.resum}
+          <IconBarChart /> {t.admin.tabs.resum}
         </button>
         <button
           className={`tab ${tab === "proposals" ? "active" : ""}`}
           onClick={() => setTab("proposals")}
         >
-          {t.admin.tabs.propostes}{" "}
+          <IconProposal /> {t.admin.tabs.propostes}{" "}
           {pendingCount > 0 && <span id="pending-badge">{pendingCount}</span>}
         </button>
         <button
           className={`tab ${tab === "songs" ? "active" : ""}`}
           onClick={() => setTab("songs")}
         >
-          {t.admin.tabs.cancons}
+          <IconMusic /> {t.admin.tabs.cancons}
         </button>
         <button
           className={`tab ${tab === "users" ? "active" : ""}`}
           onClick={() => setTab("users")}
         >
-          {t.admin.tabs.usuaris}
+          <IconUsers /> {t.admin.tabs.usuaris}
         </button>
         <button
           className={`tab ${tab === "canconers" ? "active" : ""}`}
           onClick={() => setTab("canconers")}
         >
-          {t.admin.tabs.canconers}
+          <IconBookOpen /> {t.admin.tabs.canconers}
         </button>
       </div>
 

@@ -2,6 +2,7 @@
 import { useSongbookStore } from "@/hooks/useSongbook"
 import { transposeKey } from "@/lib/transpose"
 import { getT } from "@/lib/i18n"
+import { IconX } from "@/components/shared/Icons"
 
 export function CanconerGrid() {
   const t = getT()
@@ -51,8 +52,9 @@ export function CanconerGrid() {
                 e.stopPropagation()
                 remove(idx)
               }}
+              aria-label={t.app.songbook.canconerGrid.treureTitle}
             >
-              ✕
+              <IconX />
             </button>
           </div>
         )

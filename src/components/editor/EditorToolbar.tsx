@@ -1,6 +1,16 @@
 "use client"
 import type { ReactNode } from "react"
 import { getT } from "@/lib/i18n"
+import {
+  IconSection,
+  IconMusic,
+  IconUndo,
+  IconRedo,
+  IconX,
+  IconCheck,
+  IconRotateCcw,
+  IconSave,
+} from "@/components/shared/Icons"
 
 interface EditorToolbarProps {
   onInsertSection: () => void
@@ -72,7 +82,7 @@ export function EditorToolbar({
           onClick={onInsertSection}
           disabled={blocked}
         >
-          § Secció
+          <IconSection /> Secció
         </button>
         <button
           type="button"
@@ -81,7 +91,7 @@ export function EditorToolbar({
           onClick={onInsertChord}
           disabled={blocked}
         >
-          ♩ Acord
+          <IconMusic /> Acord
         </button>
         <span className="editor-toolbar-sep" />
         <button
@@ -91,7 +101,7 @@ export function EditorToolbar({
           onClick={onUndo}
           disabled={blocked || !canUndo}
         >
-          ↩ Desfer
+          <IconUndo /> Desfer
         </button>
         <button
           type="button"
@@ -100,7 +110,7 @@ export function EditorToolbar({
           onClick={onRedo}
           disabled={blocked || !canRedo}
         >
-          ↪ Refer
+          <IconRedo /> Refer
         </button>
         <span className="editor-toolbar-sep" />
         <span className="editor-toolbar-hint" title={t.editor.toolbar.dreceraMatoliTitle}>
@@ -120,7 +130,7 @@ export function EditorToolbar({
               onClick={onReject}
               disabled={saving}
             >
-              ✕ Rebutjar
+              <IconX /> Rebutjar
             </button>
             <button
               type="button"
@@ -129,7 +139,7 @@ export function EditorToolbar({
               onClick={onAccept}
               disabled={blocked || saving}
             >
-              ✓ Acceptar
+              <IconCheck /> Acceptar
             </button>
           </>
         ) : (
@@ -141,7 +151,7 @@ export function EditorToolbar({
               onClick={onReset}
               disabled={saving}
             >
-              ⟳ {resetLabel}
+              <IconRotateCcw /> {resetLabel}
             </button>
             <button
               type="button"
@@ -150,7 +160,7 @@ export function EditorToolbar({
               onClick={onSave}
               disabled={blocked || saving || !!saveDisabledHint}
             >
-              💾 {saveLabel}
+              <IconSave /> {saveLabel}
             </button>
           </>
         )}

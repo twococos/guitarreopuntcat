@@ -8,6 +8,7 @@ import { guardMobileApp } from "@/components/public/MobileGateLink"
 import { transposeKey, transposeContent, CHROMATIC } from "@/lib/transpose"
 import type { Song } from "@/types/song"
 import { getT } from "@/lib/i18n"
+import { IconPlay } from "@/components/shared/Icons"
 
 interface Props {
   song: Pick<
@@ -344,7 +345,11 @@ export function PublicSongView({ song }: Props) {
               aria-haspopup="menu"
               aria-expanded={speedMenuOpen}
             >
-              {autoscroll ? t.public.publicSong.controls.aturar : t.public.publicSong.controls.auto}
+              {autoscroll ? (
+                <>{t.public.publicSong.controls.aturar}</>
+              ) : (
+                <><IconPlay /> {t.public.publicSong.controls.auto}</>
+              )}
             </button>
             {/* Desktop: selector de velocitat sempre visible */}
             <div className="public-song-speed" role="group" aria-label={t.public.publicSong.controls.velocitatAutoscroll}>

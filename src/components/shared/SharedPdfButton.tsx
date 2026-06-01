@@ -3,6 +3,7 @@ import { useState } from "react"
 import type { CanconerStyle } from "@/types/song"
 import type { PdfOptions } from "@/lib/schemas/canconer"
 import { getT } from "@/lib/i18n"
+import { IconClock, IconFileText } from "@/components/shared/Icons"
 
 interface Props {
   title: string
@@ -52,7 +53,15 @@ export function SharedPdfButton({ title, style, accentColor, pdfOptions, songs }
 
   return (
     <button className="btn-pdf" onClick={handleClick} disabled={loading}>
-      {loading ? t.public.sharedView.generantPdf : t.public.sharedView.descarregarPdf}
+      {loading ? (
+        <>
+          <IconClock /> {t.public.sharedView.generantPdf}
+        </>
+      ) : (
+        <>
+          <IconFileText /> {t.public.sharedView.descarregarPdf}
+        </>
+      )}
     </button>
   )
 }

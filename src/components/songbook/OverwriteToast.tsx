@@ -4,6 +4,7 @@ import { useSongbookStore } from "@/hooks/useSongbook"
 import { useToastStore } from "@/hooks/useToasts"
 import { saveCanconer } from "@/lib/canconerApi"
 import { getT } from "@/lib/i18n"
+import { IconAlertTriangle } from "@/components/shared/Icons"
 
 export function OverwriteToast() {
   const t = getT()
@@ -40,7 +41,7 @@ export function OverwriteToast() {
 
   return (
     <div id="overwrite-toast" className="overwrite-toast">
-      <span>⚠️</span>
+      <span><IconAlertTriangle /></span>
       <p>
         {t.app.songbook.overwriteToast.missatgePrefix}
         <strong>&quot;{title}&quot;</strong>

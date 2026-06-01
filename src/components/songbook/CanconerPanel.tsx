@@ -9,6 +9,7 @@ import { CanconerList } from "./CanconerList"
 import { CanconerGrid } from "./CanconerGrid"
 import { ConfirmToast } from "@/components/editor/ConfirmToast"
 import { getT } from "@/lib/i18n"
+import { IconX, IconSave, IconClock, IconFileText, IconMusic } from "@/components/shared/Icons"
 import type { CanconerListItem } from "@/types/song"
 
 export function CanconerPanel() {
@@ -144,8 +145,9 @@ export function CanconerPanel() {
             disabled={!canDiscard}
             title={t.app.songbook.canconerPanel.descartarTitle}
             onClick={() => setConfirmDiscard(true)}
+            aria-label={t.app.songbook.canconerPanel.descartarTitle}
           >
-            ✕
+            <IconX />
           </button>
           <button
             id="btn-save-canconer"
@@ -154,7 +156,7 @@ export function CanconerPanel() {
             title={saveTitle}
             onClick={onSave}
           >
-            💾 {t.app.songbook.canconerPanel.guardarLabel}
+            <IconSave /> {t.app.songbook.canconerPanel.guardarLabel}
           </button>
           <button
             id="btn-generate"
@@ -163,13 +165,19 @@ export function CanconerPanel() {
             title={t.app.songbook.canconerPanel.generarPdfTitle}
             onClick={onGeneratePdf}
           >
-            {pdfLoading ? "⏳" : `📄 ${t.app.songbook.canconerPanel.pdfLabel}`}
+            {pdfLoading ? (
+              <IconClock />
+            ) : (
+              <>
+                <IconFileText /> {t.app.songbook.canconerPanel.pdfLabel}
+              </>
+            )}
           </button>
         </div>
       </div>
       {!hasItems && (
         <div id="canconer-empty" className="empty-state">
-          <span>🎶</span>
+          <span><IconMusic /></span>
           <p>{t.app.songbook.canconerPanel.buitHint}</p>
         </div>
       )}

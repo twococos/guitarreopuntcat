@@ -2,10 +2,10 @@
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import Link from "next/link"
 import { UserWidget } from "@/components/UserWidget"
 import { ToastHost } from "@/components/Toast"
 import { IconLibrary, IconProposal } from "@/components/shared/Icons"
+import { AppHeader } from "@/components/songbook/AppHeader"
 import { CanconersTab } from "./CanconersTab"
 import { ProposalsTab } from "./ProposalsTab"
 import { getT } from "@/lib/i18n"
@@ -60,17 +60,11 @@ export default function LibraryPage() {
 
   return (
     <>
-      <header>
-        <Link href="/app" className="back-link">
-          {t.app.library.backLink}
-        </Link>
-        <h1>
-          <IconLibrary /> {t.app.library.titol}
-        </h1>
-        <div className="header-actions">
-          <UserWidget />
-        </div>
-      </header>
+      <AppHeader
+        subtitle={t.app.library.titol}
+        backLink={{ href: "/app", label: t.app.library.backLink }}
+        actions={<UserWidget />}
+      />
 
       <div id="library-tabs">
         <button

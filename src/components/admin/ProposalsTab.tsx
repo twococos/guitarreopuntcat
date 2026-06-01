@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getT } from "@/lib/i18n"
+import { IconCheckCircle } from "@/components/shared/Icons"
 
 interface Proposal {
   id: number
@@ -170,7 +171,7 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
 
       {visible.length === 0 ? (
         <div id="proposals-empty" className="empty-state">
-          <span>✅</span>
+          <span><IconCheckCircle /></span>
           <p>{t.admin.proposalsTab.capPropostaEnAquestaCategoria}</p>
         </div>
       ) : (

@@ -3,6 +3,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { getT } from "@/lib/i18n"
+import { IconX, IconMusic } from "@/components/shared/Icons"
 
 interface ArtistResult {
   name: string
@@ -219,7 +220,7 @@ export function SearchHero({
             }}
             aria-label={t.public.searchHero.esborraAriaLabel}
           >
-            ✕
+            <IconX />
           </button>
         )}
       </div>
@@ -262,7 +263,7 @@ export function SearchHero({
                     aria-selected={focused}
                   >
                     <span className="search-hero-result-icon" aria-hidden="true">
-                      ♪
+                      <IconMusic />
                     </span>
                     <span className="search-hero-result-main">
                       <span className="search-hero-result-title">{a.name}</span>
