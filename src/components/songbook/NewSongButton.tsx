@@ -1,8 +1,10 @@
 "use client"
 import { useSession } from "next-auth/react"
 import { useUiStore } from "@/hooks/useUi"
+import { getT } from "@/lib/i18n"
 
 export function NewSongButton() {
+  const t = getT()
   const { data: session, status } = useSession()
   const setProposeLogin = useUiStore((s) => s.setProposeLogin)
 
@@ -18,7 +20,7 @@ export function NewSongButton() {
         className="btn-new-song"
         onClick={() => setProposeLogin(true)}
       >
-        + Proposa una cançó
+        {t.app.songbook.newSongButton.proposaUnaCanco}
       </button>
     )
   }
@@ -26,14 +28,14 @@ export function NewSongButton() {
   if (isAdmin) {
     return (
       <a id="btn-new-song" className="btn-new-song" href="/app/editor">
-        + Nova cançó
+        {t.app.songbook.newSongButton.novaCanco}
       </a>
     )
   }
 
   return (
     <a id="btn-new-song" className="btn-new-song" href="/app/editor">
-      + Proposa una cançó
+      {t.app.songbook.newSongButton.proposaUnaCanco}
     </a>
   )
 }

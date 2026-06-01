@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { SECTION_TYPES, getSectionType, nextSectionName } from "@/lib/editor/sections"
 import type { SectionType } from "@/lib/editor/sections"
+import { getT } from "@/lib/i18n"
 
 interface SectionMenuProps {
   open: boolean
@@ -73,6 +74,24 @@ export function SectionContextMenu({
 
   if (!open) return null
 
+  const t = getT()
+
+  // Mapeja el valor tècnic del tipus al label del diccionari
+  const sectionLabel = (type: SectionType): string => {
+    switch (type) {
+      case "Estrofa": return t.editor.sections.estrofa
+      case "Tornada": return t.editor.sections.tornada
+      case "Pre-tornada": return t.editor.sections.preTornada
+      case "Pont": return t.editor.sections.pont
+      case "Solo": return t.editor.sections.solo
+      case "Instrumental": return t.editor.sections.instrumental
+      case "Interludi": return t.editor.sections.interludi
+      case "Intro": return t.editor.sections.intro
+      case "Outro": return t.editor.sections.outro
+      default: return type
+    }
+  }
+
   // Clic sobre un tipus: en mode insert, afegeix nova secció; en mode modify,
   // canvia el tipus de la secció existent.
   function handleTypeMouseDown(e: React.MouseEvent, type: SectionType) {
@@ -116,14 +135,14 @@ export function SectionContextMenu({
             className="section-menu-delete-btn"
             onMouseDown={handleDeleteMouseDown}
           >
-            Eliminar secció
+            {t.editor.sectionMenu.eliminarSeccio}
           </button>
           <hr className="chord-menu-sep" />
         </>
       )}
 
       <div className="chord-menu-header">
-        {mode === "insert" ? "Afegir secció" : "Canviar tipus"}
+        {mode === "insert" ? t.editor.sectionMenu.afegirSeccio : t.editor.sectionMenu.canviarTipus}
       </div>
       <div className="chord-menu-groups">
         {SECTION_TYPES.map((type) => {
@@ -134,7 +153,7 @@ export function SectionContextMenu({
               className={`section-menu-item${isActive ? " active" : ""}`}
               onMouseDown={(e) => handleTypeMouseDown(e, type)}
             >
-              {type}
+              {sectionLabel(type)}
             </button>
           )
         })}

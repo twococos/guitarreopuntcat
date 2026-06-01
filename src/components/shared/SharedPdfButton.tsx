@@ -2,6 +2,7 @@
 import { useState } from "react"
 import type { CanconerStyle } from "@/types/song"
 import type { PdfOptions } from "@/lib/schemas/canconer"
+import { getT } from "@/lib/i18n"
 
 interface Props {
   title: string
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function SharedPdfButton({ title, style, accentColor, pdfOptions, songs }: Props) {
+  const t = getT()
   const [loading, setLoading] = useState(false)
 
   async function handleClick() {
@@ -42,7 +44,7 @@ export function SharedPdfButton({ title, style, accentColor, pdfOptions, songs }
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      alert("Error generant el PDF.")
+      alert(t.public.sharedView.errorGenerantPdf)
     } finally {
       setLoading(false)
     }
@@ -50,7 +52,7 @@ export function SharedPdfButton({ title, style, accentColor, pdfOptions, songs }
 
   return (
     <button className="btn-pdf" onClick={handleClick} disabled={loading}>
-      {loading ? "⏳ Generant…" : "📄 Descarregar PDF"}
+      {loading ? t.public.sharedView.generantPdf : t.public.sharedView.descarregarPdf}
     </button>
   )
 }

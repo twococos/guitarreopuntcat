@@ -16,6 +16,7 @@ import {
   IconShare,
   IconTrash,
 } from "@/components/shared/Icons"
+import { getT } from "@/lib/i18n"
 
 // ─── Tipus locals ──────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ interface CanconerDetail extends CanconerListItem {
 // ─── Component ────────────────────────────────────────────────
 
 export function CanconersTab() {
+  const t = getT()
   const router = useRouter()
 
   const [canconers, setCanconers] = useState<CanconerListItem[]>([])
@@ -117,7 +119,7 @@ export function CanconersTab() {
       (c) => c.id !== active.id && c.title.toLowerCase() === trimmed.toLowerCase(),
     )
     if (dup) {
-      useToastStore.getState().show("Ja tens un cançoner amb aquest nom.", { type: "error" })
+      useToastStore.getState().show(t.app.library.canconersTab.toastNomDuplicat, { type: "error" })
       return
     }
     const res = await fetch("/api/canconers", {
@@ -132,13 +134,13 @@ export function CanconersTab() {
       }),
     })
     if (!res.ok) {
-      useToastStore.getState().show("Error en guardar el nom.", { type: "error" })
+      useToastStore.getState().show(t.app.library.canconersTab.toastErrorGuardar, { type: "error" })
       return
     }
     setActive((prev) => (prev ? { ...prev, title: trimmed } : prev))
     setEditingTitle(false)
     await loadCanconers()
-    useToastStore.getState().show("Nom actualitzat!")
+    useToastStore.getState().show(t.app.library.canconersTab.toastNomActualitzat)
   }
 
   function handleEdit() {
@@ -149,10 +151,10 @@ export function CanconersTab() {
 
   async function handleDelete() {
     if (!active) return
-    if (!confirm(`Eliminar "${active.title}"? Aquesta acció no es pot desfer.`)) return
+    if (!confirm(t.app.library.canconersTab.confirmEliminar(active.title))) return
     const res = await fetch(`/api/canconers/${active.id}`, { method: "DELETE" })
     if (!res.ok) {
-      useToastStore.getState().show("Error en eliminar el cançoner.", { type: "error" })
+      useToastStore.getState().show(t.app.library.canconersTab.toastErrorEliminar, { type: "error" })
       return
     }
     setActive(null)
@@ -173,7 +175,7 @@ export function CanconersTab() {
 
   async function handleRevoke() {
     if (!active) return
-    if (!confirm("Revocar l'enllaç? Qui el tingui ja no podrà accedir al cançoner.")) return
+    if (!confirm(t.app.library.canconersTab.confirmRevocarEnllac)) return
     const res = await fetch(`/api/canconers/${active.id}/share`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -202,7 +204,7 @@ export function CanconersTab() {
           <input
             className="library-search"
             type="search"
-            placeholder="Cerca…"
+            placeholder={t.app.library.canconersTab.cercaPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -211,14 +213,14 @@ export function CanconersTab() {
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as "updated" | "title" | "song_count")}
             >
-              <option value="updated">Data</option>
-              <option value="title">Títol</option>
-              <option value="song_count">Nombre de cançons</option>
+              <option value="updated">{t.app.library.canconersTab.colData}</option>
+              <option value="title">{t.app.library.canconersTab.colTitol}</option>
+              <option value="song_count">{t.app.library.canconersTab.colNombreCancons}</option>
             </select>
             <button
               type="button"
               className="library-sort-dir"
-              aria-label={sortDir === "asc" ? "Ascendent" : "Descendent"}
+              aria-label={sortDir === "asc" ? t.app.library.canconersTab.ascendent : t.app.library.canconersTab.descendent}
               onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
             >
               {sortDir === "asc" ? "↑" : "↓"}
@@ -252,7 +254,7 @@ export function CanconersTab() {
                     <button
                       type="button"
                       className="library-card-title-btn"
-                      aria-label="Guardar"
+                      aria-label={t.app.library.canconersTab.guardarAriaLabel}
                       onClick={saveTitle}
                     >
                       <IconCheck />
@@ -260,7 +262,7 @@ export function CanconersTab() {
                     <button
                       type="button"
                       className="library-card-title-btn"
-                      aria-label="Cancel·lar"
+                      aria-label={t.app.library.canconersTab.cancellarAriaLabel}
                       onClick={() => setEditingTitle(false)}
                     >
                       <IconRevoke />
@@ -279,7 +281,7 @@ export function CanconersTab() {
                           role="button"
                           tabIndex={0}
                           className="library-card-title-btn"
-                          aria-label="Editar nom"
+                          aria-label={t.app.library.canconersTab.editarNomAriaLabel}
                           onClick={(e) => {
                             e.stopPropagation()
                             setTitleDraft(active.title)
@@ -299,7 +301,7 @@ export function CanconersTab() {
                       )}
                     </div>
                     <div className="library-card-meta">
-                      {c.song_count} cançons ·{" "}
+                      {t.app.library.canconersTab.numCancons(c.song_count)} ·{" "}
                       {new Date(c.updated_at ?? "").toLocaleDateString("ca-ES")}
                     </div>
                   </button>
@@ -322,21 +324,21 @@ export function CanconersTab() {
                               router.push(`/app/library/canconers/${active.id}/preview`)
                             }
                           >
-                            <IconEye /> Mostrar
+                            <IconEye /> {t.app.library.canconersTab.mostrar}
                           </button>
                           <button
                             type="button"
                             className="library-action"
                             onClick={handleEdit}
                           >
-                            <IconOpen /> Editar
+                            <IconOpen /> {t.app.library.canconersTab.editar}
                           </button>
                           <button
                             type="button"
                             className="library-action library-action-danger"
                             onClick={handleDelete}
                           >
-                            <IconTrash /> Eliminar
+                            <IconTrash /> {t.app.library.canconersTab.eliminar}
                           </button>
                         </div>
 
@@ -355,8 +357,8 @@ export function CanconersTab() {
                               <button
                                 type="button"
                                 className="library-share-btn"
-                                aria-label={copied ? "Copiat!" : "Copiar enllaç"}
-                                title={copied ? "Copiat!" : "Copiar enllaç"}
+                                aria-label={copied ? t.app.library.canconersTab.copiat : t.app.library.canconersTab.copiarEnllac}
+                                title={copied ? t.app.library.canconersTab.copiat : t.app.library.canconersTab.copiarEnllac}
                                 onClick={handleCopy}
                               >
                                 {copied ? <IconCheck /> : <IconCopy />}
@@ -364,8 +366,8 @@ export function CanconersTab() {
                               <button
                                 type="button"
                                 className="library-share-btn library-share-btn-danger"
-                                aria-label="Revocar enllaç"
-                                title="Revocar enllaç"
+                                aria-label={t.app.library.canconersTab.revocarEnllacAriaLabel}
+                                title={t.app.library.canconersTab.revocarEnllacTitle}
                                 onClick={handleRevoke}
                               >
                                 <IconRevoke />
@@ -377,7 +379,7 @@ export function CanconersTab() {
                               className="library-action library-action-primary"
                               onClick={handleEnableShare}
                             >
-                              <IconShare /> Compartir
+                              <IconShare /> {t.app.library.canconersTab.compartir}
                             </button>
                           )}
                         </div>
@@ -392,9 +394,9 @@ export function CanconersTab() {
 
         {canconers.length === 0 && (
           <div className="library-empty">
-            <p>Encara no has guardat cap cançoner.</p>
+            <p>{t.app.library.canconersTab.buit}</p>
             <Link href="/app" className="library-empty-btn">
-              <IconPlus /> Crear el primer
+              <IconPlus /> {t.app.library.canconersTab.crearPrimer}
             </Link>
           </div>
         )}
@@ -404,7 +406,7 @@ export function CanconersTab() {
       <section className="library-col library-col-right">
         {active ? (
           <>
-            <h2 className="library-songs-header">Cançons ({active.songs.length})</h2>
+            <h2 className="library-songs-header">{t.app.library.canconersTab.cancons(active.songs.length)}</h2>
             <ul className="library-songs-list">
               {active.songs.map((s, i) => (
                 <li key={s.id}>
@@ -418,7 +420,7 @@ export function CanconersTab() {
           </>
         ) : (
           <div className="library-placeholder">
-            <p>Selecciona un cançoner per veure&apos;n les cançons.</p>
+            <p>{t.app.library.canconersTab.seleccionaCanconer}</p>
           </div>
         )}
       </section>

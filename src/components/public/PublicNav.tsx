@@ -7,6 +7,7 @@ import { UserWidget } from "@/components/UserWidget"
 import { SearchHero } from "@/components/public/SearchHero"
 import { LoginPopup } from "@/components/LoginPopup"
 import { MobileGateLink } from "@/components/public/MobileGateLink"
+import { getT } from "@/lib/i18n"
 
 /**
  * PublicNav — barra de navegació de l'àrea pública.
@@ -25,6 +26,7 @@ import { MobileGateLink } from "@/components/public/MobileGateLink"
  *     botó "Inicia sessió" al centre.
  */
 export function PublicNav() {
+  const t = getT()
   const pathname = usePathname() || "/"
   const { data: session, status } = useSession()
   const [showLogin, setShowLogin] = useState(false)
@@ -41,36 +43,36 @@ export function PublicNav() {
       <div className="search-hero-backdrop" aria-hidden="true" />
       <header className="public-nav">
         <div className="public-nav-inner">
-          <Link href="/" className="public-nav-brand" aria-label="Inici">
+          <Link href="/" className="public-nav-brand" aria-label={t.public.nav.inici}>
             <img src="/img/Logo.png" alt="" className="public-nav-logo" />
-            <span className="public-nav-wordmark">guitarreo.cat</span>
+            <span className="public-nav-wordmark">{t.public.nav.wordmark}</span>
           </Link>
 
           <div className="public-nav-mid">
-            <nav className="public-nav-links" aria-label="Principal">
+            <nav className="public-nav-links" aria-label={t.public.nav.navPrincipal}>
               <Link
                 href="/"
                 className={`public-nav-link public-nav-link-home ${isHome ? "is-active" : ""}`}
               >
-                Inici
+                {t.public.nav.inici}
               </Link>
               <Link
                 href="/songs"
                 className={`public-nav-link ${isSongs ? "is-active" : ""}`}
               >
-                Cançons
+                {t.public.nav.cancons}
               </Link>
               <Link
                 href="/projecte"
                 className={`public-nav-link ${isProjecte ? "is-active" : ""}`}
               >
-                El projecte
+                {t.public.nav.elProjecte}
               </Link>
               <Link
                 href="/contacte"
                 className={`public-nav-link ${isContacte ? "is-active" : ""}`}
               >
-                Contacte
+                {t.public.nav.contacte}
               </Link>
             </nav>
 
@@ -83,7 +85,7 @@ export function PublicNav() {
                   onClick={() => setShowLogin(true)}
                 >
                   <img src="/img/google.svg" alt="" />
-                  Inicia sessió
+                  {t.public.nav.iniciaSessio}
                 </button>
               ) : null
             ) : (
@@ -91,7 +93,7 @@ export function PublicNav() {
                 <SearchHero
                   compact
                   expandOnFocus
-                  placeholder="Cerca cançons o artistes…"
+                  placeholder={t.public.nav.cercaPlaceholder}
                 />
               </div>
             )}
@@ -102,7 +104,7 @@ export function PublicNav() {
               <UserWidget />
             ) : (
               <MobileGateLink href="/app" className="public-nav-cta">
-                Crea un cançoner
+                {t.public.mobileGate.creaCanconerCta}
               </MobileGateLink>
             )}
           </div>

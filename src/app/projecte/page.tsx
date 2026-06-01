@@ -1,13 +1,16 @@
 import type { Metadata } from "next"
 import { PublicNav } from "@/components/public/PublicNav"
+import { getT } from "@/lib/i18n"
+
+const t = getT()
 
 export const metadata: Metadata = {
-  title: "El projecte — guitarreo.cat",
-  description:
-    "Què és guitarreo.cat, qui hi ha al darrere i per què hem fet aquest projecte de cançons amb acords en català.",
+  title: t.metadata.projecte.title,
+  description: t.metadata.projecte.description,
 }
 
 export default function ProjectePage() {
+  const t = getT()
   return (
     <>
       <PublicNav />
@@ -15,9 +18,9 @@ export default function ProjectePage() {
       <header className="public-static-banner">
         <div className="public-static-banner-inner">
           <h1 className="public-static-title">
-            El projecte
+            {t.public.projecte.titol}
             <span className="public-static-lede">
-              Una eina lliure per llegir, transposar i organitzar cançons amb acords en català.
+              {t.public.projecte.lede}
             </span>
           </h1>
         </div>
@@ -26,29 +29,23 @@ export default function ProjectePage() {
       <main className="public-static">
 
         <section className="public-static-section">
-          <h2>Què és</h2>
+          <h2>{t.public.projecte.queEs}</h2>
           <p>
-            <em>(Placeholder)</em> guitarreo.cat és un lloc per trobar la lletra i els
-            acords de les cançons que t&apos;agraden, i per crear-te els teus propis
-            cançoners imprimibles. Pots transposar qualsevol cançó a la tonalitat que
-            t&apos;encaixi millor i exportar el resultat en PDF.
+            <em>(Placeholder)</em> {t.public.projecte.queEsText}
           </p>
         </section>
 
         <section className="public-static-section">
-          <h2>D&apos;on ve</h2>
+          <h2>{t.public.projecte.donVe}</h2>
           <p>
-            <em>(Placeholder)</em> Va començar com una eina personal per cantar amb els amics
-            i ha crescut fins a esdevenir aquest petit catàleg col·laboratiu. Tothom pot
-            proposar cançons noves; un equip petit les revisa abans de publicar-les.
+            <em>(Placeholder)</em> {t.public.projecte.donVeText}
           </p>
         </section>
 
         <section className="public-static-section">
-          <h2>Per què</h2>
+          <h2>{t.public.projecte.perQue}</h2>
           <p>
-            <em>(Placeholder)</em> Perquè cantar en català té sentit, perquè els cançoners
-            de paper són bonics, i perquè un acord ben col·locat val mil paraules.
+            <em>(Placeholder)</em> {t.public.projecte.perQueText}
           </p>
         </section>
       </main>

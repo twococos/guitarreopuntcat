@@ -2,6 +2,7 @@ import type { CSSProperties } from "react"
 import { QRCodeSVG } from "qrcode.react"
 import { transposeKey, transposeContent } from "@/lib/transpose"
 import type { Song, CanconerStyle } from "@/types/song"
+import { getT } from "@/lib/i18n"
 
 /**
  * SongView — component presentacional unificat de cançó.
@@ -43,11 +44,12 @@ function formatArtistLine(
   year: number | null | undefined,
   capo: number | null | undefined,
 ): string {
+  const t = getT()
   const parts: string[] = [artist]
   if (album && year) parts.push(`${album} (${year})`)
   else if (album) parts.push(album)
   else if (year) parts.push(String(year))
-  if (capo) parts.push(`Celleta ${capo}`)
+  if (capo) parts.push(t.public.publicSong.celleta(capo))
   return parts.join(" · ")
 }
 
@@ -61,6 +63,7 @@ export function SongView({
   titleLinkUrl,
   qrUrl,
 }: SongViewProps) {
+  const t = getT()
   const displayKey = transposeKey(song.key, semitones)
   const transposedContent = transposeContent(song.content, semitones)
   const showOriginal = displayKey !== song.key
@@ -97,7 +100,7 @@ export function SongView({
             href={qrUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Obrir enllaç de la cançó"
+            aria-label={t.public.publicSong.obrirEnllacAriaLabel}
           >
             <QRCodeSVG value={qrUrl} size={60} level="M" />
           </a>
@@ -151,13 +154,19 @@ export interface RenderSongHtmlOptions {
  * La resta de camps sí (poden contenir caràcters especials).
  */
 export function renderSongHtml(opts: RenderSongHtmlOptions): string {
+  const t = getT()
   const displayKey = transposeKey(opts.key, opts.semitones)
   const transposedContent = transposeContent(opts.content, opts.semitones)
   const showOriginal = displayKey !== opts.key
 
   const numberHtml = opts.number != null ? `<span class="song-number">${opts.number}</span>` : ""
 
-  const artistLine = formatArtistLine(opts.artist, opts.album, opts.year, opts.capo)
+  const artistLineParts: string[] = [opts.artist]
+  if (opts.album && opts.year) artistLineParts.push(`${opts.album} (${opts.year})`)
+  else if (opts.album) artistLineParts.push(opts.album)
+  else if (opts.year) artistLineParts.push(String(opts.year))
+  if (opts.capo) artistLineParts.push(t.public.publicSong.celleta(opts.capo))
+  const artistLine = artistLineParts.join(" · ")
 
   const originalHtml = showOriginal
     ? `<span class="song-key-original">(orig. ${escHtml(opts.key)})</span>`

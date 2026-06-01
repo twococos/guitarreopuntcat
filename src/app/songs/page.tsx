@@ -3,11 +3,13 @@ import Link from "next/link"
 import { getPublicSongsByLetter, getPublicArtistsByLetter } from "@/db/queries/songs"
 import { PublicNav } from "@/components/public/PublicNav"
 import { MobileGateLink } from "@/components/public/MobileGateLink"
+import { getT } from "@/lib/i18n"
+
+const t = getT()
 
 export const metadata: Metadata = {
-  title: "Cançons — guitarreo.cat",
-  description:
-    "Catàleg complet de cançons amb acords i lletra a guitarreo.cat, navegable per títol o per artista.",
+  title: t.metadata.songs.title,
+  description: t.metadata.songs.description,
 }
 
 interface Props {
@@ -23,6 +25,7 @@ interface Props {
  * cançó/artista s'hi alinea a la dreta.
  */
 export default async function SongsIndexPage({ searchParams }: Props) {
+  const t = getT()
   const { by: byParam, letter: letterParam } = await searchParams
   const by: "letter" | "artist" = byParam === "artist" ? "artist" : "letter"
 
@@ -51,17 +54,17 @@ export default async function SongsIndexPage({ searchParams }: Props) {
           <div className="songs-index-banner-text">
             <h1 className="songs-index-title">
               <span className="songs-index-title-main">
-                {by === "artist" ? "Catàleg d'artistes" : "Catàleg de cançons"}
+                {by === "artist" ? t.public.songsIndex.catalogArtistes : t.public.songsIndex.catalogCancons}
               </span>
               {total > 0 && (
                 <span className="songs-index-count">
                   {by === "artist"
-                    ? `${total} ${total === 1 ? "artista" : "artistes"}`
-                    : `${total} ${total === 1 ? "cançó" : "cançons"}`}
+                    ? t.public.songsIndex.countArtistes(total)
+                    : t.public.songsIndex.countCancons(total)}
                 </span>
               )}
               {total === 0 && (
-                <span className="songs-index-count">Encara no hi ha res publicat</span>
+                <span className="songs-index-count">{t.public.songsIndex.encaNoPublicat}</span>
               )}
             </h1>
           </div>
@@ -72,7 +75,7 @@ export default async function SongsIndexPage({ searchParams }: Props) {
         {letters.length > 0 && (
           <>
             {/* Selector A-Z horitzontal amb el toggle cançó/artista a la dreta */}
-            <nav className="songs-index-az-bar" aria-label="Saltar a inicial">
+            <nav className="songs-index-az-bar" aria-label={t.public.songsIndex.saltarAInicialAriaLabel}>
               <div className="songs-index-az-pills">
                 {letters.map((l) => (
                   <Link
@@ -87,20 +90,20 @@ export default async function SongsIndexPage({ searchParams }: Props) {
                   </Link>
                 ))}
               </div>
-              <div className="songs-index-toggle" aria-label="Mode d'índex" role="group">
+              <div className="songs-index-toggle" aria-label={t.public.songsIndex.modeIndexAriaLabel} role="group">
                 <Link
                   href="/songs"
                   className={`songs-index-toggle-btn ${by === "letter" ? "is-active" : ""}`}
                   prefetch={false}
                 >
-                  Per cançó
+                  {t.public.songsIndex.perCanco}
                 </Link>
                 <Link
                   href="/songs?by=artist"
                   className={`songs-index-toggle-btn ${by === "artist" ? "is-active" : ""}`}
                   prefetch={false}
                 >
-                  Per artista
+                  {t.public.songsIndex.perArtista}
                 </Link>
               </div>
             </nav>
@@ -117,7 +120,7 @@ export default async function SongsIndexPage({ searchParams }: Props) {
                           <Link href={`/songs/${a.slug}`} className="songs-index-link">
                             <span className="songs-index-item-title">{a.name}</span>
                             <span className="songs-index-item-sub">
-                              {a.song_count === 1 ? "1 cançó" : `${a.song_count} cançons`}
+                              {t.public.songsIndex.countCancons(a.song_count)}
                             </span>
                           </Link>
                         </li>
@@ -145,7 +148,7 @@ export default async function SongsIndexPage({ searchParams }: Props) {
         {total === 0 && (
           <p className="songs-index-empty">
             Quan hi hagi cançons publicades, apareixeran aquí.{" "}
-            <MobileGateLink href="/app">Vés a l&apos;editor</MobileGateLink> per proposar-ne.
+            <MobileGateLink href="/app">{t.public.songsIndex.vesALEditor}</MobileGateLink> per proposar-ne.
           </p>
         )}
       </div>

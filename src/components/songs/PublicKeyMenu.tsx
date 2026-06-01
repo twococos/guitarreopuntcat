@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { CHROMATIC } from "@/lib/transpose"
+import { getT } from "@/lib/i18n"
 
 interface Props {
   /** Posició ancla en coordenades de viewport (clientX/Y). */
@@ -32,6 +33,7 @@ export function PublicKeyMenu({
   onClose,
   onSelect,
 }: Props) {
+  const t = getT()
   const menuRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ left: x, top: y })
   const [visible, setVisible] = useState(false)
@@ -91,7 +93,7 @@ export function PublicKeyMenu({
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="key-menu-title">Canviar tonalitat</div>
+      <div className="key-menu-title">{t.public.publicSong.controls.canviarTonalitat}</div>
       <div className="key-menu-grid">
         {keysForSong.map((k) => (
           <button

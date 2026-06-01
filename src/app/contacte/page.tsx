@@ -1,13 +1,16 @@
 import type { Metadata } from "next"
 import { PublicNav } from "@/components/public/PublicNav"
+import { getT } from "@/lib/i18n"
+
+const t = getT()
 
 export const metadata: Metadata = {
-  title: "Contacte — guitarreo.cat",
-  description:
-    "Contacta amb l'equip de guitarreo.cat per proposar cançons, reportar errors o fer suggeriments.",
+  title: t.metadata.contacte.title,
+  description: t.metadata.contacte.description,
 }
 
 export default function ContactePage() {
+  const t = getT()
   return (
     <>
       <PublicNav />
@@ -15,9 +18,9 @@ export default function ContactePage() {
       <header className="public-static-banner">
         <div className="public-static-banner-inner">
           <h1 className="public-static-title">
-            Contacte
+            {t.public.contacte.titol}
             <span className="public-static-lede">
-              Suggeriments, errades, propostes de cançons o qualsevol altra cosa.
+              {t.public.contacte.lede}
             </span>
           </h1>
         </div>
@@ -26,15 +29,15 @@ export default function ContactePage() {
       <main className="public-static">
 
         <section className="public-static-section">
-          <h2>Email</h2>
+          <h2>{t.public.contacte.emailTitol}</h2>
           <p>
             <em>(Placeholder)</em>{" "}
-            <a href="mailto:hola@guitarreo.cat">hola@guitarreo.cat</a>
+            <a href={`mailto:${t.public.contacte.emailAdresa}`}>{t.public.contacte.emailAdresa}</a>
           </p>
         </section>
 
         <section className="public-static-section">
-          <h2>Qui som</h2>
+          <h2>{t.public.contacte.quiSomTitol}</h2>
           <ul className="public-static-list">
             <li>
               <em>(Placeholder)</em> Nom Llinatges — desenvolupament i disseny.
@@ -46,10 +49,9 @@ export default function ContactePage() {
         </section>
 
         <section className="public-static-section">
-          <h2>Formulari de contacte</h2>
+          <h2>{t.public.contacte.formulariTitol}</h2>
           <p>
-            <em>(Properament)</em> formulari per a missatges directes sense sortir de la web.
-            Mentrestant, escriu-nos al correu de dalt.
+            {t.public.contacte.formulariPropertyament}
           </p>
         </section>
       </main>

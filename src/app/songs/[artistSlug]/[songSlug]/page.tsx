@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { getSongBySlug } from "@/db/queries/songs"
 import { PublicNav } from "@/components/public/PublicNav"
 import { PublicSongView } from "@/components/songs/PublicSongView"
+import { getT } from "@/lib/i18n"
 
 interface Props {
   params: Promise<{ artistSlug: string; songSlug: string }>
@@ -11,19 +12,20 @@ interface Props {
 // Genera <title> i <meta description> SEO-friendly. Aquesta és l'entrada
 // principal d'usuaris des de Google, així que paga la pena posar-hi cura.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const t = getT()
   const { artistSlug, songSlug } = await params
   const song = await getSongBySlug(artistSlug, songSlug)
-  if (!song) return { title: "Cançó no trobada — guitarreo.cat" }
+  if (!song) return { title: t.metadata.song.noTrobada }
 
   const description = extractLyricSnippet(song.content)
   return {
-    title: `${song.title} — ${song.artist} | Acords i lletra | guitarreo.cat`,
+    title: t.metadata.song.title(song.title, song.artist),
     description: description
       ? `${description.slice(0, 150)}…`
-      : `Acords i lletra de "${song.title}" de ${song.artist}. Transposició i autoscroll inclosos.`,
+      : t.metadata.song.descriptionFallback(song.title, song.artist),
     openGraph: {
-      title: `${song.title} — ${song.artist}`,
-      description: `Acords i lletra a guitarreo.cat`,
+      title: t.metadata.song.ogTitle(song.title, song.artist),
+      description: t.metadata.song.ogDescription,
       type: "music.song",
     },
   }

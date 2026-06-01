@@ -18,6 +18,7 @@ import { OverwriteToast } from "./OverwriteToast"
 import { ProposeLoginToast } from "./ProposeLoginToast"
 import { NewSongButton } from "./NewSongButton"
 import { ResizeHandles } from "./ResizeHandles"
+import { getT } from "@/lib/i18n"
 import type { CSSProperties } from "react"
 import type { CanconerListItem, CanconerStyle } from "@/types/song"
 import type { PdfOptions } from "@/lib/schemas/canconer"
@@ -37,6 +38,7 @@ interface InProgressPayload {
 }
 
 export function SongbookEditor() {
+  const t = getT()
   const { data: session } = useSession()
   const loadSongs = useSongbookStore((s) => s.loadSongs)
   const loadExistingCanconer = useSongbookStore((s) => s.loadExistingCanconer)
@@ -277,8 +279,8 @@ export function SongbookEditor() {
   return (
     <>
       <header>
-        <h1>🎵 Cançoner</h1>
-        <p className="subtitle">Tria les cançons i genera el teu PDF</p>
+        <h1>🎵 {t.app.songbook.editor.titol}</h1>
+        <p className="subtitle">{t.app.songbook.editor.subtitol}</p>
         <div className="header-actions">
           <NewSongButton />
           <UserWidget />

@@ -239,6 +239,23 @@ Vegeu `acordscatala.ts` com a exemple de referència (parsing en català amb neg
 
 **Estil:** `body` té `overflow: hidden` per defecte (per a l'app); les pàgines públiques el desactiven via `body:has(.public-nav)`. El selector global `header { ... }` es sobreescriu amb `header.public-nav { display: block; padding: 0; }` perquè la nav arribi de costat a costat.
 
+### 14. Text de UI centralitzat a `src/lib/i18n/`
+
+Tot el text d'UI (públic i privat) viu al diccionari `src/lib/i18n/ca/`, dividit per àrea: `common.ts` (accions, errors, camps i opcions reutilitzades), `public.ts`, `app.ts`, `editor.ts`, `admin.ts` i `metadata.ts` (titles + descriptions per a `generateMetadata`). `src/lib/i18n/ca/index.ts` els composa amb `as const` i `src/lib/i18n/index.ts` exposa `getT(locale?)` + el tipus `T = typeof ca`.
+
+**Ús** (Server o Client Components, la funció és pura):
+```tsx
+import { getT } from "@/lib/i18n"
+const t = getT()
+<h1>{t.public.home.heroTitle}</h1>
+```
+
+Interpolació i plurals com a funcions al diccionari: `numCancons: (n: number) => \`${n} ${n === 1 ? "cançó" : "cançons"}\``. Markup embegut (ex. `<strong>`): trencar el text en `prefix`/`sufix` al diccionari i col·locar el tag al JSX entre les dues parts.
+
+**`SECTION_TYPES`** (`src/lib/editor/sections.ts`) NO es toca: els seus valors són tags persistents a la BD (`<sec>Estrofa</sec>`). La traducció a UI es fa amb una funció `sectionLabel()` a `SectionContextMenu.tsx` que mapeja cada key a `t.editor.sections.*`.
+
+**Afegir text nou:** afegeix la clau al fitxer d'àrea corresponent i consumeix-la via `t.<area>.<...>`. No deixis text d'UI hardcoded als `.tsx`. Per a un idioma nou futur: crear `src/lib/i18n/<locale>/` que compleixi el tipus `T` i registrar-lo a `dictionaries` a `src/lib/i18n/index.ts`.
+
 ## Forma de treballar amb Claude
 
 ### Quan obris una sessió nova

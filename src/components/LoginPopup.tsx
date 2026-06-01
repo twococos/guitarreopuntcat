@@ -1,12 +1,14 @@
 "use client"
 import { signIn } from "next-auth/react"
 import { useEffect } from "react"
+import { getT } from "@/lib/i18n"
 
 interface Props {
   onClose: () => void
 }
 
 export function LoginPopup({ onClose }: Props) {
+  const t = getT()
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose()
@@ -30,19 +32,19 @@ export function LoginPopup({ onClose }: Props) {
   return (
     <div id="auth-popup-overlay" onClick={onOverlayClick}>
       <div id="auth-popup">
-        <button id="auth-popup-close" aria-label="Tancar" onClick={onClose}>
+        <button id="auth-popup-close" aria-label={t.public.loginPopup.tancarAriaLabel} onClick={onClose}>
           ✕
         </button>
         <div id="auth-popup-logo">🎵</div>
-        <h2>Benvingut al Cançoner</h2>
-        <p>Inicia sessió per guardar els teus cançoners i molt més.</p>
+        <h2>{t.public.loginPopup.benvingut}</h2>
+        <p>{t.public.loginPopup.descripcio}</p>
         <div id="auth-popup-methods">
           <button id="btn-google-login" onClick={handleGoogleLogin}>
             <img src="/img/google.svg" alt="" />
-            Continua amb Google
+            {t.public.loginPopup.continuaAmbGoogle}
           </button>
         </div>
-        <p className="auth-popup-note">En iniciar sessió acceptes els termes d&apos;ús.</p>
+        <p className="auth-popup-note">{t.public.loginPopup.notaTermes}</p>
       </div>
     </div>
   )

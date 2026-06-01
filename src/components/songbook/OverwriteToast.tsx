@@ -3,8 +3,10 @@ import { useEffect } from "react"
 import { useSongbookStore } from "@/hooks/useSongbook"
 import { useToastStore } from "@/hooks/useToasts"
 import { saveCanconer } from "@/lib/canconerApi"
+import { getT } from "@/lib/i18n"
 
 export function OverwriteToast() {
+  const t = getT()
   const overwriteToast = useSongbookStore((s) => s.overwriteToast)
   const setOverwriteToast = useSongbookStore((s) => s.setOverwriteToast)
   const markSaved = useSongbookStore((s) => s.markSaved)
@@ -25,9 +27,9 @@ export function OverwriteToast() {
     const newId = await saveCanconer(title, style, accentColor, pdfOptions, songs, duplicateId)
     if (newId != null) {
       markSaved(newId)
-      toast("Cançoner guardat!")
+      toast(t.app.songbook.overwriteToast.toastGuardat)
     } else {
-      toast("Error guardant el cançoner", { type: "error" })
+      toast(t.app.songbook.overwriteToast.toastErrorGuardant, { type: "error" })
     }
     setOverwriteToast(null)
   }
@@ -40,13 +42,15 @@ export function OverwriteToast() {
     <div id="overwrite-toast" className="overwrite-toast">
       <span>⚠️</span>
       <p>
-        Ja tens un cançoner <strong>&quot;{title}&quot;</strong>. Vols sobreescriure&apos;l?
+        {t.app.songbook.overwriteToast.missatgePrefix}
+        <strong>&quot;{title}&quot;</strong>
+        {t.app.songbook.overwriteToast.missatgeSufix}
       </p>
       <button id="ow-yes" className="btn-primary btn-sm" onClick={onYes}>
-        Sobreescriu
+        {t.app.songbook.overwriteToast.sobreescriu}
       </button>
       <button id="ow-no" className="btn-ghost" onClick={onNo}>
-        Cancel·lar
+        {t.app.songbook.overwriteToast.cancellar}
       </button>
     </div>
   )

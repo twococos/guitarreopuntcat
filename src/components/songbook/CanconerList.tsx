@@ -18,8 +18,10 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { useSongbookStore, type CanconerEntry } from "@/hooks/useSongbook"
 import { transposeKey } from "@/lib/transpose"
+import { getT } from "@/lib/i18n"
 
 function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
+  const t = getT()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: entry.song.id,
   })
@@ -55,7 +57,7 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
       <div className="c-transpose" onPointerDown={(e) => e.stopPropagation()}>
         <button
           className="c-pm c-btn-down"
-          title="−1 semitò"
+          title={t.app.songbook.canconerList.menosUnSemitoTitle}
           onClick={(e) => {
             e.stopPropagation()
             bump(idx, -1)
@@ -65,7 +67,7 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
         </button>
         <span
           className="c-key"
-          title="Canviar tonalitat"
+          title={t.app.songbook.canconerList.canviarTonalitatTitle}
           onClick={(e) => {
             e.stopPropagation()
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
@@ -81,7 +83,7 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
         </span>
         <button
           className="c-pm c-btn-up"
-          title="+1 semitò"
+          title={t.app.songbook.canconerList.mesUnSemitoTitle}
           onClick={(e) => {
             e.stopPropagation()
             bump(idx, 1)
@@ -92,7 +94,7 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
       </div>
       <button
         className="c-remove"
-        title="Treure"
+        title={t.app.songbook.canconerList.treureTitle}
         onClick={(e) => {
           e.stopPropagation()
           remove(idx)

@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { chordsByFunction, CHORD_MODIFIERS, applyModifier, stripModifier } from "@/lib/editor/chordFunctions"
 import type { ChordModifier } from "@/lib/editor/chordFunctions"
+import { getT } from "@/lib/i18n"
 
 interface ChordMenuProps {
   open: boolean
@@ -98,6 +99,8 @@ export function ChordContextMenu({
 
   if (!open) return null
 
+  const t = getT()
+
   const { tonic, subdominant, dominant, chromatic } = chordsByFunction(chordKey)
 
   // Clic sobre un acord: aplica el modificador actiu i tanca el menú.
@@ -171,7 +174,7 @@ export function ChordContextMenu({
 
   const modifierBlock = (
     <>
-      <div className="chord-menu-section-label">MODIFICADOR:</div>
+      <div className="chord-menu-section-label">{t.editor.chordMenu.modificador}</div>
       <div className="chord-grid-3">
         {modifierGrid.map((mod) => (
           <button
@@ -189,7 +192,7 @@ export function ChordContextMenu({
 
   const tonalBlock = (
     <>
-      <div className="chord-menu-section-label">ACORDS DEL TO:</div>
+      <div className="chord-menu-section-label">{t.editor.chordMenu.acordsDelTo}</div>
       <div className="chord-grid-3">
         {/* Fila 1: tònica primària, subdominant primària, dominant primària */}
         <ChordCell chord={t0} onClick={handleChordMouseDown} />
@@ -207,7 +210,7 @@ export function ChordContextMenu({
 
       {chromaticGrid.length > 0 && (
         <>
-          <div className="chord-menu-section-label">CROMÀTICS:</div>
+          <div className="chord-menu-section-label">{t.editor.chordMenu.cromatics}</div>
           <div className="chord-grid-3">
             {chromaticGrid.map((c) => (
               <ChordCell key={c} chord={c} onClick={handleChordMouseDown} />
@@ -238,7 +241,7 @@ export function ChordContextMenu({
             className="chord-menu-delete-btn"
             onMouseDown={handleDeleteMouseDown}
           >
-            Eliminar acord
+            {t.editor.chordMenu.eliminarAcord}
           </button>
           <hr className="chord-menu-sep" />
           {modifierBlock}

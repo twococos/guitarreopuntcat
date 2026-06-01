@@ -1,6 +1,7 @@
 "use client"
 import type { ReactNode } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { getT } from "@/lib/i18n"
 
 interface KeyPickerProps {
   /** Tonalitat actualment seleccionada (Ex: "Am", "C#") */
@@ -37,6 +38,7 @@ const MINOR_GRID = [
 
 export function KeyPicker(props: KeyPickerProps): ReactNode {
   const { value, onChange, x, y, onClose, open } = props
+  const t = getT()
   const pickerRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ left: x, top: y })
   const [visible, setVisible] = useState(false)
@@ -98,11 +100,11 @@ export function KeyPicker(props: KeyPickerProps): ReactNode {
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="key-picker-header">Tonalitat</div>
+      <div className="key-picker-header">{t.editor.keyPicker.tonalitat}</div>
 
       {/* Major section */}
       <div className="key-picker-section">
-        <div className="key-picker-section-label">Majors</div>
+        <div className="key-picker-section-label">{t.editor.keyPicker.majors}</div>
         <div className="key-picker-grid">
           {MAJOR_GRID.map((row, rowIdx) =>
             row.map((key) => (
@@ -120,7 +122,7 @@ export function KeyPicker(props: KeyPickerProps): ReactNode {
 
       {/* Minor section */}
       <div className="key-picker-section">
-        <div className="key-picker-section-label">Menors</div>
+        <div className="key-picker-section-label">{t.editor.keyPicker.menors}</div>
         <div className="key-picker-grid">
           {MINOR_GRID.map((row, rowIdx) =>
             row.map((key) => (

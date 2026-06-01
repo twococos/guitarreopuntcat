@@ -2,10 +2,9 @@
 import Link from "next/link"
 import type { ComponentProps, ReactNode } from "react"
 import { useToastStore } from "@/hooks/useToasts"
+import { getT } from "@/lib/i18n"
 
 const MOBILE_GATE_QUERY = "(max-width: 720px)"
-const MOBILE_GATE_MSG =
-  "Per ara l'editor de cançoners no està disponible per a dispositius mòbils."
 
 /**
  * Retorna true si l'amplada actual de la pantalla és la de mòbil. Servidor:
@@ -19,7 +18,8 @@ export function isMobileGate(): boolean {
 
 /** Mostra el toast estàndard del gate de mòbil. */
 export function showMobileGateToast(): void {
-  useToastStore.getState().show(MOBILE_GATE_MSG, { durationMs: 3500 })
+  const t = getT()
+  useToastStore.getState().show(t.public.mobileGate.noDisponibleMobil, { durationMs: 3500 })
 }
 
 /** Si som a mòbil, mostra el toast i retorna true (caller hauria d'aturar la

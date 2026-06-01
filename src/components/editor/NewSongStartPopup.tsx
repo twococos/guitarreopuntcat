@@ -3,6 +3,7 @@
 import { useState } from "react"
 import type { ImportResult } from "@/lib/importers"
 import { isSupportedUrl, SUPPORTED_HOSTS } from "@/lib/importers"
+import { getT } from "@/lib/i18n"
 
 interface NewSongStartPopupProps {
   onManual: () => void
@@ -10,6 +11,7 @@ interface NewSongStartPopupProps {
 }
 
 export function NewSongStartPopup({ onManual, onImported }: NewSongStartPopupProps) {
+  const t = getT()
   const [url, setUrl] = useState("")
   const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -25,19 +27,19 @@ export function NewSongStartPopup({ onManual, onImported }: NewSongStartPopupPro
   if (loading) {
     variantClass = "btn-start--loading"
     isDisabled = true
-    buttonText = "Important…"
+    buttonText = t.editor.newSong.important
   } else if (isEmpty) {
     variantClass = "btn-start--idle"
     isDisabled = true
-    buttonText = "Comença"
+    buttonText = t.editor.newSong.comenca
   } else if (!supported) {
     variantClass = "btn-start--unsupported"
     isDisabled = true
-    buttonText = "Link no suportat"
+    buttonText = t.editor.newSong.linkNoSuportat
   } else {
     variantClass = "btn-start--supported"
     isDisabled = false
-    buttonText = "Comença"
+    buttonText = t.editor.newSong.comenca
   }
 
   async function handleStart() {
@@ -51,12 +53,12 @@ export function NewSongStartPopup({ onManual, onImported }: NewSongStartPopupPro
       })
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null
-        throw new Error(data?.error ?? "No s'ha pogut importar la cançó.")
+        throw new Error(data?.error ?? t.editor.newSong.noSHaPogutImportar)
       }
       const data = (await res.json()) as ImportResult
       onImported(data)
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : "Error desconegut.")
+      setServerError(err instanceof Error ? err.message : t.editor.newSong.errorDesconegut)
     } finally {
       setLoading(false)
     }
@@ -66,14 +68,14 @@ export function NewSongStartPopup({ onManual, onImported }: NewSongStartPopupPro
     <div id="new-song-overlay">
       <div id="new-song-box">
         <div id="new-song-logo">🎵</div>
-        <h2>Nova cançó</h2>
+        <h2>{t.editor.newSong.titol}</h2>
 
         <div className="new-song-section">
-          <p className="new-song-section-title">Començar des d&apos;un enllaç:</p>
+          <p className="new-song-section-title">{t.editor.newSong.comecarDesDeEnllac}</p>
           <input
             type="url"
             className="url-input"
-            placeholder="https://..."
+            placeholder={t.editor.newSong.urlPlaceholder}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             disabled={loading}
@@ -92,11 +94,11 @@ export function NewSongStartPopup({ onManual, onImported }: NewSongStartPopupPro
           {serverError && <p className="import-error">{serverError}</p>}
         </div>
 
-        <div className="new-song-divider"><span>o</span></div>
+        <div className="new-song-divider"><span>{t.editor.newSong.o}</span></div>
 
         <div className="new-song-section">
           <button className="btn-manual" onClick={onManual} disabled={loading}>
-            Introduir manualment
+            {t.editor.newSong.introduirManualment}
           </button>
         </div>
       </div>

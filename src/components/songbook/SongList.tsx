@@ -1,8 +1,10 @@
 "use client"
 import { useEffect, useRef } from "react"
 import { useSongbookStore } from "@/hooks/useSongbook"
+import { getT } from "@/lib/i18n"
 
 export function SongList() {
+  const t = getT()
   const songs = useSongbookStore((s) => s.songs)
   const canconer = useSongbookStore((s) => s.canconer)
   const searchTerm = useSongbookStore((s) => s.searchTerm)
@@ -44,14 +46,14 @@ export function SongList() {
         <input
           type="text"
           id="search"
-          placeholder="Cerca per títol o artista…"
+          placeholder={t.app.songbook.songList.cercaPlaceholder}
           value={searchTerm}
           onChange={onSearchInput}
         />
         <select id="sort" value={songSortBy} onChange={onSortChange}>
-          <option value="title">Per títol</option>
-          <option value="artist">Per artista</option>
-          <option value="key">Per to</option>
+          <option value="title">{t.app.songbook.songList.perTitol}</option>
+          <option value="artist">{t.app.songbook.songList.perArtista}</option>
+          <option value="key">{t.app.songbook.songList.perTo}</option>
         </select>
       </div>
       <ul id="song-list">

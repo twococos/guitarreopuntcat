@@ -1,6 +1,7 @@
 "use client"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { getT } from "@/lib/i18n"
 
 interface Proposal {
   id: number
@@ -21,13 +22,6 @@ interface Props {
   onChange: () => void
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Pendent",
-  approved: "Aprovada",
-  rejected: "Rebutjada",
-  cancelled: "Cancel·lada",
-}
-
 type SortKey =
   | "title"
   | "artist"
@@ -36,15 +30,6 @@ type SortKey =
   | "created_at"
   | "proposer"
 type SortDir = "asc" | "desc"
-
-const SORT_LABELS: Record<SortKey, string> = {
-  title: "Títol",
-  artist: "Artista",
-  year: "Any de la cançó",
-  album: "Àlbum",
-  created_at: "Data de la proposta",
-  proposer: "Usuari proposador",
-}
 
 function normalize(s: string): string {
   return s
@@ -85,12 +70,29 @@ function compareProposals(a: Proposal, b: Proposal, key: SortKey): number {
 }
 
 export function ProposalsTab({ onChange: _onChange }: Props) {
+  const t = getT()
   const router = useRouter()
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [filter, setFilter] = useState<string>("pending")
   const [query, setQuery] = useState("")
   const [sortKey, setSortKey] = useState<SortKey>("created_at")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
+
+  const STATUS_LABELS: Record<string, string> = {
+    pending: t.admin.proposalsTab.statusLabels.pending,
+    approved: t.admin.proposalsTab.statusLabels.approved,
+    rejected: t.admin.proposalsTab.statusLabels.rejected,
+    cancelled: t.admin.proposalsTab.statusLabels.cancelled,
+  }
+
+  const SORT_LABELS: Record<SortKey, string> = {
+    title: t.admin.proposalsTab.sortLabels.titol,
+    artist: t.admin.proposalsTab.sortLabels.artista,
+    year: t.admin.proposalsTab.sortLabels.any,
+    album: t.admin.proposalsTab.sortLabels.album,
+    created_at: t.admin.proposalsTab.sortLabels.createdAt,
+    proposer: t.admin.proposalsTab.sortLabels.proposer,
+  }
 
   const load = useCallback(async () => {
     const res = await fetch("/api/proposals")
@@ -128,7 +130,7 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
         <input
           type="text"
           id="proposals-search"
-          placeholder="Cerca per títol, artista, àlbum o proposador…"
+          placeholder={t.admin.proposalsTab.cercaPlaceholder}
           style={{ flex: "1 1 240px", maxWidth: 360 }}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -138,17 +140,17 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         >
-          <option value="pending">Pendents</option>
-          <option value="approved">Aprovades</option>
-          <option value="rejected">Rebutjades</option>
-          <option value="cancelled">Cancel·lades</option>
-          <option value="">Totes</option>
+          <option value="pending">{t.admin.proposalsTab.pendents}</option>
+          <option value="approved">{t.admin.proposalsTab.aprovades}</option>
+          <option value="rejected">{t.admin.proposalsTab.rebutjades}</option>
+          <option value="cancelled">{t.admin.proposalsTab.cancellades}</option>
+          <option value="">{t.admin.proposalsTab.totes}</option>
         </select>
         <select
           id="proposal-sort"
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value as SortKey)}
-          title="Ordenar per"
+          title={t.admin.proposalsTab.ordenarPerTitle}
         >
           {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
             <option key={k} value={k}>
@@ -160,7 +162,7 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
           type="button"
           className="btn-xs"
           onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-          title={sortDir === "asc" ? "Ascendent" : "Descendent"}
+          title={sortDir === "asc" ? t.admin.proposalsTab.ascendent : t.admin.proposalsTab.descendent}
         >
           {sortDir === "asc" ? "↑" : "↓"}
         </button>
@@ -169,7 +171,7 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
       {visible.length === 0 ? (
         <div id="proposals-empty" className="empty-state">
           <span>✅</span>
-          <p>Cap proposta en aquesta categoria.</p>
+          <p>{t.admin.proposalsTab.capPropostaEnAquestaCategoria}</p>
         </div>
       ) : (
         <ul id="proposals-list">
@@ -192,26 +194,26 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
                     }}
                   >
                     {" "}
-                    per {p.song_artist}
+                    {t.admin.proposalsTab.per} {p.song_artist}
                     {p.song_year ? ` · ${p.song_year}` : ""}
                     {p.song_album ? ` · ${p.song_album}` : ""}
                   </span>
                 </div>
                 <div className="prop-meta">
-                  Proposat per {p.proposer_name} ·{" "}
+                  {t.admin.proposalsTab.proposatPer} {p.proposer_name} ·{" "}
                   {new Date(p.created_at ?? "").toLocaleDateString("ca-ES")}
                   {p.resubmitted_at && (
                     <span
                       className="badge-resubmitted"
-                      title={`Re-enviada el ${new Date(
+                      title={`${t.admin.proposalsTab.reEnviada} ${new Date(
                         p.resubmitted_at,
                       ).toLocaleDateString("ca-ES")}`}
                     >
-                      Re-enviada
+                      {t.admin.proposalsTab.reEnviada}
                     </span>
                   )}
                 </div>
-                {p.notes && <div className="prop-notes">Nota admin: {p.notes}</div>}
+                {p.notes && <div className="prop-notes">{t.admin.proposalsTab.notaAdmin} {p.notes}</div>}
               </div>
               <span
                 className={`badge ${
@@ -231,7 +233,7 @@ export function ProposalsTab({ onChange: _onChange }: Props) {
                   className="btn-xs"
                   onClick={() => router.push(`/app/editor?proposal=${p.id}`)}
                 >
-                  Revisar
+                  {t.admin.proposalsTab.revisar}
                 </button>
               )}
             </li>

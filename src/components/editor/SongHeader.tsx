@@ -6,6 +6,7 @@ import {
   useState,
 } from "react"
 import { KeyPicker } from "./KeyPicker"
+import { getT } from "@/lib/i18n"
 
 // Regex de validació de URLs de YouTube i Spotify (mateixos que als schemas Zod).
 export const YOUTUBE_URL_REGEX = /^https?:\/\/([^/]+\.)?(youtube\.com|youtu\.be)\//
@@ -42,6 +43,7 @@ interface KeyPickerPos {
 }
 
 export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): ReactNode {
+  const t = getT()
   // Camp en edició inline
   const [editing, setEditing] = useState<EditingField>(null)
   const [draft, setDraft] = useState<string>("")
@@ -171,7 +173,7 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
               className={`song-title song-title--editable${!value.title ? " song-title--empty" : ""}`}
               role="button"
               tabIndex={0}
-              title="Clica per editar el títol"
+              title={t.editor.songHeader.editarTitolTitle}
               onClick={() => startEditing("title")}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") startEditing("title")
@@ -201,7 +203,7 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
                 className={`song-meta-part song-meta-part--editable${!value.artist ? " song-meta-part--empty" : ""}`}
                 role="button"
                 tabIndex={0}
-                title="Clica per editar l'artista"
+                title={t.editor.songHeader.editarArtistaTitle}
                 onClick={() => startEditing("artist")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") startEditing("artist")
@@ -231,7 +233,7 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
                 className={`song-meta-part song-meta-part--editable${!value.album ? " song-meta-part--empty" : ""}`}
                 role="button"
                 tabIndex={0}
-                title="Clica per editar l'àlbum"
+                title={t.editor.songHeader.editarAlbumTitle}
                 onClick={() => startEditing("album")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") startEditing("album")
@@ -263,7 +265,7 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
                 className={`song-meta-part song-meta-part--editable${value.year == null ? " song-meta-part--empty" : ""}`}
                 role="button"
                 tabIndex={0}
-                title="Clica per editar l'any"
+                title={t.editor.songHeader.editarAnyTitle}
                 onClick={() => startEditing("year")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") startEditing("year")
@@ -291,7 +293,7 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
             type="button"
             className={`song-key key-badge${!value.key ? " key-badge--empty" : ""}`}
             onClick={handleOpenKeyPicker}
-            title="Canvia la tonalitat"
+            title={t.editor.songHeader.canviarTonalitatTitle}
           >
             {value.key || "Selecciona una tonalitat"}
           </button>
@@ -305,12 +307,12 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
           <input
             type="url"
             value={value.youtubeUrl}
-            placeholder="https://www.youtube.com/watch?v=..."
+            placeholder={t.editor.songHeader.youtubePlaceholder}
             onChange={handleYoutubeChange}
             className={`more-options-input${ytInvalid ? " more-options-input--error" : ""}`}
           />
           {ytInvalid && (
-            <span className="more-options-error">URL de YouTube no vàlida</span>
+            <span className="more-options-error">{t.editor.songHeader.youtubeUrlNoValida}</span>
           )}
         </label>
 
@@ -319,12 +321,12 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
           <input
             type="url"
             value={value.spotifyUrl}
-            placeholder="https://open.spotify.com/track/..."
+            placeholder={t.editor.songHeader.spotifyPlaceholder}
             onChange={handleSpotifyChange}
             className={`more-options-input${spInvalid ? " more-options-input--error" : ""}`}
           />
           {spInvalid && (
-            <span className="more-options-error">URL de Spotify no vàlida</span>
+            <span className="more-options-error">{t.editor.songHeader.spotifyUrlNoValida}</span>
           )}
         </label>
       </div>
@@ -332,7 +334,7 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
       {/* Camps secundaris sempre visibles: cejilla, idioma, etiquetes */}
       <div className="more-options-row">
         <label className="more-options-field more-options-field--inline">
-          <span className="more-options-label">Celleta</span>
+          <span className="more-options-label">{t.editor.songHeader.celleta}</span>
           <input
             type="number"
             min={0}
@@ -344,25 +346,25 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
         </label>
 
         <label className="more-options-field more-options-field--inline">
-          <span className="more-options-label">Idioma</span>
+          <span className="more-options-label">{t.editor.songHeader.idioma}</span>
           <select
             value={value.language}
             onChange={handleLanguageChange}
             className="more-options-select"
           >
-            <option value="ca">Català</option>
-            <option value="es">Castellà</option>
-            <option value="en">Anglès</option>
-            <option value="other">Altre</option>
+            <option value="ca">{t.editor.songHeader.catala}</option>
+            <option value="es">{t.editor.songHeader.castella}</option>
+            <option value="en">{t.editor.songHeader.angles}</option>
+            <option value="other">{t.editor.songHeader.altre}</option>
           </select>
         </label>
 
         <label className="more-options-field more-options-field--inline more-options-field--grow">
-          <span className="more-options-label">Etiquetes</span>
+          <span className="more-options-label">{t.editor.songHeader.etiquetes}</span>
           <input
             type="text"
             value={value.tags}
-            placeholder="pop, rock, tradicional…"
+            placeholder={t.editor.songHeader.etiquetesPlaceholder}
             onChange={handleTagsChange}
             className="more-options-input"
           />

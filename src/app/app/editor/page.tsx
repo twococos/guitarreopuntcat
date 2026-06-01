@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { getT } from "@/lib/i18n"
 import { UserWidget } from "@/components/UserWidget"
 import {
   WysiwygEditor,
@@ -82,6 +83,7 @@ function snapshotOf(meta: SongMetadata, content: string): string {
 }
 
 export default function EditorPage() {
+  const t = getT()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
@@ -125,7 +127,7 @@ export default function EditorPage() {
   useEffect(() => {
     if (status !== "authenticated") return
     if (isReview && !isAdmin) {
-      useToastStore.getState().show("Cal ser administrador per a revisar propostes.", {
+      useToastStore.getState().show(t.editor.toasts.calSerAdmin, {
         type: "error",
       })
       router.replace("/app")
@@ -151,19 +153,19 @@ export default function EditorPage() {
           }>
           const p = proposals.find((x) => x.id === proposalId)
           if (!p) {
-            useToastStore.getState().show("Proposta no trobada.", { type: "error" })
+            useToastStore.getState().show(t.editor.toasts.propostaNoTrobada, { type: "error" })
             router.replace("/app/library?tab=proposals")
             return
           }
           if (session?.user?.id && Number(session.user.id) !== p.user_id) {
-            useToastStore.getState().show("No ets el propietari d'aquesta proposta.", {
+            useToastStore.getState().show(t.editor.toasts.noEtsElPropietari, {
               type: "error",
             })
             router.replace("/app/library?tab=proposals")
             return
           }
           if (p.status !== "pending" && p.status !== "rejected") {
-            useToastStore.getState().show("Aquesta proposta ja no es pot modificar.", {
+            useToastStore.getState().show(t.editor.toasts.propostaNoEsPotModificar, {
               type: "error",
             })
             router.replace("/app/library?tab=proposals")
@@ -208,7 +210,7 @@ export default function EditorPage() {
           editor.reset(song.content)
           initialSnapshotRef.current = snapshotOf(loadedMeta, song.content)
         } catch {
-          useToastStore.getState().show("No s'ha pogut carregar la proposta.", {
+          useToastStore.getState().show(t.editor.toasts.noSHaPogutCarregarProposta, {
             type: "error",
           })
           router.replace("/app/library?tab=proposals")
@@ -231,12 +233,12 @@ export default function EditorPage() {
           }>
           const p = proposals.find((x) => x.id === proposalId)
           if (!p) {
-            useToastStore.getState().show("Proposta no trobada.", { type: "error" })
+            useToastStore.getState().show(t.editor.toasts.propostaNoTrobada, { type: "error" })
             router.replace("/app/admin?tab=proposals")
             return
           }
           if (p.status !== "pending") {
-            useToastStore.getState().show("Aquesta proposta ja ha estat revisada.", {
+            useToastStore.getState().show(t.editor.toasts.propostaJaRevisada, {
               type: "error",
             })
             router.replace("/app/admin?tab=proposals")
@@ -277,7 +279,7 @@ export default function EditorPage() {
           })
           editor.reset(song.content)
         } catch {
-          useToastStore.getState().show("No s'ha pogut carregar la proposta.", {
+          useToastStore.getState().show(t.editor.toasts.noSHaPogutCarregarProposta, {
             type: "error",
           })
           router.replace("/app/admin?tab=proposals")
@@ -320,7 +322,7 @@ export default function EditorPage() {
           editor.reset(song.content)
         })
         .catch(() => {
-          useToastStore.getState().show("No s'ha pogut carregar la cançó.", {
+          useToastStore.getState().show(t.editor.toasts.noSHaPogutCarregarCanco, {
             type: "error",
           })
           router.replace("/app")
@@ -470,7 +472,7 @@ export default function EditorPage() {
         if (!res.ok) throw new Error()
         useToastStore
           .getState()
-          .show("Proposta modificada i re-enviada!", { type: "success" })
+          .show(t.editor.toasts.propostaModificadaReenviada, { type: "success" })
         router.push("/app/library?tab=proposals")
         return
       } else if (isEdit && editId) {
@@ -480,7 +482,7 @@ export default function EditorPage() {
           body: JSON.stringify(body),
         })
         if (!res.ok) throw new Error()
-        useToastStore.getState().show("Cançó actualitzada!", { type: "success" })
+        useToastStore.getState().show(t.editor.toasts.cancoActualitzada, { type: "success" })
         router.push("/app/admin?tab=songs")
         return
       } else if (isAdmin) {
@@ -492,7 +494,7 @@ export default function EditorPage() {
         if (!res.ok) throw new Error()
         resetEditor()
         setShowStartPopup(true)
-        useToastStore.getState().show("Cançó guardada!", { type: "success" })
+        useToastStore.getState().show(t.editor.toasts.cancoGuardada, { type: "success" })
       } else {
         res = await fetch("/api/proposals", {
           method: "POST",
@@ -503,12 +505,12 @@ export default function EditorPage() {
         resetEditor()
         useToastStore
           .getState()
-          .show("Proposta enviada! Un admin la revisarà aviat.", {
+          .show(t.editor.toasts.propostaEnviada, {
             type: "success",
           })
       }
     } catch {
-      useToastStore.getState().show("Error en guardar.", { type: "error" })
+      useToastStore.getState().show(t.editor.toasts.errorGuardar, { type: "error" })
     }
   }, [meta, editor.value, isEdit, editId, isAdmin, isModify, proposalId, resetEditor, router])
 
@@ -540,10 +542,10 @@ export default function EditorPage() {
         body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error()
-      useToastStore.getState().show("Proposta acceptada!", { type: "success" })
+      useToastStore.getState().show(t.editor.toasts.propostaAcceptada, { type: "success" })
       router.push("/app/admin?tab=proposals")
     } catch {
-      useToastStore.getState().show("Error en acceptar la proposta.", {
+      useToastStore.getState().show(t.editor.toasts.errorAcceptarProposta, {
         type: "error",
       })
     }
@@ -559,10 +561,10 @@ export default function EditorPage() {
           body: JSON.stringify({ status: "rejected", notes: reason }),
         })
         if (!res.ok) throw new Error()
-        useToastStore.getState().show("Proposta rebutjada.", { type: "success" })
+        useToastStore.getState().show(t.editor.toasts.propostaRebutjada, { type: "success" })
         router.push("/app/admin?tab=proposals")
       } catch {
-        useToastStore.getState().show("Error en rebutjar la proposta.", {
+        useToastStore.getState().show(t.editor.toasts.errorRebutjarProposta, {
           type: "error",
         })
       }
@@ -585,18 +587,18 @@ export default function EditorPage() {
     ) {
       useToastStore
         .getState()
-        .show("Títol, artista i contingut són obligatoris.", { type: "error" })
+        .show(t.editor.toasts.titolArtistaContingutObligatoris, { type: "error" })
       return
     }
     // Validació de format dels links (si s'han omplert)
     const yt = meta.youtubeUrl.trim()
     const sp = meta.spotifyUrl.trim()
     if (yt && !YOUTUBE_URL_REGEX.test(yt)) {
-      useToastStore.getState().show("Link de YouTube no vàlid.", { type: "error" })
+      useToastStore.getState().show(t.editor.toasts.youtubeNoValid, { type: "error" })
       return
     }
     if (sp && !SPOTIFY_URL_REGEX.test(sp)) {
-      useToastStore.getState().show("Link de Spotify no vàlid.", { type: "error" })
+      useToastStore.getState().show(t.editor.toasts.spotifyNoValid, { type: "error" })
       return
     }
     // Propostes (no-admin): els dos links són obligatoris.
@@ -605,7 +607,7 @@ export default function EditorPage() {
       if (!yt || !sp) {
         useToastStore
           .getState()
-          .show("Cal omplir els links de YouTube i Spotify per a enviar una proposta.", {
+          .show(t.editor.toasts.calOmplirLinksPerProposta, {
             type: "error",
           })
         return
@@ -622,7 +624,7 @@ export default function EditorPage() {
     ) {
       useToastStore
         .getState()
-        .show("Títol, artista i contingut són obligatoris.", { type: "error" })
+        .show(t.editor.toasts.titolArtistaContingutObligatoris, { type: "error" })
       return
     }
     setConfirm({ kind: "accept" })
@@ -651,12 +653,12 @@ export default function EditorPage() {
             method: "POST",
           })
           if (!res.ok) throw new Error()
-          useToastStore.getState().show("Proposta cancel·lada.", { type: "success" })
+          useToastStore.getState().show(t.editor.toasts.propostaCancellada, { type: "success" })
           router.push("/app/library?tab=proposals")
         } catch {
           useToastStore
             .getState()
-            .show("Error en cancel·lar la proposta.", { type: "error" })
+            .show(t.editor.toasts.errorCancellarProposta, { type: "error" })
         } finally {
           setSaving(false)
           setConfirm(null)
@@ -674,7 +676,7 @@ export default function EditorPage() {
         setShowStartPopup(true)
       }
       setConfirm(null)
-      useToastStore.getState().show("Progrés esborrat.")
+      useToastStore.getState().show(t.editor.toasts.progresEsborrat)
       return
     }
     if (confirm?.kind === "save") {
@@ -721,24 +723,23 @@ export default function EditorPage() {
   let saveButtonText: string
 
   if (isModify) {
-    pageTitle = "✏️ Modificar proposta"
-    pageSubtitle =
-      "Modifica la teva proposta i torna a enviar-la perquè un admin la revisi."
-    saveButtonText = "Modificar Proposta"
+    pageTitle = t.editor.page.titols.modificarPropostaTitol
+    pageSubtitle = t.editor.page.titols.modificarPropostaSubtitol
+    saveButtonText = t.editor.page.saveButtons.modificarProposta
   } else if (isReview) {
-    pageTitle = "✏️ Revisar proposta"
+    pageTitle = t.editor.page.titols.revisarPropostaTitol
     pageSubtitle = proposalMeta
-      ? `Proposta de ${proposalMeta.proposerName}`
-      : "Carregant proposta…"
-    saveButtonText = "Acceptar"
+      ? t.editor.page.titols.revisarPropostaDe(proposalMeta.proposerName)
+      : t.editor.page.titols.revisarPropostaCarregant
+    saveButtonText = t.editor.page.saveButtons.acceptar
   } else if (isEdit) {
-    pageTitle = "✏️ Editar cançó"
-    pageSubtitle = "Modifica i guarda els canvis"
-    saveButtonText = "Guardar canvis"
+    pageTitle = t.editor.page.titols.editarCancoTitol
+    pageSubtitle = t.editor.page.titols.editarCancoSubtitol
+    saveButtonText = t.editor.page.saveButtons.guardarCanvis
   } else {
-    pageTitle = "✏️ Nova cançó"
-    pageSubtitle = "Escriu la lletra de la cançó"
-    saveButtonText = isAdmin ? "Guardar cançó" : "Enviar proposta"
+    pageTitle = t.editor.page.titols.novaCancoTitol
+    pageSubtitle = t.editor.page.titols.novaCancoSubtitol
+    saveButtonText = isAdmin ? t.editor.page.saveButtons.guardarCanco : t.editor.page.saveButtons.enviarProposta
   }
 
   // Missatge i etiquetes del ConfirmToast segons l'acció
@@ -747,44 +748,38 @@ export default function EditorPage() {
   let confirmVariant: "primary" | "danger" = "primary"
   if (confirm?.kind === "reset") {
     if (isModify) {
-      confirmMessage =
-        "Cancel·lar la proposta sencera? Es perdrà i no apareixerà a la teva llista."
-      confirmActionLabel = "Sí, cancel·lar"
+      confirmMessage = t.editor.confirmToast.cancellarProposta.missatge
+      confirmActionLabel = t.editor.confirmToast.cancellarProposta.accio
     } else if (isEdit) {
-      confirmMessage =
-        "Descartar els canvis i tornar al panell admin? Es perdran les modificacions no guardades."
-      confirmActionLabel = "Sí, descartar"
+      confirmMessage = t.editor.confirmToast.descartarCanvis.missatge
+      confirmActionLabel = t.editor.confirmToast.descartarCanvis.accio
     } else {
-      confirmMessage =
-        "Esborrar tot el progrés? Es perdran títol, artista i contingut."
-      confirmActionLabel = "Sí, esborrar"
+      confirmMessage = t.editor.confirmToast.esborrarProgres.missatge
+      confirmActionLabel = t.editor.confirmToast.esborrarProgres.accio
     }
     confirmVariant = "danger"
   } else if (confirm?.kind === "save") {
     if (isModify) {
-      confirmMessage =
-        "Re-enviar la proposta modificada perquè un admin la torni a revisar?"
-      confirmActionLabel = "Sí, re-enviar"
+      confirmMessage = t.editor.confirmToast.reEnviarProposta.missatge
+      confirmActionLabel = t.editor.confirmToast.reEnviarProposta.accio
     } else if (isEdit) {
-      confirmMessage = "Actualitzar la cançó a la base de dades pública?"
-      confirmActionLabel = "Sí, actualitzar"
+      confirmMessage = t.editor.confirmToast.actualitzarCanco.missatge
+      confirmActionLabel = t.editor.confirmToast.actualitzarCanco.accio
     } else if (isAdmin) {
-      confirmMessage = "Guardar la cançó a la base de dades pública?"
-      confirmActionLabel = "Sí, guardar"
+      confirmMessage = t.editor.confirmToast.guardarCanco.missatge
+      confirmActionLabel = t.editor.confirmToast.guardarCanco.accio
     } else {
-      confirmMessage = "Enviar la proposta perquè un admin la revisi?"
-      confirmActionLabel = "Sí, enviar"
+      confirmMessage = t.editor.confirmToast.enviarProposta.missatge
+      confirmActionLabel = t.editor.confirmToast.enviarProposta.accio
     }
     confirmVariant = "primary"
   } else if (confirm?.kind === "accept") {
-    confirmMessage =
-      "Acceptar la proposta i guardar la cançó a la base de dades?"
-    confirmActionLabel = "Sí, acceptar"
+    confirmMessage = t.editor.confirmToast.acceptarProposta.missatge
+    confirmActionLabel = t.editor.confirmToast.acceptarProposta.accio
     confirmVariant = "primary"
   }
 
-  const placeholder = `Escriu aquí la lletra de la cançó.
-Clic dret per inserir acords, clic mig per inserir seccions.`
+  const placeholder = t.editor.page.placeholder
 
   const rejectionNotes =
     isModify &&
@@ -798,13 +793,13 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
   let backLabel: string
   if (isModify) {
     backHref = "/app/library?tab=proposals"
-    backLabel = "← Les meves propostes"
+    backLabel = t.editor.page.backLinks.lesMevesPropostes
   } else if (isReview) {
     backHref = "/app/admin?tab=proposals"
-    backLabel = "← Panell admin"
+    backLabel = t.editor.page.backLinks.panellAdmin
   } else {
     backHref = "/app"
-    backLabel = "← Cançoner"
+    backLabel = t.editor.page.backLinks.canconer
   }
 
   // ── Estats de càrrega / no autenticat ────────────────────────
@@ -812,7 +807,7 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
   if (status === "loading") {
     return (
       <div id="editor-loading" aria-busy="true" style={{ padding: "2rem" }}>
-        Carregant…
+        {t.editor.page.carregant}
       </div>
     )
   }
@@ -839,8 +834,8 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
       <main className="editor-page">
         {isModify && rejectionNotes && (
           <div className="editor-rejection-banner">
-            <strong>La teva proposta va ser rebutjada.</strong>
-            <p>Retroacció de l&apos;administrador: {rejectionNotes}</p>
+            <strong>{t.editor.page.bannerPropostaRebutjada}</strong>
+            <p>{t.editor.page.retroaccioAdmin} {rejectionNotes}</p>
           </div>
         )}
         <div className="editor-stack">
@@ -856,12 +851,12 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
             onSave={handleToolbarSave}
             onReset={handleToolbarReset}
             resetLabel={
-              isModify ? "Cancel·lar" : isEdit ? "Descartar canvis" : "Reset"
+              isModify ? t.editor.page.resetLabels.cancellarProposta : isEdit ? t.editor.page.resetLabels.descartarCanvis : t.editor.page.resetLabels.reset
             }
             saving={saving}
             disabledReason={
               !meta.key
-                ? "Selecciona la tonalitat per a començar la cançó"
+                ? t.editor.page.seleccionaTonalitat
                 : undefined
             }
             mode={isReview ? "review" : "normal"}
@@ -869,7 +864,7 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
             onReject={handleToolbarReject}
             saveDisabledHint={
               isModify && !hasChanges
-                ? "No s'ha modificat res encara"
+                ? t.editor.page.noSHaModificatRes
                 : undefined
             }
           />
@@ -887,7 +882,7 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
             placeholder={placeholder}
             disabledReason={
               !meta.key
-                ? "Selecciona la tonalitat per a començar la cançó"
+                ? t.editor.page.seleccionaTonalitat
                 : undefined
             }
           />
@@ -900,7 +895,7 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
               <div className="song-yt-embed">
                 <iframe
                   src={`https://www.youtube.com/embed/${id}`}
-                  title="Reproductor YouTube"
+                  title={t.editor.wysiwyg.reproductorYoutube}
                   allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"
                   allowFullScreen
                 />
@@ -914,7 +909,7 @@ Clic dret per inserir acords, clic mig per inserir seccions.`
         open={confirm !== null}
         message={confirmMessage}
         confirmLabel={confirmActionLabel}
-        cancelLabel="Cancel·lar"
+        cancelLabel={t.common.accions.cancellar}
         confirmVariant={confirmVariant}
         onConfirm={handleConfirmConfirm}
         onCancel={handleConfirmCancel}

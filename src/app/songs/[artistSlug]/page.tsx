@@ -3,28 +3,28 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getArtistBySlug } from "@/db/queries/songs"
 import { PublicNav } from "@/components/public/PublicNav"
+import { getT } from "@/lib/i18n"
 
 interface Props {
   params: Promise<{ artistSlug: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const t = getT()
   const { artistSlug } = await params
   const artist = await getArtistBySlug(artistSlug)
-  if (!artist) return { title: "Artista no trobat — guitarreo.cat" }
+  if (!artist) return { title: t.metadata.artist.noTrobat }
 
   const sample = artist.songs.slice(0, 3).map((s) => s.title).join(", ")
   return {
-    title: `${artist.name} — Cançons amb acords | guitarreo.cat`,
+    title: t.metadata.artist.title(artist.name),
     description:
       artist.songs.length === 1
-        ? `Acords i lletra de "${artist.songs[0].title}" de ${artist.name}.`
-        : `${artist.songs.length} cançons de ${artist.name} amb acords i lletra${
-            sample ? `: ${sample}…` : ""
-          }`,
+        ? t.metadata.artist.descriptionSingle(artist.name, artist.songs[0].title)
+        : t.metadata.artist.descriptionMultiple(artist.name, artist.songs.length, sample),
     openGraph: {
-      title: `${artist.name} a guitarreo.cat`,
-      description: `${artist.songs.length} cançons amb acords i lletra`,
+      title: t.metadata.artist.ogTitle(artist.name),
+      description: t.metadata.artist.ogDescription(artist.songs.length),
     },
   }
 }
@@ -37,6 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * més específica automàticament.
  */
 export default async function ArtistPage({ params }: Props) {
+  const t = getT()
   const { artistSlug } = await params
   const artist = await getArtistBySlug(artistSlug)
   if (!artist) notFound()
@@ -46,10 +47,10 @@ export default async function ArtistPage({ params }: Props) {
       <PublicNav />
       <div className="public-artist-page">
         <header className="public-artist-header">
-          <p className="public-artist-eyebrow">Artista</p>
+          <p className="public-artist-eyebrow">{t.public.publicArtist.artista}</p>
         <h1 className="public-artist-name">{artist.name}</h1>
         <p className="public-artist-count">
-          {artist.songs.length === 1 ? "1 cançó" : `${artist.songs.length} cançons`}
+          {t.public.publicArtist.countCancons(artist.songs.length)}
         </p>
       </header>
 

@@ -1,8 +1,10 @@
 "use client"
 import { useSongbookStore } from "@/hooks/useSongbook"
 import { transposeKey } from "@/lib/transpose"
+import { getT } from "@/lib/i18n"
 
 export function CanconerGrid() {
+  const t = getT()
   const canconer = useSongbookStore((s) => s.canconer)
   const selectedIdx = useSongbookStore((s) => s.selectedIdx)
   const setSelectedIdx = useSongbookStore((s) => s.setSelectedIdx)
@@ -28,7 +30,7 @@ export function CanconerGrid() {
             <span className="cg-artist">{entry.song.artist}</span>
             <span
               className="cg-key"
-              title="Canviar tonalitat"
+              title={t.app.songbook.canconerGrid.canviarTonalitatTitle}
               onClick={(e) => {
                 e.stopPropagation()
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
@@ -44,7 +46,7 @@ export function CanconerGrid() {
             </span>
             <button
               className="cg-remove"
-              title="Treure"
+              title={t.app.songbook.canconerGrid.treureTitle}
               onClick={(e) => {
                 e.stopPropagation()
                 remove(idx)

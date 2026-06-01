@@ -5,8 +5,10 @@ import { useEffect, useRef, useState } from "react"
 import { LoginPopup } from "./LoginPopup"
 import { IconLibrary, IconSettings } from "./shared/Icons"
 import { guardMobileApp } from "@/components/public/MobileGateLink"
+import { getT } from "@/lib/i18n"
 
 export function UserWidget() {
+  const t = getT()
   const { data: session, status } = useSession()
   const pathname = usePathname() || "/"
   const [showLogin, setShowLogin] = useState(false)
@@ -36,7 +38,7 @@ export function UserWidget() {
       <>
         <button className="btn-login" onClick={() => setShowLogin(true)}>
           <img src="/img/google.svg" alt="" />
-          Inicia sessió
+          {t.app.userWidget.iniciaSessio}
         </button>
         {showLogin && <LoginPopup onClose={() => setShowLogin(false)} />}
       </>
@@ -59,7 +61,7 @@ export function UserWidget() {
           <img src={user.image} className="user-avatar" alt={user.name ?? ""} />
         )}
         <span className="user-name">{firstName}</span>
-        {isAdmin && <span className="badge-admin">admin</span>}
+        {isAdmin && <span className="badge-admin">{t.app.userWidget.badgeAdmin}</span>}
         <span className="user-chevron">▾</span>
       </button>
       {open && (
@@ -86,17 +88,17 @@ export function UserWidget() {
               }}
             >
               <IconLibrary />
-              <span>Editor de cançoners</span>
+              <span>{t.app.userWidget.editorDeCancoers}</span>
             </a>
           )}
           <a href="/app/library" className="user-dropdown-item">
             <IconLibrary />
-            <span>La teva Biblioteca</span>
+            <span>{t.app.userWidget.bibliotetica}</span>
           </a>
           {isAdmin && (
             <a href="/app/admin" className="user-dropdown-item">
               <IconSettings />
-              <span>Panell d&apos;administració</span>
+              <span>{t.app.userWidget.panellAdministracio}</span>
             </a>
           )}
           <div className="user-dropdown-sep" />
@@ -111,7 +113,7 @@ export function UserWidget() {
               signOut({ callbackUrl })
             }}
           >
-            Tancar sessió
+            {t.app.userWidget.tancarSessio}
           </button>
         </div>
       )}

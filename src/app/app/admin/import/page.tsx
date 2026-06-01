@@ -19,6 +19,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { getT } from "@/lib/i18n"
 import { useToastStore } from "@/hooks/useToasts"
 import { isSupportedUrl } from "@/lib/importers"
 
@@ -77,6 +78,7 @@ interface ScrapeResponse {
 }
 
 export default function ImportMassiuPage() {
+  const t = getT()
   const [phase, setPhase] = useState<Phase>("idle")
   const [file, setFile] = useState<File | null>(null)
   const [rows, setRows] = useState<RowState[]>([])
@@ -506,9 +508,9 @@ export default function ImportMassiuPage() {
     if (!scrapeCsv) return
     try {
       await navigator.clipboard.writeText(scrapeCsv)
-      toast("Copiat al porta-retalls", { type: "success" })
+      toast(t.admin.toasts.copiat, { type: "success" })
     } catch {
-      toast("No s'ha pogut copiar", { type: "error" })
+      toast(t.admin.toasts.errorCopiar, { type: "error" })
     }
   }, [scrapeCsv, toast])
 
@@ -575,14 +577,11 @@ export default function ImportMassiuPage() {
       setScrapeError(null)
 
       if (added === 0) {
-        toast("Totes les cançons ja eren a la cua", { type: "info" })
+        toast(t.admin.toasts.totesJaHiEren, { type: "info" })
       } else if (skipped > 0) {
-        toast(
-          `${added} cançons afegides · ${skipped} ja hi eren (omeses)`,
-          { type: "success" },
-        )
+        toast(t.admin.toasts.canconsTrobades(added, skipped), { type: "success" })
       } else {
-        toast(`${added} cançons afegides a la cua`, { type: "success" })
+        toast(t.admin.toasts.canconAfegides(added), { type: "success" })
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al parsejar el CSV"
@@ -593,13 +592,9 @@ export default function ImportMassiuPage() {
   const scrapePanel = (
     <div className="bulk-scrape-panel">
       <div className="bulk-scrape-header">
-        <h2>🪄 Generador de CSV des d&apos;una pàgina d&apos;artista</h2>
+        <h2>{t.admin.import.scrapePanel.titol}</h2>
         <p className="bulk-scrape-hint">
-          Introdueix un link d&apos;un artista d&apos;acordscatala.cat
-          (p. ex. <code>https://www.acordscatala.cat/ca/txarango</code>)
-          o d&apos;ultimate-guitar.com
-          (p. ex. <code>https://www.ultimate-guitar.com/artist/bruno_mars_28280</code>)
-          i es generaran les files CSV de les cançons llistades.
+          {t.admin.import.scrapePanel.hint}
           {phase === "preview" && (
             <> Les noves files s&apos;afegiran a la cua actual.</>
           )}
@@ -609,7 +604,7 @@ export default function ImportMassiuPage() {
       <div className="bulk-scrape-row">
         <input
           type="url"
-          placeholder="https://www.acordscatala.cat/ca/artista o https://www.ultimate-guitar.com/artist/…"
+          placeholder={t.admin.import.scrapePanel.urlPlaceholder}
           value={scrapeUrl}
           onChange={(e) => setScrapeUrl(e.target.value)}
           onKeyDown={(e) => {
@@ -630,7 +625,7 @@ export default function ImportMassiuPage() {
               if (Number.isFinite(n)) setScrapeLimit(Math.min(100, Math.max(1, n)))
             }}
             disabled={scrapeLoading}
-            title="Nombre de cançons a importar (1-100)"
+            title={t.admin.import.scrapePanel.nombreCansonsTitol}
           />
         )}
         <button
@@ -638,7 +633,7 @@ export default function ImportMassiuPage() {
           onClick={runScrape}
           disabled={scrapeLoading || !scrapeUrl.trim()}
         >
-          {scrapeLoading ? "Buscant…" : isUgUrl ? "Cercar" : "Buscar"}
+          {scrapeLoading ? t.admin.import.scrapePanel.buscant : isUgUrl ? t.admin.import.scrapePanel.cercar : t.admin.import.scrapePanel.buscar}
         </button>
       </div>
 
@@ -649,7 +644,7 @@ export default function ImportMassiuPage() {
       {scrapeResult && (
         <>
           <div className="bulk-scrape-meta">
-            <strong>{scrapeResult.artist}</strong> · {scrapeResult.songs.length} cançons trobades
+            {t.admin.import.scrapePanel.cansonsTrobades(scrapeResult.artist, scrapeResult.songs.length)}
           </div>
           <textarea
             className="bulk-scrape-textarea"
@@ -660,16 +655,16 @@ export default function ImportMassiuPage() {
           />
           <div className="bulk-scrape-actions">
             <button className="btn-ghost" onClick={copyScrapeCsv}>
-              Copiar
+              {t.admin.import.scrapePanel.copiar}
             </button>
             <button className="btn-ghost" onClick={downloadScrapeCsv}>
-              Descarregar .csv
+              {t.admin.import.scrapePanel.descarregar}
             </button>
             <button
               className="btn-primary"
               onClick={loadScrapeIntoQueue}
             >
-              {phase === "preview" ? "Afegir a la cua" : "Carregar a la cua"}
+              {phase === "preview" ? t.admin.import.scrapePanel.afegirALaCua : t.admin.import.scrapePanel.carregarALaCua}
             </button>
           </div>
         </>
@@ -681,12 +676,11 @@ export default function ImportMassiuPage() {
     <>
       <header>
         <Link href="/app/admin" className="back-link">
-          ← Panell d&apos;administració
+          {t.admin.dashboard.backImportLink}
         </Link>
-        <h1>📥 Importació massiva</h1>
+        <h1>{t.admin.import.titol}</h1>
         <p className="subtitle">
-          Importa cançons des d&apos;un .csv. Es crearan propostes pendents de
-          revisió a nom de l&apos;usuari «Importador».
+          {t.admin.import.subtitol}
         </p>
       </header>
 
@@ -710,10 +704,10 @@ export default function ImportMassiuPage() {
             >
               <div className="bulk-dropzone-icon">📄</div>
               <div className="bulk-dropzone-text">
-                Arrossega el CSV aquí o fes clic per seleccionar-lo
+                {t.admin.import.dropzone.text}
               </div>
               <div className="bulk-dropzone-hint">
-                Format: link, títol, artista, àlbum, any, youtube, spotify, idioma, etiquetes
+                {t.admin.import.dropzone.hint}
               </div>
               <input
                 ref={fileInputRef}
@@ -738,40 +732,39 @@ export default function ImportMassiuPage() {
               {phase === "preview" && (
                 <div className="bulk-actions">
                   <button className="btn-ghost" onClick={resetAll}>
-                    Cancel·lar
+                    {t.admin.import.preview.cancellar}
                   </button>
                   <button
                     className="btn-ghost"
                     onClick={findMissingLinks}
                     disabled={findingLinks}
-                    title="Cerca a YouTube i Spotify els links que falten (només omple buits)"
+                    title={t.admin.import.preview.buscarLinksTitle}
                   >
                     {findingLinks
-                      ? `Buscant… ${findProgress.done}/${findProgress.total}`
-                      : "🔎 Buscar links que falten"}
+                      ? t.admin.import.preview.buscantLinks(findProgress.done, findProgress.total)
+                      : t.admin.import.preview.buscarLinksFalten}
                   </button>
                   <button
                     className="btn-primary"
                     onClick={startImport}
                     disabled={findingLinks}
                   >
-                    Importar
+                    {t.admin.import.preview.importar}
                   </button>
                 </div>
               )}
               {phase === "importing" && (
                 <div className="bulk-progress-summary">
-                  {totals.ok + totals.dup + totals.err} / {totals.total} ·
-                  {" "}✅ {totals.ok} · ⚠️ {totals.dup} · ❌ {totals.err}
+                  {t.admin.import.preview.importantProgres(totals.ok + totals.dup + totals.err, totals.total, totals.ok, totals.dup, totals.err)}
                 </div>
               )}
               {phase === "done" && (
                 <div className="bulk-actions">
                   <div className="bulk-progress-summary">
-                    Acabat: ✅ {totals.ok} · ⚠️ {totals.dup} duplicades · ❌ {totals.err} errors
+                    {t.admin.import.preview.acabat(totals.ok, totals.dup, totals.err)}
                   </div>
                   <button className="btn-primary" onClick={resetAll}>
-                    Nova importació
+                    {t.admin.import.preview.novaImportacio}
                   </button>
                 </div>
               )}
@@ -779,20 +772,20 @@ export default function ImportMassiuPage() {
 
             <div className="bulk-required-bar">
               <div className="bulk-required-title">
-                Camps obligatoris (les files que no compleixin se saltaran):
+                {t.admin.import.preview.campsObligatoris}
               </div>
               <div className="bulk-required-checks">
                 <label className="bulk-required-check is-locked">
                   <input type="checkbox" checked disabled />
-                  <span>Link web</span>
+                  <span>{t.admin.import.preview.colLink}</span>
                 </label>
                 <label className="bulk-required-check is-locked">
                   <input type="checkbox" checked disabled />
-                  <span>Títol</span>
+                  <span>{t.common.camps.titol}</span>
                 </label>
                 <label className="bulk-required-check is-locked">
                   <input type="checkbox" checked disabled />
-                  <span>Artista</span>
+                  <span>{t.common.camps.artista}</span>
                 </label>
                 {OPTIONAL_FIELDS.map((f) => (
                   <label key={f.key} className="bulk-required-check">
@@ -818,7 +811,7 @@ export default function ImportMassiuPage() {
               <span className={`bulk-list-toggle-arrow ${listCollapsed ? "is-collapsed" : ""}`}>
                 ▼
               </span>
-              {listCollapsed ? "Mostrar" : "Amagar"} llista ({rows.length})
+              {listCollapsed ? t.admin.import.preview.mostrarLlista(rows.length) : t.admin.import.preview.amagarLlista(rows.length)}
             </button>
 
             <ol
@@ -838,7 +831,7 @@ export default function ImportMassiuPage() {
                           <strong>{r.title}</strong> — {r.artist}
                           {isOverridden && (
                             <span className="bulk-row-override-tag">
-                              sense validar
+                              {t.admin.import.preview.sensseValidar}
                             </span>
                           )}
                         </div>
@@ -847,7 +840,7 @@ export default function ImportMassiuPage() {
                             {r.url}
                           </a>
                           {!isSupportedUrl(r.url) && (
-                            <span className="bulk-row-warn"> (host no suportat)</span>
+                            <span className="bulk-row-warn"> {t.admin.import.preview.hostNoSuportat}</span>
                           )}
                         </div>
                         <div className="bulk-row-pills">
@@ -871,9 +864,9 @@ export default function ImportMassiuPage() {
                             <button
                               className="btn-xs"
                               onClick={() => importRowAnyway(i)}
-                              title="Marca aquesta fila per importar saltant la validació de camps requerits al següent 'Importar'"
+                              title={t.admin.import.preview.importarIgualmentTitle}
                             >
-                              Importar igualment
+                              {t.admin.import.preview.importarIgualment}
                             </button>
                           )}
                         {phase !== "importing" && (
@@ -883,8 +876,8 @@ export default function ImportMassiuPage() {
                             onClick={() =>
                               setEditingIndex((prev) => (prev === i ? -1 : i))
                             }
-                            title={isEditing ? "Tancar editor" : "Editar camps"}
-                            aria-label="Editar camps"
+                            title={isEditing ? "Tancar editor" : t.admin.import.preview.editarCampsAriaLabel}
+                            aria-label={t.admin.import.preview.editarCampsAriaLabel}
                             aria-expanded={isEditing}
                           >
                             ✏️
@@ -895,8 +888,8 @@ export default function ImportMassiuPage() {
                             type="button"
                             className="bulk-row-remove"
                             onClick={() => removeRow(i)}
-                            title="Treure aquesta fila de la cua"
-                            aria-label="Treure de la cua"
+                            title={t.admin.import.preview.treureDeLaCuaTitle}
+                            aria-label={t.admin.import.preview.treureDeLaCuaAriaLabel}
                           >
                             ×
                           </button>
@@ -971,6 +964,8 @@ function RowEditor({
   onChange: <K extends keyof ParsedRow>(key: K, value: ParsedRow[K]) => void
   onClose: () => void
 }) {
+  const t = getT()
+  const er = t.admin.import.editRow
   const text = (v: string | null) => v ?? ""
   const setStr = <K extends keyof ParsedRow>(key: K) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -982,11 +977,11 @@ function RowEditor({
     <div className="bulk-row-editor">
       <div className="bulk-row-editor-grid">
         <label className="bulk-edit-field">
-          <span>URL</span>
+          <span>{er.urlLabel}</span>
           <input type="url" value={row.url} onChange={setStr("url")} />
         </label>
         <label className="bulk-edit-field">
-          <span>Títol *</span>
+          <span>{er.titolLabel}</span>
           <input
             type="text"
             value={row.title}
@@ -994,7 +989,7 @@ function RowEditor({
           />
         </label>
         <label className="bulk-edit-field">
-          <span>Artista *</span>
+          <span>{er.artistaLabel}</span>
           <input
             type="text"
             value={row.artist}
@@ -1002,11 +997,11 @@ function RowEditor({
           />
         </label>
         <label className="bulk-edit-field">
-          <span>Àlbum</span>
+          <span>{er.albumLabel}</span>
           <input type="text" value={text(row.album)} onChange={setStr("album")} />
         </label>
         <label className="bulk-edit-field bulk-edit-field-narrow">
-          <span>Any</span>
+          <span>{er.anyLabel}</span>
           <input
             type="number"
             min={1000}
@@ -1016,50 +1011,50 @@ function RowEditor({
           />
         </label>
         <label className="bulk-edit-field bulk-edit-field-narrow">
-          <span>Idioma</span>
+          <span>{er.idiomaLabel}</span>
           <select value={text(row.language)} onChange={setStr("language")}>
-            <option value="">(buit)</option>
-            <option value="ca">ca · Català</option>
-            <option value="es">es · Castellà</option>
-            <option value="en">en · Anglès</option>
-            <option value="pt">pt · Portuguès</option>
-            <option value="fr">fr · Francès</option>
-            <option value="it">it · Italià</option>
-            <option value="de">de · Alemany</option>
-            <option value="other">other · Altre</option>
+            <option value="">{t.common.idiomaOpcions.buit}</option>
+            <option value="ca">{t.common.idiomaOpcions.catala}</option>
+            <option value="es">{t.common.idiomaOpcions.castella}</option>
+            <option value="en">{t.common.idiomaOpcions.angles}</option>
+            <option value="pt">{t.common.idiomaOpcions.portugues}</option>
+            <option value="fr">{t.common.idiomaOpcions.frances}</option>
+            <option value="it">{t.common.idiomaOpcions.italia}</option>
+            <option value="de">{t.common.idiomaOpcions.alemany}</option>
+            <option value="other">{t.common.idiomaOpcions.altre}</option>
           </select>
         </label>
         <label className="bulk-edit-field bulk-edit-field-wide">
-          <span>YouTube</span>
+          <span>{er.youtubeLabel}</span>
           <input
             type="url"
             value={text(row.youtubeUrl)}
             onChange={setStr("youtubeUrl")}
-            placeholder="https://www.youtube.com/watch?v=…"
+            placeholder={er.youtubePlaceholder}
           />
         </label>
         <label className="bulk-edit-field bulk-edit-field-wide">
-          <span>Spotify</span>
+          <span>{er.spotifyLabel}</span>
           <input
             type="url"
             value={text(row.spotifyUrl)}
             onChange={setStr("spotifyUrl")}
-            placeholder="https://open.spotify.com/track/…"
+            placeholder={er.spotifyPlaceholder}
           />
         </label>
         <label className="bulk-edit-field bulk-edit-field-wide">
-          <span>Etiquetes</span>
+          <span>{er.etiquetesLabel}</span>
           <input
             type="text"
             value={text(row.tags)}
             onChange={setStr("tags")}
-            placeholder="separades per comes"
+            placeholder={er.etiquetesPlaceholder}
           />
         </label>
       </div>
       <div className="bulk-row-editor-actions">
         <button type="button" className="btn-ghost" onClick={onClose}>
-          Tancar
+          {t.common.accions.tancar}
         </button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
 import { ACCENT_COLOR_PALETTE } from "@/lib/schemas/canconer"
+import { getT } from "@/lib/i18n"
 
 /**
  * Popover de selecció de color d'accent.
@@ -20,6 +21,7 @@ function isValidHex(s: string): boolean {
 }
 
 export function AccentPicker({ value, onChange, onClose }: Props) {
+  const t = getT()
   const ref = useRef<HTMLDivElement>(null)
   const [hexInput, setHexInput] = useState(value ?? "")
 
@@ -59,7 +61,7 @@ export function AccentPicker({ value, onChange, onClose }: Props) {
       <form className="accent-picker-hex" onSubmit={handleHexSubmit}>
         <input
           type="text"
-          placeholder="#hex"
+          placeholder={t.app.songbook.accentPicker.hexPlaceholder}
           value={hexInput}
           onChange={(e) => setHexInput(e.target.value)}
           maxLength={7}
@@ -80,7 +82,7 @@ export function AccentPicker({ value, onChange, onClose }: Props) {
           setHexInput("")
         }}
       >
-        Per defecte
+        {t.app.songbook.accentPicker.perDefecte}
       </button>
     </div>
   )

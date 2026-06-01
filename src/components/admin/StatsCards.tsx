@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
+import { getT } from "@/lib/i18n"
 
 interface Stats {
   songs: number
@@ -10,6 +11,7 @@ interface Stats {
 }
 
 export function StatsCards() {
+  const t = getT()
   const [stats, setStats] = useState<Stats | null>(null)
 
   useEffect(() => {
@@ -25,25 +27,25 @@ export function StatsCards() {
         <div className="stat-num" id="sn-songs">
           {stats?.songs ?? "—"}
         </div>
-        <div className="stat-label">Cançons públiques</div>
+        <div className="stat-label">{t.admin.statsCards.canconsPubliques}</div>
       </div>
       <div className="stat-card">
         <div className="stat-num" id="sn-drafts">
           {stats?.drafts ?? "—"}
         </div>
-        <div className="stat-label">Esborranys</div>
+        <div className="stat-label">{t.admin.statsCards.esborranys}</div>
       </div>
       <div className="stat-card">
         <div className="stat-num" id="sn-users">
           {stats?.users ?? "—"}
         </div>
-        <div className="stat-label">Usuaris</div>
+        <div className="stat-label">{t.admin.statsCards.usuaris}</div>
       </div>
       <div className="stat-card">
         <div className="stat-num" id="sn-canconers">
           {stats?.canconers ?? "—"}
         </div>
-        <div className="stat-label">Cançoners</div>
+        <div className="stat-label">{t.admin.statsCards.canconers}</div>
       </div>
     </div>
   )

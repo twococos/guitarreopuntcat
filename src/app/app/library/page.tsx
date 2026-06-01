@@ -8,12 +8,14 @@ import { ToastHost } from "@/components/Toast"
 import { IconLibrary, IconProposal } from "@/components/shared/Icons"
 import { CanconersTab } from "./CanconersTab"
 import { ProposalsTab } from "./ProposalsTab"
+import { getT } from "@/lib/i18n"
 
 type Tab = "canconers" | "proposals"
 
 const VALID_TABS: Tab[] = ["canconers", "proposals"]
 
 export default function LibraryPage() {
+  const t = getT()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
@@ -50,7 +52,7 @@ export default function LibraryPage() {
   }
 
   if (status === "loading") {
-    return <div style={{ padding: "2rem" }}>Carregant…</div>
+    return <div style={{ padding: "2rem" }}>{t.common.accions.carregant}</div>
   }
   if (status === "unauthenticated") {
     return null
@@ -60,10 +62,10 @@ export default function LibraryPage() {
     <>
       <header>
         <Link href="/app" className="back-link">
-          ← Cançoner
+          {t.app.library.backLink}
         </Link>
         <h1>
-          <IconLibrary /> La teva Biblioteca
+          <IconLibrary /> {t.app.library.titol}
         </h1>
         <div className="header-actions">
           <UserWidget />
@@ -75,14 +77,14 @@ export default function LibraryPage() {
           className={`tab ${tab === "canconers" ? "active" : ""}`}
           onClick={() => changeTab("canconers")}
         >
-          <IconLibrary /> Cançoners
+          <IconLibrary /> {t.app.library.tabs.canconers}
         </button>
         {!isAdmin && (
           <button
             className={`tab ${tab === "proposals" ? "active" : ""}`}
             onClick={() => changeTab("proposals")}
           >
-            <IconProposal /> Propostes
+            <IconProposal /> {t.app.library.tabs.propostes}
           </button>
         )}
       </div>

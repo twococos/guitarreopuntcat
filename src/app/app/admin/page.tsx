@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { getT } from "@/lib/i18n"
 import { UserWidget } from "@/components/UserWidget"
 import { StatsCards } from "@/components/admin/StatsCards"
 import { ProposalsTab } from "@/components/admin/ProposalsTab"
@@ -23,6 +24,7 @@ interface Stats {
 }
 
 export default function AdminPage() {
+  const t = getT()
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const initialTab = (() => {
@@ -49,11 +51,11 @@ export default function AdminPage() {
     <>
       <header>
         <Link href="/app" className="back-link">
-          ← Cançoner
+          {t.admin.dashboard.backLink}
         </Link>
-        <h1>⚙️ Panell d&apos;administració</h1>
+        <h1>{t.admin.dashboard.titol}</h1>
         <p className="subtitle" id="admin-welcome">
-          Benvingut, {user?.name}
+          {t.admin.dashboard.benvingut(user?.name ?? "")}
         </p>
         <div className="header-actions">
           <UserWidget />
@@ -65,32 +67,32 @@ export default function AdminPage() {
           className={`tab ${tab === "stats" ? "active" : ""}`}
           onClick={() => setTab("stats")}
         >
-          📊 Resum
+          {t.admin.tabs.resum}
         </button>
         <button
           className={`tab ${tab === "proposals" ? "active" : ""}`}
           onClick={() => setTab("proposals")}
         >
-          📝 Propostes{" "}
+          {t.admin.tabs.propostes}{" "}
           {pendingCount > 0 && <span id="pending-badge">{pendingCount}</span>}
         </button>
         <button
           className={`tab ${tab === "songs" ? "active" : ""}`}
           onClick={() => setTab("songs")}
         >
-          🎵 Cançons
+          {t.admin.tabs.cancons}
         </button>
         <button
           className={`tab ${tab === "users" ? "active" : ""}`}
           onClick={() => setTab("users")}
         >
-          👥 Usuaris
+          {t.admin.tabs.usuaris}
         </button>
         <button
           className={`tab ${tab === "canconers" ? "active" : ""}`}
           onClick={() => setTab("canconers")}
         >
-          📚 Cançoners
+          {t.admin.tabs.canconers}
         </button>
       </div>
 

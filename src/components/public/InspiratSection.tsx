@@ -1,6 +1,7 @@
 "use client"
 import Link from "next/link"
 import { useState } from "react"
+import { getT } from "@/lib/i18n"
 
 interface SongLite {
   id: number
@@ -24,6 +25,7 @@ interface Props {
  * flash). Les següents tirades es demanen a /api/songs/random?count=N&exclude=...
  */
 export function InspiratSection({ initial }: Props) {
+  const t = getT()
   const [songs, setSongs] = useState<SongLite[]>(initial)
   const [loading, setLoading] = useState(false)
   const [rolling, setRolling] = useState(false)
@@ -65,9 +67,9 @@ export function InspiratSection({ initial }: Props) {
     <section className="public-home-section inspirat">
       <header className="public-home-section-head">
         <h2 className="public-home-section-title">
-          Inspira&apos;t
+          {t.public.inspirat.titol}
           <span className="public-home-section-subtitle">
-            {" "}— Cançons al·leatòries
+            {" "}{t.public.inspirat.subtitol}
           </span>
         </h2>
         <button
@@ -75,8 +77,8 @@ export function InspiratSection({ initial }: Props) {
           className={`inspirat-dice-btn ${rolling ? "is-rolling" : ""}`}
           onClick={roll}
           disabled={loading}
-          aria-label="Tira el dau per veure altres cançons"
-          title="Tira el dau"
+          aria-label={t.public.inspirat.tiraDauAriaLabel}
+          title={t.public.inspirat.tiraDauTitle}
         >
           <svg
             className="inspirat-dice-icon"

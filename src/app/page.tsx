@@ -4,6 +4,7 @@ import { PublicNav } from "@/components/public/PublicNav"
 import { SearchHero } from "@/components/public/SearchHero"
 import { InspiratSection } from "@/components/public/InspiratSection"
 import { MobileGateLink } from "@/components/public/MobileGateLink"
+import { getT } from "@/lib/i18n"
 
 const INSPIRAT_COUNT = 3
 
@@ -23,6 +24,7 @@ export const dynamic = "force-dynamic"
  * (sense aquesta directiva, Next podria cache-jar la portada estàticament).
  */
 export default async function HomePage() {
+  const t = getT()
   const [recent, randomSongs] = await Promise.all([
     listRecentPublicSongs(6),
     getRandomPublicSongs(INSPIRAT_COUNT),
@@ -35,20 +37,20 @@ export default async function HomePage() {
       <main className="public-home">
         <section className="public-home-hero">
           <img src="/img/Logo.png" alt="" className="public-home-logo" />
-          <h1 className="public-home-title">guitarreo.cat</h1>
+          <h1 className="public-home-title">{t.public.home.wordmark}</h1>
           <p className="public-home-claim">
-            Acords i lletres en català — i un editor de cançoners propi.
+            {t.public.home.claim}
           </p>
 
           <SearchHero />
 
           <div className="public-home-secondary">
             <MobileGateLink href="/app" className="public-home-secondary-cta">
-              Crea un cançoner
+              {t.public.home.creaCanconerCta}
             </MobileGateLink>
             <span className="public-home-secondary-sep">·</span>
             <Link href="/songs" className="public-home-secondary-link">
-              Explora el catàleg
+              {t.public.home.exploraElCataleg}
             </Link>
           </div>
         </section>
@@ -68,9 +70,9 @@ export default async function HomePage() {
         {recent.length > 0 && (
           <section className="public-home-section">
             <header className="public-home-section-head">
-              <h2 className="public-home-section-title">Últimes incorporades</h2>
+              <h2 className="public-home-section-title">{t.public.home.ultimesIncorporades}</h2>
               <Link href="/songs" className="public-home-section-link">
-                Veure totes →
+                {t.public.home.veureTotes}
               </Link>
             </header>
             <ul className="public-home-grid">

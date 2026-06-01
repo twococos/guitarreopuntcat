@@ -1,5 +1,6 @@
 "use client"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { getT } from "@/lib/i18n"
 
 interface CanconerRow {
   id: number
@@ -11,6 +12,7 @@ interface CanconerRow {
 }
 
 export function CanconersTab() {
+  const t = getT()
   const [canconers, setCanconers] = useState<CanconerRow[]>([])
   const [query, setQuery] = useState("")
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -49,7 +51,7 @@ export function CanconersTab() {
     : canconers
 
   async function handleDelete(id: number, title: string, ownerName: string) {
-    if (!confirm(`Eliminar el cançoner "${title}" de ${ownerName}?`)) return
+    if (!confirm(t.admin.canconersTab.confirmEliminar(title, ownerName))) return
     const res = await fetch(`/api/admin/canconers/${id}`, { method: "DELETE" })
     if (!res.ok) return
     await load()
@@ -60,7 +62,7 @@ export function CanconersTab() {
       <div className="panel-toolbar">
         <input
           type="text"
-          placeholder="Cerca…"
+          placeholder={t.admin.canconersTab.cercaPlaceholder}
           style={{ maxWidth: 260 }}
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
@@ -69,12 +71,12 @@ export function CanconersTab() {
       <table>
         <thead>
           <tr>
-            <th>Títol</th>
-            <th>Usuari</th>
-            <th>Cançons</th>
-            <th>Compartit</th>
-            <th>Actualitzat</th>
-            <th>Accions</th>
+            <th>{t.admin.canconersTab.colTitol}</th>
+            <th>{t.admin.canconersTab.colUsuari}</th>
+            <th>{t.admin.canconersTab.colCancons}</th>
+            <th>{t.admin.canconersTab.colCompartit}</th>
+            <th>{t.admin.canconersTab.colActualitzat}</th>
+            <th>{t.admin.canconersTab.colAccions}</th>
           </tr>
         </thead>
         <tbody>
@@ -84,7 +86,7 @@ export function CanconersTab() {
                 colSpan={6}
                 style={{ textAlign: "center", color: "var(--muted)", padding: "1.5rem" }}
               >
-                Cap cançoner trobat
+                {t.admin.canconersTab.capCanconerTrobat}
               </td>
             </tr>
           ) : (
@@ -103,10 +105,10 @@ export function CanconersTab() {
                       rel="noreferrer"
                       className="btn-xs success"
                     >
-                      🔗 Veure
+                      🔗 {t.admin.canconersTab.veure}
                     </a>
                   ) : (
-                    <span style={{ color: "var(--muted)", fontSize: ".78rem" }}>No</span>
+                    <span style={{ color: "var(--muted)", fontSize: ".78rem" }}>{t.admin.canconersTab.no}</span>
                   )}
                 </td>
                 <td style={{ fontSize: ".78rem", color: "var(--muted)" }}>
@@ -117,7 +119,7 @@ export function CanconersTab() {
                     className="btn-xs danger"
                     onClick={() => handleDelete(c.id, c.title, c.owner_name)}
                   >
-                    Eliminar
+                    {t.admin.canconersTab.eliminar}
                   </button>
                 </td>
               </tr>

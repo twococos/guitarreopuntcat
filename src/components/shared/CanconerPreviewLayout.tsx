@@ -3,6 +3,7 @@ import { SharedIndex } from "@/components/shared/SharedIndex"
 import { SharedPdfButton } from "@/components/shared/SharedPdfButton"
 import { SongView } from "@/components/song/SongView"
 import type { CanconerStyle, PdfOptions } from "@/lib/schemas/canconer"
+import { getT } from "@/lib/i18n"
 
 // ─── Tipus compartits entre /c/[token] i /library/canconers/[id]/preview ───
 
@@ -79,8 +80,10 @@ export default function CanconerPreviewLayout({
   canconer,
   ownerName,
   backHref = "/",
-  backLabel = "← Cançoner",
+  backLabel,
 }: Props) {
+  const t = getT()
+  const resolvedBackLabel = backLabel ?? t.public.sharedView.canconerBack
   const songIds = canconer.songs.map((s) => `song-${s.id}`)
   const songTitles = canconer.songs.map((s) => s.title)
 
@@ -97,11 +100,11 @@ export default function CanconerPreviewLayout({
     <>
       <header data-style={style} style={inlineStyle}>
         <a href={backHref} className="back-link">
-          {backLabel}
+          {resolvedBackLabel}
         </a>
         <h1 id="shared-title">{canconer.title}</h1>
         <p className="subtitle" id="shared-meta">
-          Per {ownerName} · {canconer.songs.length} cançons
+          {t.public.sharedView.per} {ownerName} · {t.public.sharedView.cancons(canconer.songs.length)}
         </p>
         <SharedPdfButton
           title={canconer.title}
@@ -113,7 +116,7 @@ export default function CanconerPreviewLayout({
       </header>
       <div id="shared-layout" data-style={style} style={inlineStyle}>
         <nav id="shared-nav">
-          <h2>Índex</h2>
+          <h2>{t.public.sharedView.index}</h2>
           <SharedIndex ids={songIds} titles={songTitles} />
         </nav>
         <main id="shared-songs">

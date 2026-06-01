@@ -5,6 +5,7 @@ import { useColumnSizesStore } from "@/hooks/useColumnSizes"
 import { useToastStore } from "@/hooks/useToasts"
 import { SongView } from "@/components/song/SongView"
 import { AccentPicker } from "./AccentPicker"
+import { getT } from "@/lib/i18n"
 import {
   CANCONER_STYLES,
   STYLE_LABELS,
@@ -46,6 +47,7 @@ function resolveLinkUrl(
 }
 
 function PreviewTab() {
+  const t = getT()
   const canconer = useSongbookStore((s) => s.canconer)
   const selectedIdx = useSongbookStore((s) => s.selectedIdx)
   const canconerStyle = useSongbookStore((s) => s.canconerStyle)
@@ -100,7 +102,7 @@ function PreviewTab() {
         <div className="preview-viewport" ref={viewportRef}>
           <div id="detail-empty" className="empty-state">
             <span>←</span>
-            <p>Selecciona una cançó del cançoner</p>
+            <p>{t.app.songbook.detailPanel.seleccionaCanco}</p>
           </div>
         </div>
       </div>
@@ -179,6 +181,7 @@ function PreviewTab() {
 /* ── StyleSelect ────────────────────────────────────────── */
 
 function StyleSelect() {
+  const t = getT()
   const canconerStyle = useSongbookStore((s) => s.canconerStyle)
   const setCanconerStyle = useSongbookStore((s) => s.setCanconerStyle)
   const accentColor = useSongbookStore((s) => s.accentColor)
@@ -206,8 +209,8 @@ function StyleSelect() {
           className="accent-swatch"
           style={{ background: effectiveColor }}
           onClick={() => setPickerOpen((p) => !p)}
-          title="Color d'accent"
-          aria-label="Color d'accent"
+          title={t.app.songbook.detailPanel.colorAccentTitle}
+          aria-label={t.app.songbook.detailPanel.colorAccentAriaLabel}
         />
         {pickerOpen && (
           <AccentPicker
@@ -224,6 +227,7 @@ function StyleSelect() {
 /* ── SortControls ──────────────────────────────────────────── */
 
 function SortControls() {
+  const t = getT()
   const sortMode = useSongbookStore((s) => s.sortMode)
   const sortAsc = useSongbookStore((s) => s.sortAsc)
   const setSortMode = useSongbookStore((s) => s.setSortMode)
@@ -237,16 +241,16 @@ function SortControls() {
         value={sortMode}
         onChange={(e) => setSortMode(e.target.value as typeof sortMode)}
       >
-        <option value="custom">Personalitzat</option>
-        <option value="title">Per títol</option>
-        <option value="artist">Per artista i títol</option>
-        <option value="random">Al·leatori</option>
+        <option value="custom">{t.app.songbook.detailPanel.ordenacioOpcions.personalitzat}</option>
+        <option value="title">{t.app.songbook.detailPanel.ordenacioOpcions.perTitol}</option>
+        <option value="artist">{t.app.songbook.detailPanel.ordenacioOpcions.perArtistaITitol}</option>
+        <option value="random">{t.app.songbook.detailPanel.ordenacioOpcions.aleatori}</option>
       </select>
       {(sortMode === "title" || sortMode === "artist") && (
         <button
           id="btn-sort-dir"
           className="btn-sort-extra"
-          title="Canviar ordre"
+          title={t.app.songbook.detailPanel.canviarOrdreTitle}
           onClick={toggleSortDir}
         >
           <span id="sort-dir-icon">{sortAsc ? "↑" : "↓"}</span>
@@ -256,7 +260,7 @@ function SortControls() {
         <button
           id="btn-sort-random"
           className="btn-sort-extra"
-          title="Tornar a aleatoritzar"
+          title={t.app.songbook.detailPanel.tornarAAleatorizarTitle}
           onClick={reshuffle}
         >
           🎲
@@ -292,43 +296,44 @@ function KeyFilterGrid() {
 /* ── PdfFormatSection ──────────────────────────────────────── */
 
 function PdfFormatSection() {
+  const t = getT()
   const opts = useSongbookStore((s) => s.pdfOptions)
   const setOpt = useSongbookStore((s) => s.setPdfOption)
 
   return (
     <div className="options-section">
-      <h3 className="options-section-title">Format PDF</h3>
+      <h3 className="options-section-title">{t.app.songbook.detailPanel.formatPdf}</h3>
 
-      <h4 className="options-subsection">Portada</h4>
+      <h4 className="options-subsection">{t.app.songbook.detailPanel.portada}</h4>
       <label className="opt-row">
         <input
           type="checkbox"
           checked={opts.show_cover}
           onChange={(e) => setOpt("show_cover", e.target.checked)}
         />
-        <span>Mostrar portada</span>
+        <span>{t.app.songbook.detailPanel.mostrarPortada}</span>
       </label>
       <input
         type="text"
         className="opt-input-text"
-        placeholder="Subtítol (opcional)"
+        placeholder={t.app.songbook.detailPanel.subtitolPlaceholder}
         disabled={!opts.show_cover}
         value={opts.cover_subtitle ?? ""}
         onChange={(e) => setOpt("cover_subtitle", e.target.value || null)}
         maxLength={200}
       />
 
-      <h4 className="options-subsection">Índex</h4>
+      <h4 className="options-subsection">{t.app.songbook.detailPanel.index}</h4>
       <label className="opt-row">
         <input
           type="checkbox"
           checked={opts.show_index}
           onChange={(e) => setOpt("show_index", e.target.checked)}
         />
-        <span>Mostrar índex</span>
+        <span>{t.app.songbook.detailPanel.mostrarIndex}</span>
       </label>
 
-      <h4 className="options-subsection">Cos</h4>
+      <h4 className="options-subsection">{t.app.songbook.detailPanel.cos}</h4>
       <div className="pdf-cols-group">
         {[1, 2, 3].map((n) => (
           <button
@@ -343,7 +348,7 @@ function PdfFormatSection() {
         ))}
       </div>
       <label className="opt-row">
-        <span>Mida lletra:</span>
+        <span>{t.app.songbook.detailPanel.midaLletra}</span>
         <select
           className="opt-select"
           value={opts.font_scale}
@@ -362,17 +367,17 @@ function PdfFormatSection() {
           checked={opts.page_breaks}
           onChange={(e) => setOpt("page_breaks", e.target.checked)}
         />
-        <span>Salt de pàgina entre cançons</span>
+        <span>{t.app.songbook.detailPanel.saltPaginaEntreCancons}</span>
       </label>
 
-      <h4 className="options-subsection">Format llibre</h4>
+      <h4 className="options-subsection">{t.app.songbook.detailPanel.formatLlibre}</h4>
       <label className="opt-row">
         <input
           type="checkbox"
           checked={opts.book_format}
           onChange={(e) => setOpt("book_format", e.target.checked)}
         />
-        <span>Imprimir a doble cara</span>
+        <span>{t.app.songbook.detailPanel.imprimirDoubleCara}</span>
       </label>
       <p className="opt-hint">
         Alterna capçaleres i números de pàgina entre les pàgines senars (dreta) i parells
@@ -380,10 +385,10 @@ function PdfFormatSection() {
         cançó comenci a una pàgina senar.
       </p>
 
-      <h4 className="options-subsection">Marges (mm)</h4>
+      <h4 className="options-subsection">{t.app.songbook.detailPanel.marges}</h4>
       <div className="pdf-margins-grid">
         <label className="opt-margin">
-          <span>Capçalera</span>
+          <span>{t.app.songbook.detailPanel.capçalera}</span>
           <input
             type="number"
             min={0}
@@ -393,7 +398,7 @@ function PdfFormatSection() {
           />
         </label>
         <label className="opt-margin">
-          <span>Peu de pàgina</span>
+          <span>{t.app.songbook.detailPanel.peuDePagina}</span>
           <input
             type="number"
             min={0}
@@ -403,7 +408,7 @@ function PdfFormatSection() {
           />
         </label>
         <label className="opt-margin">
-          <span>Esquerra</span>
+          <span>{t.app.songbook.detailPanel.esquerra}</span>
           <input
             type="number"
             min={0}
@@ -413,7 +418,7 @@ function PdfFormatSection() {
           />
         </label>
         <label className="opt-margin">
-          <span>Dreta</span>
+          <span>{t.app.songbook.detailPanel.dreta}</span>
           <input
             type="number"
             min={0}
@@ -424,9 +429,9 @@ function PdfFormatSection() {
         </label>
       </div>
 
-      <h4 className="options-subsection">Enllaços i QR</h4>
+      <h4 className="options-subsection">{t.app.songbook.detailPanel.enllacosIQr}</h4>
       <label className="opt-row">
-        <span>Enllaç clicable:</span>
+        <span>{t.app.songbook.detailPanel.enllacClicable}</span>
         <select
           className="opt-select"
           value={opts.link_platform}
@@ -437,9 +442,9 @@ function PdfFormatSection() {
             )
           }
         >
-          <option value="none">Cap</option>
-          <option value="youtube">YouTube</option>
-          <option value="spotify">Spotify</option>
+          <option value="none">{t.app.songbook.detailPanel.cap}</option>
+          <option value="youtube">{t.app.songbook.detailPanel.youtube}</option>
+          <option value="spotify">{t.app.songbook.detailPanel.spotify}</option>
         </select>
       </label>
       <p className="opt-hint">
@@ -453,7 +458,7 @@ function PdfFormatSection() {
           onChange={(e) => setOpt("show_qr", e.target.checked)}
           disabled={opts.link_platform === "none"}
         />
-        <span>Mostrar codi QR a cada capçalera</span>
+        <span>{t.app.songbook.detailPanel.mostrarCodiQr}</span>
       </label>
       <p className="opt-hint">
         Genera un QR a la dreta de la capçalera apuntant al mateix enllaç. Útil per a la versió impresa.
@@ -465,6 +470,7 @@ function PdfFormatSection() {
 /* ── OptionsTab ────────────────────────────────────────────── */
 
 function OptionsTab() {
+  const t = getT()
   const canconer = useSongbookStore((s) => s.canconer)
   const applyAllowedKeys = useSongbookStore((s) => s.applyAllowedKeys)
   const showToast = useToastStore((s) => s.show)
@@ -472,30 +478,30 @@ function OptionsTab() {
   function applyAndToast() {
     if (canconer.length === 0) return
     applyAllowedKeys()
-    showToast("Tonalitats aplicades!")
+    showToast(t.app.songbook.detailPanel.toastTonalitatsAplicades)
   }
 
   return (
     <div id="tab-options" className="tab-content">
       <div className="options-section">
-        <h3 className="options-section-title">Estil del cançoner</h3>
+        <h3 className="options-section-title">{t.app.songbook.detailPanel.estilCanconer}</h3>
         <StyleSelect />
       </div>
       <div className="options-sep" />
       <div className="options-section">
-        <h3 className="options-section-title">Ordenació</h3>
+        <h3 className="options-section-title">{t.app.songbook.detailPanel.ordenacio}</h3>
         <SortControls />
       </div>
       <div className="options-sep" />
       <div className="options-section">
-        <h3 className="options-section-title">Tonalitats permeses</h3>
+        <h3 className="options-section-title">{t.app.songbook.detailPanel.tonalitatPermeses}</h3>
         <KeyFilterGrid />
         <p className="key-filter-hint">
           Les cançons en tonalitats desactivades es transposaran a la més propera en aplicar. Si
           reactiveu una tonalitat, les cançons que hi eren originalment recuperen el to original.
         </p>
         <button id="btn-apply-keys" className="btn-apply-keys" onClick={applyAndToast}>
-          Aplicar
+          {t.app.songbook.detailPanel.aplicar}
         </button>
       </div>
       <div className="options-sep" />
@@ -507,6 +513,7 @@ function OptionsTab() {
 /* ── DetailPanel ───────────────────────────────────────────── */
 
 export function DetailPanel() {
+  const t = getT()
   const previewActive = useSongbookStore((s) => s.previewActive)
   const [activeTab, setActiveTab] = useState<"preview" | "options">("preview")
 
@@ -519,13 +526,13 @@ export function DetailPanel() {
               className={`detail-tab${activeTab === "preview" ? " active" : ""}`}
               onClick={() => setActiveTab("preview")}
             >
-              👁 Vista prèvia
+              👁 {t.app.songbook.detailPanel.tabVistaPreviа}
             </button>
             <button
               className={`detail-tab${activeTab === "options" ? " active" : ""}`}
               onClick={() => setActiveTab("options")}
             >
-              ⚙ Opcions
+              ⚙ {t.app.songbook.detailPanel.tabOpcions}
             </button>
           </div>
           {activeTab === "preview" && <PreviewTab />}
@@ -541,13 +548,14 @@ export function DetailPanel() {
  *  Quan està plegat, el seu CSS el converteix en `position: fixed` per
  *  flotar a la cantonada dreta del viewport. */
 export function PreviewToggleButton() {
+  const t = getT()
   const previewActive = useSongbookStore((s) => s.previewActive)
   const togglePreviewActive = useSongbookStore((s) => s.togglePreviewActive)
   return (
     <button
       id="btn-collapse-panel"
       className={`preview-toggle${previewActive ? "" : " collapsed"}`}
-      title={previewActive ? "Amagar vista prèvia" : "Mostrar vista prèvia"}
+      title={previewActive ? t.app.songbook.detailPanel.amagarVistaPreviа : t.app.songbook.detailPanel.mostrarVistaPreviа}
       onClick={togglePreviewActive}
     >
       <span id="collapse-arrow">{previewActive ? "›" : "‹"}</span>

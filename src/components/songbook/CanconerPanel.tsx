@@ -8,9 +8,11 @@ import { saveCanconer } from "@/lib/canconerApi"
 import { CanconerList } from "./CanconerList"
 import { CanconerGrid } from "./CanconerGrid"
 import { ConfirmToast } from "@/components/editor/ConfirmToast"
+import { getT } from "@/lib/i18n"
 import type { CanconerListItem } from "@/types/song"
 
 export function CanconerPanel() {
+  const t = getT()
   const { data: session } = useSession()
   const canconer = useSongbookStore((s) => s.canconer)
   const previewActive = useSongbookStore((s) => s.previewActive)
@@ -35,9 +37,9 @@ export function CanconerPanel() {
   // Es pot descartar si hi ha qualsevol contingut o si el títol s'ha canviat
   const canDiscard = hasItems || !titleIsDefault || savedCanconerId !== null
 
-  let saveTitle = "Guardar cançoner"
-  if (!hasItems) saveTitle = "Afegeix cançons primer"
-  else if (!isLoggedIn) saveTitle = "Inicia sessió per guardar"
+  let saveTitle: string = t.app.songbook.canconerPanel.guardarTitle
+  if (!hasItems) saveTitle = t.app.songbook.canconerPanel.guardarTitleSensCancons
+  else if (!isLoggedIn) saveTitle = t.app.songbook.canconerPanel.guardarTitleSenseSessio
 
   async function onSave() {
     if (!hasItems) return
@@ -82,9 +84,9 @@ export function CanconerPanel() {
     )
     if (newId != null) {
       markSaved(newId)
-      showToast("Cançoner guardat!")
+      showToast(t.app.songbook.canconerPanel.toastGuardat)
     } else {
-      showToast("Error guardant el cançoner", { type: "error" })
+      showToast(t.app.songbook.canconerPanel.toastErrorGuardant, { type: "error" })
     }
   }
 
@@ -112,7 +114,7 @@ export function CanconerPanel() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      alert("Error generant el PDF.")
+      alert(t.app.songbook.canconerPanel.errorGenerantPdf)
     } finally {
       setPdfLoading(false)
     }
@@ -121,7 +123,7 @@ export function CanconerPanel() {
   function onConfirmDiscard() {
     resetCanconer()
     setConfirmDiscard(false)
-    showToast("Cançoner descartat")
+    showToast(t.app.songbook.canconerPanel.toastDescartat)
   }
 
   return (
@@ -131,7 +133,7 @@ export function CanconerPanel() {
           type="text"
           id="canconer-title"
           className={`canconer-title-input${titleIsDefault ? " is-default" : ""}`}
-          placeholder="Títol del cançoner…"
+          placeholder={t.app.songbook.canconerPanel.titolPlaceholder}
           value={canconerTitle}
           onChange={(e) => setCanconerTitle(e.target.value)}
         />
@@ -140,7 +142,7 @@ export function CanconerPanel() {
             id="btn-discard-canconer"
             className="btn-icon-action btn-discard"
             disabled={!canDiscard}
-            title="Descartar cançoner en curs"
+            title={t.app.songbook.canconerPanel.descartarTitle}
             onClick={() => setConfirmDiscard(true)}
           >
             ✕
@@ -152,33 +154,33 @@ export function CanconerPanel() {
             title={saveTitle}
             onClick={onSave}
           >
-            💾 Guardar
+            💾 {t.app.songbook.canconerPanel.guardarLabel}
           </button>
           <button
             id="btn-generate"
             className="btn-icon-action"
             disabled={!hasItems || pdfLoading}
-            title="Generar PDF"
+            title={t.app.songbook.canconerPanel.generarPdfTitle}
             onClick={onGeneratePdf}
           >
-            {pdfLoading ? "⏳" : "📄 PDF"}
+            {pdfLoading ? "⏳" : `📄 ${t.app.songbook.canconerPanel.pdfLabel}`}
           </button>
         </div>
       </div>
       {!hasItems && (
         <div id="canconer-empty" className="empty-state">
           <span>🎶</span>
-          <p>Clica una cançó per afegir-la</p>
+          <p>{t.app.songbook.canconerPanel.buitHint}</p>
         </div>
       )}
       {hasItems && previewActive && <CanconerList />}
       {hasItems && !previewActive && <CanconerGrid />}
       <ConfirmToast
         open={confirmDiscard}
-        message="Vols descartar el cançoner en curs? Es perdran tots els canvis no guardats."
-        confirmLabel="Descartar"
+        message={t.app.songbook.canconerPanel.confirmDescartarMissatge}
+        confirmLabel={t.app.songbook.canconerPanel.confirmDescartarLabel}
         confirmVariant="danger"
-        cancelLabel="Cancel·lar"
+        cancelLabel={t.app.songbook.canconerPanel.confirmDescartarCancellar}
         onConfirm={onConfirmDiscard}
         onCancel={() => setConfirmDiscard(false)}
         autoDismissMs={10000}

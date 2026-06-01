@@ -8,6 +8,7 @@ import {
   RIGHT_MAX,
 } from "@/hooks/useColumnSizes"
 import { useSongbookStore } from "@/hooks/useSongbook"
+import { getT } from "@/lib/i18n"
 
 /**
  * Dos handles invisibles posicionats sobre les vores de les columnes
@@ -18,6 +19,7 @@ import { useSongbookStore } from "@/hooks/useSongbook"
  * (la columna no és visible).
  */
 export function ResizeHandles() {
+  const t = getT()
   const leftWidth = useColumnSizesStore((s) => s.leftWidth)
   const rightWidth = useColumnSizesStore((s) => s.rightWidth)
   const setLeftWidth = useColumnSizesStore((s) => s.setLeftWidth)
@@ -78,14 +80,14 @@ export function ResizeHandles() {
       <div
         className="resize-handle resize-handle-left"
         style={{ left: leftWidth - 3 }}
-        title={`Amplada del cercador (${LEFT_MIN}–${LEFT_MAX}px)`}
+        title={t.app.songbook.resizeHandles.ampladadaCercador(LEFT_MIN, LEFT_MAX)}
         onMouseDown={startDrag("left")}
       />
       {previewActive && (
         <div
           className="resize-handle resize-handle-right"
           style={{ right: `calc(${rightWidth}% - 3px)` }}
-          title={`Amplada de la vista prèvia (${RIGHT_MIN}–${RIGHT_MAX}%)`}
+          title={t.app.songbook.resizeHandles.ampladaVistaPreviа(RIGHT_MIN, RIGHT_MAX)}
           onMouseDown={startDrag("right")}
         />
       )}

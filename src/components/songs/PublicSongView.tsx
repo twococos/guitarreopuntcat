@@ -7,6 +7,7 @@ import { PublicKeyMenu } from "@/components/songs/PublicKeyMenu"
 import { guardMobileApp } from "@/components/public/MobileGateLink"
 import { transposeKey, transposeContent, CHROMATIC } from "@/lib/transpose"
 import type { Song } from "@/types/song"
+import { getT } from "@/lib/i18n"
 
 interface Props {
   song: Pick<
@@ -46,6 +47,7 @@ const SCROLL_PX_PER_TICK: Record<number, number> = {
  * Controls (transposició, mida i autoscroll) en barra flotant a baix de tot.
  */
 export function PublicSongView({ song }: Props) {
+  const t = getT()
   const router = useRouter()
   const [semitones, setSemitones] = useState(0)
   const [fontSize, setFontSize] = useState(FONT_DEFAULT)
@@ -215,10 +217,10 @@ export function PublicSongView({ song }: Props) {
                   type="button"
                   className="public-song-key-badge song-key"
                   onClick={openKeyPicker}
-                  aria-label="Canviar tonalitat"
+                  aria-label={t.public.publicSong.controls.canviarTonalitat}
                   aria-haspopup="dialog"
                   aria-expanded={keyPickerOpen}
-                  title="Canviar tonalitat"
+                  title={t.public.publicSong.controls.canviarTonalitat}
                 >
                   <span className="public-song-key-current">{displayKey}</span>
                   {showOriginal && (
@@ -232,7 +234,7 @@ export function PublicSongView({ song }: Props) {
                   className="public-song-header-cta"
                   onClick={startCanconerWithThisSong}
                 >
-                  Comença un cançoner
+                  {t.public.publicSong.comencaCanconerCta}
                 </button>
               </div>
             </div>
@@ -261,24 +263,23 @@ export function PublicSongView({ song }: Props) {
             className="public-song-cta"
             onClick={startCanconerWithThisSong}
           >
-            Comença un cançoner amb aquesta cançó →
+            {t.public.publicSong.comencaCanconerCtaLlarg}
           </button>
           <p className="public-song-cta-hint">
-            Crea un llibret amb les teves cançons preferides, transposa-les i
-            exporta-les en PDF.
+            {t.public.publicSong.comencaCanconerHint}
           </p>
         </div>
       </main>
 
       {/* Barra de controls flotant a baix */}
-      <div className="public-song-floating-bar" role="toolbar" aria-label="Controls de la cançó">
+      <div className="public-song-floating-bar" role="toolbar" aria-label={t.public.publicSong.controls.ariaLabel}>
         <div className="public-song-floating-bar-inner">
-          <div className="public-song-bar-group" aria-label="Transposició">
+          <div className="public-song-bar-group" aria-label={t.public.publicSong.controls.transposicio}>
             <button
               type="button"
               className="public-song-btn"
               onClick={transposeDown}
-              aria-label="Baixa un semitò"
+              aria-label={t.public.publicSong.controls.baixaUnSemito}
               disabled={semitones <= SEMITONES_MIN}
             >
               −
@@ -287,12 +288,12 @@ export function PublicSongView({ song }: Props) {
               type="button"
               className="public-song-semitones"
               onClick={transposeReset}
-              title="Tornar a la tonalitat original"
-              aria-label="Restablir tonalitat"
+              title={t.public.publicSong.controls.restablirTonalitatTitle}
+              aria-label={t.public.publicSong.controls.restablirTonalitatAriaLabel}
             >
               <span className="public-song-semitones-full">
                 {semitones === 0
-                  ? "Original"
+                  ? t.public.publicSong.controls.original
                   : semitones > 0
                     ? `+${semitones}`
                     : `${semitones}`}
@@ -305,19 +306,19 @@ export function PublicSongView({ song }: Props) {
               type="button"
               className="public-song-btn"
               onClick={transposeUp}
-              aria-label="Puja un semitò"
+              aria-label={t.public.publicSong.controls.pujaUnSemito}
               disabled={semitones >= SEMITONES_MAX}
             >
               +
             </button>
           </div>
 
-          <div className="public-song-bar-group" aria-label="Mida de la font">
+          <div className="public-song-bar-group" aria-label={t.public.publicSong.controls.midaDeLaFont}>
             <button
               type="button"
               className="public-song-btn public-song-btn-font-sm"
               onClick={fontSmaller}
-              aria-label="Reduir mida"
+              aria-label={t.public.publicSong.controls.reduirMida}
               disabled={fontSize <= FONT_MIN}
             >
               A
@@ -326,14 +327,14 @@ export function PublicSongView({ song }: Props) {
               type="button"
               className="public-song-btn public-song-btn-font-lg"
               onClick={fontBigger}
-              aria-label="Augmentar mida"
+              aria-label={t.public.publicSong.controls.augmentarMida}
               disabled={fontSize >= FONT_MAX}
             >
               A
             </button>
           </div>
 
-          <div className="public-song-bar-group public-song-autoscroll-group" aria-label="Autoscroll">
+          <div className="public-song-bar-group public-song-autoscroll-group" aria-label={t.public.publicSong.controls.autoscroll}>
             <button
               ref={autoBtnRef}
               type="button"
@@ -343,17 +344,17 @@ export function PublicSongView({ song }: Props) {
               aria-haspopup="menu"
               aria-expanded={speedMenuOpen}
             >
-              {autoscroll ? "■ Aturar" : "▶ Auto"}
+              {autoscroll ? t.public.publicSong.controls.aturar : t.public.publicSong.controls.auto}
             </button>
             {/* Desktop: selector de velocitat sempre visible */}
-            <div className="public-song-speed" role="group" aria-label="Velocitat autoscroll">
+            <div className="public-song-speed" role="group" aria-label={t.public.publicSong.controls.velocitatAutoscroll}>
               {SCROLL_SPEEDS.map((s) => (
                 <button
                   key={s}
                   type="button"
                   className={`public-song-speed-btn ${scrollSpeed === s ? "is-active" : ""}`}
                   onClick={() => setScrollSpeed(s)}
-                  aria-label={`Velocitat ${s}`}
+                  aria-label={t.public.publicSong.controls.velocitatN(s)}
                   aria-pressed={scrollSpeed === s}
                 >
                   {s}
@@ -365,9 +366,9 @@ export function PublicSongView({ song }: Props) {
               <div
                 className="public-song-speed-popover"
                 role="menu"
-                aria-label="Tria una velocitat"
+                aria-label={t.public.publicSong.controls.triaUnaVelocitat}
               >
-                <div className="public-song-speed-popover-label">Velocitat</div>
+                <div className="public-song-speed-popover-label">{t.public.publicSong.controls.velocitat}</div>
                 <div className="public-song-speed-popover-grid">
                   {SCROLL_SPEEDS.map((s) => (
                     <button
@@ -406,11 +407,12 @@ function formatSubline(
   year: number | null | undefined,
   capo: number | null | undefined,
 ): string | null {
+  const t = getT()
   const parts: string[] = []
   if (album && year) parts.push(`${album} (${year})`)
   else if (album) parts.push(album)
   else if (year) parts.push(String(year))
-  if (capo) parts.push(`Celleta ${capo}`)
+  if (capo) parts.push(t.public.publicSong.celleta(capo))
   return parts.length ? parts.join(" · ") : null
 }
 

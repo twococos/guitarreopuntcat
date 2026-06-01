@@ -2,6 +2,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { getT } from "@/lib/i18n"
 
 interface ArtistResult {
   name: string
@@ -53,6 +54,7 @@ export function SearchHero({
   placeholder,
   expandOnFocus = false,
 }: SearchHeroProps = {}) {
+  const t = getT()
   const router = useRouter()
   const [q, setQ] = useState("")
   const [results, setResults] = useState<SearchResponse | null>(null)
@@ -189,7 +191,7 @@ export function SearchHero({
           ref={inputRef}
           type="text"
           className="search-hero-input"
-          placeholder={placeholder ?? "Cerca cançons o artistes..."}
+          placeholder={placeholder ?? t.public.nav.cercaPlaceholder}
           value={q}
           onChange={(e) => {
             setQ(e.target.value)
@@ -201,7 +203,7 @@ export function SearchHero({
           }}
           onBlur={() => setFocused(false)}
           onKeyDown={onKeyDown}
-          aria-label="Cerca de cançons i artistes"
+          aria-label={t.public.searchHero.ariaLabel}
           aria-autocomplete="list"
           aria-expanded={showDropdown}
         />
@@ -215,7 +217,7 @@ export function SearchHero({
               setFocusedIdx(-1)
               inputRef.current?.focus()
             }}
-            aria-label="Esborra la cerca"
+            aria-label={t.public.searchHero.esborraAriaLabel}
           >
             ✕
           </button>
@@ -234,15 +236,17 @@ export function SearchHero({
             e.preventDefault()
           }}
         >
-          {loading && items.length === 0 && <div className="search-hero-empty">Cercant…</div>}
+          {loading && items.length === 0 && (
+            <div className="search-hero-empty">{t.public.searchHero.cercant}</div>
+          )}
 
           {!loading && results !== null && items.length === 0 && (
-            <div className="search-hero-empty">No hi ha resultats per a “{q}”.</div>
+            <div className="search-hero-empty">{t.public.searchHero.sensResultats(q)}</div>
           )}
 
           {results && results.artists.length > 0 && (
             <div className="search-hero-section">
-              <div className="search-hero-section-label">Artistes</div>
+              <div className="search-hero-section-label">{t.public.searchHero.artistes}</div>
               {results.artists.map((a, i) => {
                 const idx = i
                 const focused = idx === focusedIdx
@@ -263,7 +267,7 @@ export function SearchHero({
                     <span className="search-hero-result-main">
                       <span className="search-hero-result-title">{a.name}</span>
                       <span className="search-hero-result-sub">
-                        {a.song_count === 1 ? "1 cançó" : `${a.song_count} cançons`}
+                        {t.public.searchHero.songCount(a.song_count)}
                       </span>
                     </span>
                   </Link>
@@ -274,7 +278,7 @@ export function SearchHero({
 
           {results && results.songs.length > 0 && (
             <div className="search-hero-section">
-              <div className="search-hero-section-label">Cançons</div>
+              <div className="search-hero-section-label">{t.public.searchHero.cancons}</div>
               {results.songs.map((s, i) => {
                 if (!s.artist_slug || !s.song_slug) return null
                 const idx = (results.artists?.length ?? 0) + i

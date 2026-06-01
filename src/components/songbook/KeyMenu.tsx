@@ -3,8 +3,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useSongbookStore } from "@/hooks/useSongbook"
 import { CHROMATIC } from "@/lib/transpose"
 import { transposeKey } from "@/lib/transpose"
+import { getT } from "@/lib/i18n"
 
 export function KeyMenu() {
+  const t = getT()
   const keyMenu = useSongbookStore((s) => s.keyMenu)
   const canconer = useSongbookStore((s) => s.canconer)
   const setSemitones = useSongbookStore((s) => s.setSemitones)
@@ -82,7 +84,7 @@ export function KeyMenu() {
       ref={menuRef}
       style={{ position: "fixed", left: pos.left, top: pos.top, zIndex: 1000 }}
     >
-      <div className="key-menu-title">Canviar tonalitat</div>
+      <div className="key-menu-title">{t.app.songbook.keyMenu.titol}</div>
       <div className="key-menu-grid" id="key-menu-grid">
         {keysForSong.map((k) => (
           <button

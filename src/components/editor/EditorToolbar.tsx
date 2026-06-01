@@ -1,5 +1,6 @@
 "use client"
 import type { ReactNode } from "react"
+import { getT } from "@/lib/i18n"
 
 interface EditorToolbarProps {
   onInsertSection: () => void
@@ -58,6 +59,7 @@ export function EditorToolbar({
   onReject,
   saveDisabledHint,
 }: EditorToolbarProps): ReactNode {
+  const t = getT()
   const blocked = !!disabledReason
   const isReview = mode === "review"
   return (
@@ -66,7 +68,7 @@ export function EditorToolbar({
         <button
           type="button"
           className="toolbar-btn"
-          title="Inserir títol de secció (o clic mig sobre la lletra)"
+          title={t.editor.toolbar.inserirSeccioTitle}
           onClick={onInsertSection}
           disabled={blocked}
         >
@@ -75,7 +77,7 @@ export function EditorToolbar({
         <button
           type="button"
           className="toolbar-btn"
-          title="Inserir acord (o clic dret sobre la lletra)"
+          title={t.editor.toolbar.inserirAcordTitle}
           onClick={onInsertChord}
           disabled={blocked}
         >
@@ -85,7 +87,7 @@ export function EditorToolbar({
         <button
           type="button"
           className="toolbar-btn"
-          title="Desfer (Ctrl+Z)"
+          title={t.editor.toolbar.desferTitle}
           onClick={onUndo}
           disabled={blocked || !canUndo}
         >
@@ -94,14 +96,14 @@ export function EditorToolbar({
         <button
           type="button"
           className="toolbar-btn"
-          title="Refer (Ctrl+Y)"
+          title={t.editor.toolbar.referTitle}
           onClick={onRedo}
           disabled={blocked || !canRedo}
         >
           ↪ Refer
         </button>
         <span className="editor-toolbar-sep" />
-        <span className="editor-toolbar-hint" title="Drecera ratolí">
+        <span className="editor-toolbar-hint" title={t.editor.toolbar.dreceraMatoliTitle}>
           clic mig → secció · clic dret → acord
         </span>
       </div>
@@ -114,7 +116,7 @@ export function EditorToolbar({
             <button
               type="button"
               className="toolbar-btn toolbar-btn-reject"
-              title="Rebutjar la proposta"
+              title={t.editor.toolbar.rebutjarPropostaTitle}
               onClick={onReject}
               disabled={saving}
             >
@@ -123,7 +125,7 @@ export function EditorToolbar({
             <button
               type="button"
               className="toolbar-btn toolbar-btn-approve"
-              title="Acceptar la proposta i guardar la cançó"
+              title={t.editor.toolbar.acceptarPropostaTitle}
               onClick={onAccept}
               disabled={blocked || saving}
             >
@@ -135,7 +137,7 @@ export function EditorToolbar({
             <button
               type="button"
               className="toolbar-btn"
-              title={resetLabel === "Reset" ? "Restablir tot el contingut" : resetLabel}
+              title={resetLabel}
               onClick={onReset}
               disabled={saving}
             >

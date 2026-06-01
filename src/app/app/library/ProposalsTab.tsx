@@ -10,6 +10,7 @@ import {
   IconPlus,
   IconRevoke,
 } from "@/components/shared/Icons"
+import { getT } from "@/lib/i18n"
 
 // ─── Tipus locals ──────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ const STATUS_LABELS: Record<ProposalStatus, string> = {
 // ─── Component ────────────────────────────────────────────────
 
 export function ProposalsTab() {
+  const t = getT()
   const router = useRouter()
 
   const [proposals, setProposals] = useState<Proposal[]>([])
@@ -93,13 +95,13 @@ export function ProposalsTab() {
   // ─── Cancel·lació ─────────────────────────────────────────
 
   async function handleCancel(p: Proposal) {
-    if (!confirm(`Cancel·lar la proposta "${p.song_title}"? No apareixerà a la teva llista.`)) return
+    if (!confirm(t.app.library.proposalsTab.confirmCancellar(p.song_title))) return
     const res = await fetch(`/api/proposals/${p.id}/cancel`, { method: "POST" })
     if (!res.ok) {
-      useToastStore.getState().show("Error en cancel·lar la proposta.", { type: "error" })
+      useToastStore.getState().show(t.app.library.proposalsTab.toastErrorCancellar, { type: "error" })
       return
     }
-    useToastStore.getState().show("Proposta cancel·lada.")
+    useToastStore.getState().show(t.app.library.proposalsTab.toastPropostaCancellada)
     if (active?.id === p.id) {
       setActive(null)
       setActiveSong(null)
@@ -139,7 +141,7 @@ export function ProposalsTab() {
           <input
             className="library-search"
             type="search"
-            placeholder="Cerca…"
+            placeholder={t.app.library.proposalsTab.cercaPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -148,13 +150,13 @@ export function ProposalsTab() {
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as "created" | "title")}
             >
-              <option value="created">Data</option>
-              <option value="title">Títol</option>
+              <option value="created">{t.app.library.proposalsTab.colData}</option>
+              <option value="title">{t.app.library.proposalsTab.colTitol}</option>
             </select>
             <button
               type="button"
               className="library-sort-dir"
-              aria-label={sortDir === "asc" ? "Ascendent" : "Descendent"}
+              aria-label={sortDir === "asc" ? t.app.library.proposalsTab.ascendent : t.app.library.proposalsTab.descendent}
               onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
             >
               {sortDir === "asc" ? "↑" : "↓"}
@@ -167,7 +169,7 @@ export function ProposalsTab() {
                 checked={showPending}
                 onChange={(e) => setShowPending(e.target.checked)}
               />{" "}
-              Pendents
+              {t.app.library.proposalsTab.filtresPendents}
             </label>
             <label>
               <input
@@ -175,7 +177,7 @@ export function ProposalsTab() {
                 checked={showApproved}
                 onChange={(e) => setShowApproved(e.target.checked)}
               />{" "}
-              Acceptades
+              {t.app.library.proposalsTab.filtresAcceptades}
             </label>
             <label>
               <input
@@ -183,7 +185,7 @@ export function ProposalsTab() {
                 checked={showRejected}
                 onChange={(e) => setShowRejected(e.target.checked)}
               />{" "}
-              Rebutjades
+              {t.app.library.proposalsTab.filtresRebutjades}
             </label>
           </div>
         </div>
@@ -226,8 +228,7 @@ export function ProposalsTab() {
                       <>
                         {p.status === "approved" && (
                           <p className="library-card-info">
-                            <IconCheck /> Aquesta cançó forma part de la base
-                            de dades pública.
+                            <IconCheck /> {t.app.library.proposalsTab.cancoPublic}
                           </p>
                         )}
                         {(p.status === "pending" || p.status === "rejected") && (
@@ -239,14 +240,14 @@ export function ProposalsTab() {
                                 router.push(`/app/editor?proposal=${p.id}&mode=modify`)
                               }
                             >
-                              <IconPencil /> Modificar
+                              <IconPencil /> {t.app.library.proposalsTab.modificar}
                             </button>
                             <button
                               type="button"
                               className="library-action library-action-danger"
                               onClick={() => void handleCancel(p)}
                             >
-                              <IconRevoke /> Cancel·lar
+                              <IconRevoke /> {t.app.library.proposalsTab.cancellar}
                             </button>
                           </div>
                         )}
@@ -261,9 +262,9 @@ export function ProposalsTab() {
 
         {proposals.length === 0 && (
           <div className="library-empty">
-            <p>Encara no has fet cap proposta de cançó.</p>
+            <p>{t.app.library.proposalsTab.buit}</p>
             <Link href="/app/editor" className="library-empty-btn">
-              <IconPlus /> Fer una proposta
+              <IconPlus /> {t.app.library.proposalsTab.ferUnaProposta}
             </Link>
           </div>
         )}
@@ -275,7 +276,7 @@ export function ProposalsTab() {
           <>
             {active.status === "rejected" && active.notes && (
               <div className="library-feedback-box">
-                <strong>Retroacció de l&apos;administrador:</strong>
+                <strong>{t.app.library.proposalsTab.retroaccioAdmin}</strong>
                 <p>{active.notes}</p>
               </div>
             )}
@@ -283,7 +284,7 @@ export function ProposalsTab() {
           </>
         ) : (
           <div className="library-placeholder">
-            <p>Selecciona una proposta per veure&apos;n la cançó.</p>
+            <p>{t.app.library.proposalsTab.seleccionaProposta}</p>
           </div>
         )}
       </section>

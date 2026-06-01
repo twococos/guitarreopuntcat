@@ -1,6 +1,7 @@
 "use client"
 import { useCallback, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
+import { getT } from "@/lib/i18n"
 
 interface UserRow {
   id: number
@@ -14,6 +15,7 @@ interface UserRow {
 }
 
 export function UsersTab() {
+  const t = getT()
   const { data: session } = useSession()
   const [users, setUsers] = useState<UserRow[]>([])
 
@@ -30,8 +32,8 @@ export function UsersTab() {
 
   async function handleToggleRole(u: UserRow) {
     const newRole = u.role === "admin" ? "user" : "admin"
-    const label = newRole === "admin" ? "fer administrador" : "fer usuari normal"
-    if (!confirm(`Vols ${label} a ${u.name}?`)) return
+    const label = newRole === "admin" ? t.admin.usersTab.ferAdminLabel : t.admin.usersTab.ferUsuariLabel
+    if (!confirm(t.admin.usersTab.confirmToggleRol(label, u.name))) return
     const res = await fetch(`/api/admin/users/${u.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -42,8 +44,8 @@ export function UsersTab() {
   }
 
   async function handleToggleActive(u: UserRow) {
-    const action = u.active ? "desactivar" : "activar"
-    if (!confirm(`Vols ${action} l'usuari ${u.name}?`)) return
+    const action = u.active ? t.admin.usersTab.desactivarLabel : t.admin.usersTab.activarLabel
+    if (!confirm(t.admin.usersTab.confirmToggleActiu(action, u.name))) return
     const res = await fetch(`/api/admin/users/${u.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -57,12 +59,12 @@ export function UsersTab() {
     <table>
       <thead>
         <tr>
-          <th>Usuari</th>
-          <th>Email</th>
-          <th>Rol</th>
-          <th>Cançoners</th>
-          <th>Registre</th>
-          <th>Accions</th>
+          <th>{t.admin.usersTab.colUsuari}</th>
+          <th>{t.admin.usersTab.colEmail}</th>
+          <th>{t.admin.usersTab.colRol}</th>
+          <th>{t.admin.usersTab.colCanconers}</th>
+          <th>{t.admin.usersTab.colRegistre}</th>
+          <th>{t.admin.usersTab.colAccions}</th>
         </tr>
       </thead>
       <tbody>
@@ -75,7 +77,7 @@ export function UsersTab() {
                 <img src={u.avatar_url ?? ""} className="user-row-avatar" alt="" />
                 {u.name}{" "}
                 {isMe && (
-                  <span style={{ color: "var(--muted)", fontSize: ".72rem" }}>(tu)</span>
+                  <span style={{ color: "var(--muted)", fontSize: ".72rem" }}>{t.admin.usersTab.tu}</span>
                 )}
               </td>
               <td style={{ fontSize: ".8rem", color: "var(--muted)" }}>{u.email}</td>
@@ -95,13 +97,13 @@ export function UsersTab() {
                       className={`btn-xs ${u.role !== "admin" ? "success" : ""}`}
                       onClick={() => handleToggleRole(u)}
                     >
-                      {u.role === "admin" ? "Fer usuari" : "Fer admin"}
+                      {u.role === "admin" ? t.admin.usersTab.ferUsuari : t.admin.usersTab.ferAdmin}
                     </button>
                     <button
                       className={`btn-xs ${u.active ? "danger" : ""}`}
                       onClick={() => handleToggleActive(u)}
                     >
-                      {u.active ? "Desactivar" : "Activar"}
+                      {u.active ? t.admin.usersTab.desactivar : t.admin.usersTab.activar}
                     </button>
                   </>
                 )}
