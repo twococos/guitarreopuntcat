@@ -45,15 +45,19 @@ export default async function ArtistPage({ params }: Props) {
   return (
     <>
       <PublicNav />
-      <div className="public-artist-page">
-        <header className="public-artist-header">
+      <header className="public-artist-banner">
+        <div className="public-artist-banner-inner">
           <p className="public-artist-eyebrow">{t.public.publicArtist.artista}</p>
-        <h1 className="public-artist-name">{artist.name}</h1>
-        <p className="public-artist-count">
-          {t.public.publicArtist.countCancons(artist.songs.length)}
-        </p>
+          <h1 className="public-artist-title">
+            <span className="public-artist-title-main">{artist.name}</span>
+            <span className="public-artist-count">
+              {t.public.publicArtist.countCancons(artist.songs.length)}
+            </span>
+          </h1>
+        </div>
       </header>
 
+      <div className="public-artist-page">
       <main className="public-artist-main">
         <ul className="public-artist-songs">
           {artist.songs.map((s) => (

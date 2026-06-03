@@ -84,6 +84,10 @@ export interface SongbookState {
   /* ── Persistència ── */
   savedCanconerId: number | null
   canconerTitle: string
+  /** Nom provisional auto-generat. Sempre disponible com a placeholder
+   *  i com a fallback si l'usuari buida el camp del títol. Independent
+   *  de `canconerTitle` (que conté el valor "real" que es guardarà). */
+  provisionalTitle: string
   canconerStyle: CanconerStyle
   accentColor: string | null
   pdfOptions: PdfOptions
@@ -130,6 +134,7 @@ export interface SongbookState {
   closeKeyMenu: () => void
 
   setCanconerTitle: (title: string) => void
+  setProvisionalTitle: (title: string) => void
   setCanconerStyle: (style: CanconerStyle) => void
   setAccentColor: (color: string | null) => void
 
@@ -220,13 +225,16 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
   songs: [],
   canconer: [],
   selectedIdx: null,
-  previewActive: true,
+  // Per defecte plegat amb cançoner buit: redueix l'aclaparament inicial
+  // per l'usuari nou. S'autodesplega en afegir la primera cançó.
+  previewActive: false,
   sortMode: "custom",
   sortAsc: true,
   allowedKeys: new Set(ALL_MAJOR_KEYS),
   keyMenu: null,
   savedCanconerId: null,
   canconerTitle: DEFAULT_CANCONER_TITLE,
+  provisionalTitle: DEFAULT_CANCONER_TITLE,
   canconerStyle: "classic",
   accentColor: null,
   pdfOptions: PDF_OPTIONS_DEFAULTS,
@@ -252,7 +260,7 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
   },
 
   async addToCanconer(songId) {
-    const { canconer, songs } = get()
+    const { canconer, songs, previewActive } = get()
     // Carregar la cançó sencera (els elements de songs no inclouen content)
     let full: Song
     const summary = songs.find((s) => s.id === songId)
@@ -263,9 +271,13 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
       full = await res.json()
     }
     const next = [...canconer, { song: full, semitones: 0 }]
+    // Si era la primera cançó i el panell estava plegat, desplega'l
+    // automàticament. A partir d'aquí l'usuari el controla manualment.
+    const wasEmpty = canconer.length === 0
     set({
       canconer: next,
       selectedIdx: next.length - 1,
+      previewActive: wasEmpty && !previewActive ? true : previewActive,
     })
   },
 
@@ -430,6 +442,16 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
     set({ canconerTitle: title })
   },
 
+  setProvisionalTitle(title) {
+    // Si el camp actual encara és el provisional anterior (l'usuari no l'ha
+    // tocat), sincronitza-ho amb el nou. En cas contrari, conserva el text
+    // de l'usuari.
+    const { canconerTitle, provisionalTitle } = get()
+    const next: Partial<SongbookState> = { provisionalTitle: title }
+    if (canconerTitle === provisionalTitle) next.canconerTitle = title
+    set(next as SongbookState)
+  },
+
   setCanconerStyle(style) {
     // En canviar de preset, reseteja l'accent a null perquè la cançó
     // adopti el color default del nou preset. Si l'usuari vol un color
@@ -457,12 +479,15 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
     set({
       savedCanconerId: id,
       canconerTitle: title,
+      provisionalTitle: title,
       canconerStyle: style,
       accentColor: accentColor,
       pdfOptions: pdfOptions ?? PDF_OPTIONS_DEFAULTS,
       canconer: entries,
       selectedIdx: entries.length > 0 ? 0 : null,
       sortMode: "custom",
+      // Carregar un cançoner amb cançons sempre obre la vista prèvia.
+      previewActive: entries.length > 0 ? true : false,
     })
   },
 
@@ -475,12 +500,14 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
       canconer: [],
       selectedIdx: null,
       canconerTitle: DEFAULT_CANCONER_TITLE,
+      provisionalTitle: DEFAULT_CANCONER_TITLE,
       canconerStyle: "classic",
       accentColor: null,
       pdfOptions: PDF_OPTIONS_DEFAULTS,
       savedCanconerId: null,
       sortMode: "custom",
       sortAsc: true,
+      previewActive: false,
     })
     if (typeof window !== "undefined") {
       sessionStorage.removeItem(IN_PROGRESS_STORAGE_KEY)

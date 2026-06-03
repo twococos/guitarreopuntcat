@@ -18,6 +18,7 @@ export function CanconerPanel() {
   const canconer = useSongbookStore((s) => s.canconer)
   const previewActive = useSongbookStore((s) => s.previewActive)
   const canconerTitle = useSongbookStore((s) => s.canconerTitle)
+  const provisionalTitle = useSongbookStore((s) => s.provisionalTitle)
   const canconerStyle = useSongbookStore((s) => s.canconerStyle)
   const accentColor = useSongbookStore((s) => s.accentColor)
   const pdfOptions = useSongbookStore((s) => s.pdfOptions)
@@ -31,10 +32,22 @@ export function CanconerPanel() {
 
   const [pdfLoading, setPdfLoading] = useState(false)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  // Mentre el camp té focus mostrem el text "buit" perquè el placeholder
+  // (el títol provisional) faci de hint. En perdre focus, si l'usuari no
+  // ha escrit res, restaurem el provisional perquè mai s'arribi a guardar
+  // sense nom.
+  const [titleFocused, setTitleFocused] = useState(false)
 
   const hasItems = canconer.length > 0
   const isLoggedIn = !!(session?.user?.active)
-  const titleIsDefault = isDefaultCanconerTitle(canconerTitle)
+  const titleIsProvisional = canconerTitle === provisionalTitle
+  // El títol "provisional" en estilem en gris (com un placeholder permanent).
+  // Per compat retornem true també per als "El meu cançoner N" perquè altres
+  // llocs (autoguardat) hi confiïn.
+  const titleIsDefault = titleIsProvisional || isDefaultCanconerTitle(canconerTitle)
+  // Mentre el camp té focus i el valor és el provisional, el mostrem buit
+  // perquè el placeholder (el provisional) actuï com a hint.
+  const displayedTitle = titleFocused && titleIsProvisional ? "" : canconerTitle
   // Es pot descartar si hi ha qualsevol contingut o si el títol s'ha canviat
   const canDiscard = hasItems || !titleIsDefault || savedCanconerId !== null
 
@@ -134,9 +147,18 @@ export function CanconerPanel() {
           type="text"
           id="canconer-title"
           className={`canconer-title-input${titleIsDefault ? " is-default" : ""}`}
-          placeholder={t.app.songbook.canconerPanel.titolPlaceholder}
-          value={canconerTitle}
+          placeholder={provisionalTitle}
+          value={displayedTitle}
           onChange={(e) => setCanconerTitle(e.target.value)}
+          onFocus={() => setTitleFocused(true)}
+          onBlur={() => {
+            setTitleFocused(false)
+            // Si l'usuari l'ha deixat buit, restaura el provisional perquè
+            // mai pugui quedar el camp sense nom.
+            if (canconerTitle.trim() === "") {
+              setCanconerTitle(provisionalTitle)
+            }
+          }}
         />
         <div className="canconer-header-actions">
           <button

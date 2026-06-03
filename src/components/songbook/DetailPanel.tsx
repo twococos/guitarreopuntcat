@@ -1,12 +1,12 @@
 "use client"
-import { useLayoutEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useSongbookStore, ALL_MAJOR_KEYS, RELATIVE_MINOR } from "@/hooks/useSongbook"
 import { useColumnSizesStore } from "@/hooks/useColumnSizes"
 import { useToastStore } from "@/hooks/useToasts"
 import { SongView } from "@/components/song/SongView"
 import { AccentPicker } from "./AccentPicker"
 import { getT } from "@/lib/i18n"
-import { IconEye, IconSettings, IconShuffle } from "@/components/shared/Icons"
+import { IconEye, IconSettings, IconShuffle, IconFileText, IconX } from "@/components/shared/Icons"
 import {
   CANCONER_STYLES,
   STYLE_LABELS,
@@ -295,18 +295,19 @@ function KeyFilterGrid() {
   )
 }
 
-/* ── PdfFormatSection ──────────────────────────────────────── */
+/* ── ContentSection ──────────────────────────────────────────
+ *  Opcions referents al contingut estructural del cançoner (portada,
+ *  subtítol, índex i salt de pàgina entre cançons). Va al panell
+ *  d'Opcions, no al format del PDF. */
 
-function PdfFormatSection() {
+function ContentSection() {
   const t = getT()
   const opts = useSongbookStore((s) => s.pdfOptions)
   const setOpt = useSongbookStore((s) => s.setPdfOption)
 
   return (
     <div className="options-section">
-      <h3 className="options-section-title">{t.app.songbook.detailPanel.formatPdf}</h3>
-
-      <h4 className="options-subsection">{t.app.songbook.detailPanel.portada}</h4>
+      <h3 className="options-section-title">{t.app.songbook.detailPanel.portada}</h3>
       <label className="opt-row">
         <input
           type="checkbox"
@@ -324,8 +325,9 @@ function PdfFormatSection() {
         onChange={(e) => setOpt("cover_subtitle", e.target.value || null)}
         maxLength={200}
       />
-
-      <h4 className="options-subsection">{t.app.songbook.detailPanel.index}</h4>
+      <h3 className="options-section-title" style={{ marginTop: "0.5rem" }}>
+        {t.app.songbook.detailPanel.index}
+      </h3>
       <label className="opt-row">
         <input
           type="checkbox"
@@ -334,6 +336,32 @@ function PdfFormatSection() {
         />
         <span>{t.app.songbook.detailPanel.mostrarIndex}</span>
       </label>
+      <h3 className="options-section-title" style={{ marginTop: "0.5rem" }}>
+        {t.app.songbook.detailPanel.cos}
+      </h3>
+      <label className="opt-row">
+        <input
+          type="checkbox"
+          checked={opts.page_breaks}
+          onChange={(e) => setOpt("page_breaks", e.target.checked)}
+        />
+        <span>{t.app.songbook.detailPanel.saltPaginaEntreCancons}</span>
+      </label>
+    </div>
+  )
+}
+
+/* ── PdfFormatSection ──────────────────────────────────────── */
+
+function PdfFormatSection() {
+  const t = getT()
+  const opts = useSongbookStore((s) => s.pdfOptions)
+  const setOpt = useSongbookStore((s) => s.setPdfOption)
+
+  return (
+    <div className="options-section">
+      <h3 className="options-section-title">{t.app.songbook.detailPanel.estilCanconer}</h3>
+      <StyleSelect />
 
       <h4 className="options-subsection">{t.app.songbook.detailPanel.cos}</h4>
       <div className="pdf-cols-group">
@@ -363,15 +391,6 @@ function PdfFormatSection() {
           ))}
         </select>
       </label>
-      <label className="opt-row">
-        <input
-          type="checkbox"
-          checked={opts.page_breaks}
-          onChange={(e) => setOpt("page_breaks", e.target.checked)}
-        />
-        <span>{t.app.songbook.detailPanel.saltPaginaEntreCancons}</span>
-      </label>
-
       <h4 className="options-subsection">{t.app.songbook.detailPanel.formatLlibre}</h4>
       <label className="opt-row">
         <input
@@ -485,10 +504,7 @@ function OptionsTab() {
 
   return (
     <div id="tab-options" className="tab-content">
-      <div className="options-section">
-        <h3 className="options-section-title">{t.app.songbook.detailPanel.estilCanconer}</h3>
-        <StyleSelect />
-      </div>
+      <ContentSection />
       <div className="options-sep" />
       <div className="options-section">
         <h3 className="options-section-title">{t.app.songbook.detailPanel.ordenacio}</h3>
@@ -506,8 +522,85 @@ function OptionsTab() {
           {t.app.songbook.detailPanel.aplicar}
         </button>
       </div>
-      <div className="options-sep" />
-      <PdfFormatSection />
+    </div>
+  )
+}
+
+/* ── PdfFormatFloatingPanel ─────────────────────────────────
+ *  Panell flotant amb les opcions de format del PDF. Apareix per
+ *  sobre del `#panel-canconer` (col del mig), amb vores arrodonides
+ *  i ombra. La resta de la UI queda difuminada (excepte l'AppHeader
+ *  i la vista prèvia) perquè l'usuari vegi els canvis en temps real.
+ *  Es tanca amb Esc, X, o clicant fora del panell. */
+
+function PdfFormatFloatingPanel({ onClose }: { onClose: () => void }) {
+  const t = getT()
+  const panelRef = useRef<HTMLDivElement | null>(null)
+
+  // Aplica/treu la classe que difumina la resta del layout.
+  useEffect(() => {
+    document.body.classList.add("pdf-format-overlay-active")
+    return () => {
+      document.body.classList.remove("pdf-format-overlay-active")
+    }
+  }, [])
+
+  // Tancar amb Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [onClose])
+
+  // Click fora del panell flotant → tanca. Atenció a no comptar el clic
+  // inicial que l'ha obert (l'event d'obertura ja s'ha consumit perquè
+  // l'efecte es registra al següent tick). Tampoc el comptem si el clic
+  // és sobre el botó toggle "Format PDF" — d'aquest se n'encarrega el
+  // seu `onClick`, que farà el toggle correctament. Si no l'excloíem,
+  // el `mousedown` tancaria el panell i el `click` el tornaria a obrir.
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      const panel = panelRef.current
+      if (!panel) return
+      const target = e.target as Node
+      if (panel.contains(target)) return
+      const toggleBtn = document.querySelector(".detail-tab.is-toggle")
+      if (toggleBtn && toggleBtn.contains(target)) return
+      onClose()
+    }
+    // Esperem un tick per no atrapar el mateix clic que obre el panell.
+    const id = window.setTimeout(() => {
+      document.addEventListener("mousedown", onClick)
+    }, 0)
+    return () => {
+      window.clearTimeout(id)
+      document.removeEventListener("mousedown", onClick)
+    }
+  }, [onClose])
+
+  return (
+    <div
+      ref={panelRef}
+      className="pdf-format-panel"
+      role="dialog"
+      aria-modal="false"
+    >
+      <div className="pdf-format-panel-header">
+        <h2 className="pdf-format-panel-title">{t.app.songbook.detailPanel.tabFormatPdf}</h2>
+        <button
+          className="pdf-format-panel-close"
+          onClick={onClose}
+          title={t.app.songbook.detailPanel.tancarFormatPdf}
+          aria-label={t.app.songbook.detailPanel.tancarFormatPdf}
+        >
+          <IconX />
+        </button>
+      </div>
+      <div className="pdf-format-panel-body">
+        <PdfFormatSection />
+      </div>
     </div>
   )
 }
@@ -518,30 +611,49 @@ export function DetailPanel() {
   const t = getT()
   const previewActive = useSongbookStore((s) => s.previewActive)
   const [activeTab, setActiveTab] = useState<"preview" | "options">("preview")
+  const [pdfFormatOpen, setPdfFormatOpen] = useState(false)
 
   return (
-    <section id="panel-detail">
-      {previewActive && (
-        <div id="panel-detail-inner">
-          <div className="detail-tabs">
-            <button
-              className={`detail-tab${activeTab === "preview" ? " active" : ""}`}
-              onClick={() => setActiveTab("preview")}
-            >
-              <IconEye /> {t.app.songbook.detailPanel.tabVistaPreviа}
-            </button>
-            <button
-              className={`detail-tab${activeTab === "options" ? " active" : ""}`}
-              onClick={() => setActiveTab("options")}
-            >
-              <IconSettings /> {t.app.songbook.detailPanel.tabOpcions}
-            </button>
+    <>
+      <section id="panel-detail">
+        {previewActive && (
+          <div id="panel-detail-inner">
+            <div className="detail-tabs">
+              <button
+                className={`detail-tab${activeTab === "preview" ? " active" : ""}`}
+                onClick={() => setActiveTab("preview")}
+              >
+                <IconEye /> {t.app.songbook.detailPanel.tabVistaPreviа}
+              </button>
+              <button
+                className={`detail-tab${activeTab === "options" ? " active" : ""}`}
+                onClick={() => setActiveTab("options")}
+              >
+                <IconSettings /> {t.app.songbook.detailPanel.tabOpcions}
+              </button>
+              {/* Visualment una pestanya més (mateixa amplada, alçada,
+                  sense vores), però funcionalment és un toggle: obre el
+                  panell flotant. Quan està actiu es marca en vermell i
+                  la pestanya "Vista prèvia" queda seleccionada darrere. */}
+              <button
+                type="button"
+                className={`detail-tab is-toggle${pdfFormatOpen ? " toggled" : ""}`}
+                onClick={() => {
+                  if (!pdfFormatOpen) setActiveTab("preview")
+                  setPdfFormatOpen((v) => !v)
+                }}
+                aria-pressed={pdfFormatOpen}
+              >
+                <IconFileText /> {t.app.songbook.detailPanel.tabFormatPdf}
+              </button>
+            </div>
+            {activeTab === "preview" && <PreviewTab />}
+            {activeTab === "options" && <OptionsTab />}
           </div>
-          {activeTab === "preview" && <PreviewTab />}
-          {activeTab === "options" && <OptionsTab />}
-        </div>
-      )}
-    </section>
+        )}
+      </section>
+      {pdfFormatOpen && <PdfFormatFloatingPanel onClose={() => setPdfFormatOpen(false)} />}
+    </>
   )
 }
 

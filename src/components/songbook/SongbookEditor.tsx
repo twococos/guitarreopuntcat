@@ -43,7 +43,7 @@ export function SongbookEditor() {
   const { data: session } = useSession()
   const loadSongs = useSongbookStore((s) => s.loadSongs)
   const loadExistingCanconer = useSongbookStore((s) => s.loadExistingCanconer)
-  const setCanconerTitle = useSongbookStore((s) => s.setCanconerTitle)
+  const setProvisionalTitle = useSongbookStore((s) => s.setProvisionalTitle)
   const previewActive = useSongbookStore((s) => s.previewActive)
   const leftWidth = useColumnSizesStore((s) => s.leftWidth)
   const rightWidth = useColumnSizesStore((s) => s.rightWidth)
@@ -198,6 +198,7 @@ export function SongbookEditor() {
       useSongbookStore.setState({
         savedCanconerId: data.savedCanconerId,
         canconerTitle: data.canconerTitle,
+        provisionalTitle: data.canconerTitle,
         canconerStyle: data.canconerStyle,
         accentColor: data.accentColor,
         pdfOptions: data.pdfOptions,
@@ -222,6 +223,8 @@ export function SongbookEditor() {
         savedCanconerId: null,
         canconer: [{ song, semitones: data.semitones ?? 0 }],
         selectedIdx: 0,
+        // Ja hi ha una cançó: obre la vista prèvia.
+        previewActive: true,
       })
     } catch {
       // Ignora errors de parse/fetch — quedarà l'estat per defecte.
@@ -271,7 +274,7 @@ export function SongbookEditor() {
         candidate = `${DEFAULT_CANCONER_TITLE} ${n}`
         n++
       }
-      setCanconerTitle(candidate)
+      setProvisionalTitle(candidate)
     } catch {
       // Ignore errors
     }

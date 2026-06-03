@@ -6,6 +6,7 @@ import { app } from "./app"
 import { editor } from "./editor"
 import { admin } from "./admin"
 import { metadata } from "./metadata"
+import { analytics } from "./analytics"
 
 export const ca = {
   common,
@@ -14,4 +15,5 @@ export const ca = {
   editor,
   admin,
   metadata,
+  analytics,
 } as const

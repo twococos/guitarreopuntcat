@@ -73,6 +73,8 @@ export const app = {
       colorAccentAriaLabel: "Color d'accent",
       tabVistaPreviа: "Vista prèvia",
       tabOpcions: "Opcions",
+      tabFormatPdf: "Format PDF",
+      tancarFormatPdf: "Tancar format PDF",
       seleccionaCanco: "Selecciona una cançó del cançoner",
       estilCanconer: "Estil del cançoner",
       ordenacioOpcions: {
@@ -178,10 +180,61 @@ export const app = {
 
   userWidget: {
     badgeAdmin: "admin",
+    elTeuCompte: "El teu compte",
     bibliotetica: "La teva Biblioteca",
     editorDeCancoers: "Editor de cançoners",
     panellAdministracio: "Panell d'administració",
     tancarSessio: "Tancar sessió",
     iniciaSessio: "Inicia sessió",
+  },
+
+  account: {
+    titol: "El teu compte",
+    backLink: "← Cançoner",
+    profile: {
+      titol: "Perfil",
+      nomLabel: "Nom",
+      emailLabel: "Correu electrònic",
+      emailHint: "El correu és el de Google i no es pot canviar des d'aquí.",
+      googleNameNota: (n: string) => `Nom original importat de Google: ${n}`,
+      guardar: "Guardar canvis",
+      guardant: "Guardant…",
+      toastGuardat: "Canvis guardats!",
+      toastError: "Error en guardar els canvis.",
+    },
+    stats: {
+      titol: "Resum del compte",
+      membreDesDe: "Membre des de",
+      canconers: "Cançoners",
+      propostes: "Propostes",
+      pendents: (n: number) => `${n} ${n === 1 ? "pendent" : "pendents"}`,
+      dataFormat: (d: string) => {
+        const date = new Date(d)
+        return date.toLocaleDateString("ca-ES", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      },
+      carregant: "Carregant…",
+      errorCarregar: "Error en carregar les dades del compte.",
+    },
+    danger: {
+      titol: "Eliminar el compte",
+      descripcio:
+        "En eliminar el teu compte, les teves dades personals (nom, correu i avatar) seran anonimitzades i quedaran desvinculades del teu perfil de Google. Si tornes a iniciar sessió amb el mateix Google, es crearà un compte nou des de zero: no recuperaràs els cançoners, propostes ni cap altra informació associada al compte actual. Els cançoners que has creat es conservaran sense propietari per a no trencar els enllaços compartits, però ja no els podràs editar.",
+      botoEliminar: "Eliminar el meu compte",
+      confirmTitol: "Confirmar eliminació",
+      confirmMissatge:
+        "Aquesta acció és irreversible i perdràs l'accés a tots els teus cançoners. Per a confirmar, escriu ELIMINAR a la casella inferior.",
+      confirmInputLabel: "Escriu ELIMINAR per a confirmar:",
+      confirmInputPlaceholder: "ELIMINAR",
+      confirmParaula: "ELIMINAR",
+      confirmBoto: "Eliminar definitivament",
+      cancellar: "Cancel·lar",
+      eliminant: "Eliminant…",
+      toastEliminat: "Compte eliminat. Adéu!",
+      toastError: "Error en eliminar el compte.",
+    },
   },
 } as const
