@@ -23,6 +23,7 @@ import {
   findExistingSongByArtistTitle,
   type BulkProposalInput,
 } from "@/db/queries/proposals"
+import { logEvent } from "@/lib/analytics/logEvent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -100,6 +101,7 @@ function validateRequired(
 export async function POST(req: Request): Promise<Response> {
   const authResult = await requireAdmin()
   if (authResult instanceof NextResponse) return authResult
+  const { user } = authResult
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) {
@@ -109,6 +111,14 @@ export async function POST(req: Request): Promise<Response> {
   const { rows, required, skipRequiredIndexes } = parsed.data
   const skipSet = new Set(skipRequiredIndexes)
   const importerUserId = getOrCreateImporterUser()
+
+  logEvent({
+    type: "admin_action",
+    request: req,
+    userId: user.id,
+    metadata: { action: "import_bulk" },
+    status: 200,
+  })
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({

@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/session"
 import { adminDeleteCanconer } from "@/db/queries/admin"
+import { logEvent } from "@/lib/analytics/logEvent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const authResult = await requireAdmin()
     if (authResult instanceof NextResponse) return authResult
+    const { user } = authResult
 
     const { id: rawId } = await params
     const id = Number(rawId)
@@ -24,6 +26,13 @@ export async function DELETE(
       return NextResponse.json({ error: "No trobat" }, { status: 404 })
     }
 
+    logEvent({
+      type: "admin_action",
+      request,
+      userId: user.id,
+      metadata: { action: "canconers.delete", target_id: id },
+      status: 200,
+    })
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[DELETE /api/admin/canconers/[id]]", err)

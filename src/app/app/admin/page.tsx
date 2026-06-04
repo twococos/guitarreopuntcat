@@ -9,6 +9,7 @@ import { ProposalsTab } from "@/components/admin/ProposalsTab"
 import { SongsTab } from "@/components/admin/SongsTab"
 import { UsersTab } from "@/components/admin/UsersTab"
 import { CanconersTab } from "@/components/admin/CanconersTab"
+import { AnalyticsPanel } from "@/components/admin/analytics/AnalyticsPanel"
 import {
   IconBarChart,
   IconProposal,
@@ -18,9 +19,9 @@ import {
 } from "@/components/shared/Icons"
 import { AppHeader } from "@/components/songbook/AppHeader"
 
-type Tab = "stats" | "proposals" | "songs" | "users" | "canconers"
+type Tab = "stats" | "proposals" | "songs" | "users" | "canconers" | "analytics"
 
-const VALID_TABS: Tab[] = ["stats", "proposals", "songs", "users", "canconers"]
+const VALID_TABS: Tab[] = ["stats", "proposals", "songs", "users", "canconers", "analytics"]
 
 interface Stats {
   songs: number
@@ -101,6 +102,12 @@ export default function AdminPage() {
         >
           <IconBookOpen /> {t.admin.tabs.canconers}
         </button>
+        <button
+          className={`tab ${tab === "analytics" ? "active" : ""}`}
+          onClick={() => setTab("analytics")}
+        >
+          <IconBarChart /> {t.analytics.title}
+        </button>
       </div>
 
       <div id="admin-content">
@@ -109,6 +116,7 @@ export default function AdminPage() {
         {tab === "songs" && <SongsTab />}
         {tab === "users" && <UsersTab />}
         {tab === "canconers" && <CanconersTab />}
+        {tab === "analytics" && <AnalyticsPanel />}
       </div>
     </>
   )

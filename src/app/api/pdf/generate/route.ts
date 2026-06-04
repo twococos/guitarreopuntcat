@@ -10,6 +10,8 @@ import {
   pdfOptionsSchema,
   PDF_OPTIONS_DEFAULTS,
 } from "@/lib/schemas/canconer"
+import { logEvent } from "@/lib/analytics/logEvent"
+import { getSessionUser } from "@/lib/session"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -31,16 +33,20 @@ const pdfBodySchema = z.object({
 })
 
 export async function POST(request: Request) {
+  const startedAt = Date.now()
+  const sessionUser = await getSessionUser()
+  const userId = sessionUser?.id ?? null
+
   let parsed
   try {
     parsed = pdfBodySchema.parse(await request.json())
   } catch (err) {
-    const msg = err instanceof z.ZodError ? err.issues[0]?.message : "Petició invàlida"
-    return NextResponse.json({ error: msg ?? "Petició invàlida" }, { status: 400 })
+    const msg = err instanceof z.ZodError ? err.issues[0]?.message : "Peticio invalida"
+    return NextResponse.json({ error: msg ?? "Peticio invalida" }, { status: 400 })
   }
 
-  // Carregar cançons de la BD. La transposició s'aplica al render
-  // (renderSongHtml) per coherència amb el component <SongView />.
+  // Carregar cançons de la BD. La transposicio s'aplica al render
+  // (renderSongHtml) per coherencia amb el component <SongView />.
   const pdfSongs: PdfSong[] = []
   for (const { id, semitones } of parsed.songs) {
     const song = db.select().from(schema.songs).where(eq(schema.songs.id, id)).get()
@@ -60,7 +66,7 @@ export async function POST(request: Request) {
   }
 
   if (pdfSongs.length === 0) {
-    return NextResponse.json({ error: "Cap cançó vàlida" }, { status: 400 })
+    return NextResponse.json({ error: "Cap canco valida" }, { status: 400 })
   }
 
   try {
@@ -73,6 +79,18 @@ export async function POST(request: Request) {
       parsed.style,
       parsed.accent_color,
     )
+    logEvent({
+      type: "pdf_download",
+      request,
+      userId,
+      metadata: {
+        songs_count: pdfSongs.length,
+        style: parsed.style,
+        success: true,
+      },
+      status: 200,
+      durationMs: Date.now() - startedAt,
+    })
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
@@ -82,6 +100,14 @@ export async function POST(request: Request) {
     })
   } catch (err) {
     console.error("PDF generation error:", err)
+    logEvent({
+      type: "pdf_download",
+      request,
+      userId,
+      metadata: { songs_count: pdfSongs.length, success: false },
+      status: 500,
+      durationMs: Date.now() - startedAt,
+    })
     return NextResponse.json({ error: "Error generant el PDF" }, { status: 500 })
   }
 }

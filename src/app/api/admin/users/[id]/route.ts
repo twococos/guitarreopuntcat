@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/session"
 import { z } from "zod"
 import { updateUser } from "@/db/queries/admin"
+import { logEvent } from "@/lib/analytics/logEvent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -38,6 +39,13 @@ export async function PATCH(
       return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
+    logEvent({
+      type: "admin_action",
+      request,
+      userId: user.id,
+      metadata: { action: "users.update", target_id: id },
+      status: 200,
+    })
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[PATCH /api/admin/users/[id]]", err)

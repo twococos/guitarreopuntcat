@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["better-sqlite3", "puppeteer"],
+  serverExternalPackages: ["better-sqlite3", "puppeteer", "@maxmind/geoip2-node"],
+  experimental: {
+    nodeMiddleware: true,
+  },
   eslint: {
     ignoreDuringBuilds: false,
     dirs: ["src"],

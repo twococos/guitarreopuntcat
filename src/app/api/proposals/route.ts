@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/session"
 import { proposalInputSchema } from "@/lib/schemas/proposal"
 import { listProposals, createProposal } from "@/db/queries/proposals"
 import { cleanupContent } from "@/lib/importers/cleanupContent"
+import { logEvent } from "@/lib/analytics/logEvent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -35,6 +36,13 @@ export async function POST(request: Request) {
 
     const input = { ...parsed.data, content: cleanupContent(parsed.data.content) }
     const result = await createProposal(user.id, input)
+    logEvent({
+      type: "proposal_create",
+      request,
+      userId: user.id,
+      metadata: { proposal_id: result.proposalId },
+      status: 201,
+    })
     return NextResponse.json(result, { status: 201 })
   } catch (err) {
     console.error("[POST /api/proposals]", err)

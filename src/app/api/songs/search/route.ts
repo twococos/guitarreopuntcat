@@ -5,6 +5,8 @@ import {
   searchPublicArtists,
   listRecentPublicSongs,
 } from "@/db/queries/songs"
+import { logEvent } from "@/lib/analytics/logEvent"
+import { getSessionUser } from "@/lib/session"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -26,6 +28,9 @@ const querySchema = z.object({
  * Públic. Només cançons amb `state = 0`.
  */
 export async function GET(request: Request) {
+  const sessionUser = await getSessionUser()
+  const userId = sessionUser?.id ?? null
+
   try {
     const { searchParams } = new URL(request.url)
     const parsed = querySchema.safeParse({
@@ -41,6 +46,13 @@ export async function GET(request: Request) {
 
     if (!q) {
       const songs = await listRecentPublicSongs(limit)
+      logEvent({
+        type: "song_search",
+        request,
+        userId,
+        metadata: { q, results: songs.length },
+        status: 200,
+      })
       return NextResponse.json({ artists: [], songs })
     }
 
@@ -48,6 +60,13 @@ export async function GET(request: Request) {
       searchPublicArtists(q, limit),
       searchPublicSongs(q, limit),
     ])
+    logEvent({
+      type: "song_search",
+      request,
+      userId,
+      metadata: { q, results: songs.length },
+      status: 200,
+    })
     return NextResponse.json({ artists, songs })
   } catch (err) {
     console.error("[GET /api/songs/search]", err)

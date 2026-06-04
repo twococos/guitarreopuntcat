@@ -3,7 +3,7 @@ import { signOut, useSession } from "next-auth/react"
 import { usePathname } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { LoginPopup } from "./LoginPopup"
-import { IconLibrary, IconSettings } from "./shared/Icons"
+import { IconLibrary, IconSettings, IconUser } from "./shared/Icons"
 import { guardMobileApp } from "@/components/public/MobileGateLink"
 import { getT } from "@/lib/i18n"
 
@@ -101,6 +101,10 @@ export function UserWidget() {
               <span>{t.app.userWidget.panellAdministracio}</span>
             </a>
           )}
+          <a href="/app/account" className="user-dropdown-item">
+            <IconUser />
+            <span>{t.app.userWidget.elTeuCompte}</span>
+          </a>
           <div className="user-dropdown-sep" />
           <button
             className="user-dropdown-item user-dropdown-logout"

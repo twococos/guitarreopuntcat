@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import type { ReactNode } from "react"
 import { AuthProvider } from "@/components/AuthProvider"
 import { PublicToastHost } from "@/components/Toast"
+import { Tracker } from "@/components/analytics/Tracker"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body suppressHydrationWarning>
         <AuthProvider>{children}</AuthProvider>
         <PublicToastHost />
+        <Tracker />
       </body>
     </html>
   )

@@ -9,6 +9,7 @@ import {
   reviewProposal,
 } from "@/db/queries/proposals"
 import { cleanupContent } from "@/lib/importers/cleanupContent"
+import { logEvent } from "@/lib/analytics/logEvent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -49,6 +50,14 @@ export async function PATCH(
       return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
+    const eventType = parsed.data.status === "approved" ? "proposal_approve" : "proposal_reject"
+    logEvent({
+      type: eventType,
+      request,
+      userId: user.id,
+      metadata: { proposal_id: id },
+      status: 200,
+    })
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[PATCH /api/proposals/[id]]", err)
@@ -85,6 +94,13 @@ export async function PUT(
       return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
+    logEvent({
+      type: "proposal_approve",
+      request,
+      userId: user.id,
+      metadata: { proposal_id: id },
+      status: 200,
+    })
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[PUT /api/proposals/[id]]", err)

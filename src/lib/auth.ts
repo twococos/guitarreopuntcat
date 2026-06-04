@@ -4,6 +4,7 @@ import Google from "next-auth/providers/google"
 import { eq, sql } from "drizzle-orm"
 import { db } from "@/db/client"
 import { users } from "@/db/schema"
+import { logEvent } from "@/lib/analytics/logEvent"
 
 /**
  * Estratègia JWT (sense BD per a sessions) per simplicitat.
@@ -28,7 +29,13 @@ export const authConfig = {
   },
   callbacks: {
     async signIn({ user, account, profile }) {
-      if (account?.provider !== "google" || !account.providerAccountId) return false
+      if (account?.provider !== "google" || !account.providerAccountId) {
+        logEvent({
+          type: "signin_failure",
+          metadata: { reason: "invalid_provider" },
+        })
+        return false
+      }
       const googleId = account.providerAccountId
       const email = user.email ?? profile?.email ?? ""
       const name = user.name ?? profile?.name ?? email
@@ -41,11 +48,28 @@ export const authConfig = {
         .get()
 
       if (existing) {
-        if (existing.active === 0) return false
-        db.update(users)
-          .set({ name, email, avatarUrl: picture })
-          .where(eq(users.id, existing.id))
-          .run()
+        if (existing.active === 0) {
+          logEvent({
+            type: "signin_failure",
+            metadata: { reason: "inactive_user" },
+          })
+          return false
+        }
+        // Preservem el `name` editat per l'usuari: només el sobreescrivim si
+        // mai s'havia inicialitzat `googleName` (usuaris pre-migració). En
+        // aquest cas inicialitzem ambdós camps amb el nom de Google actual.
+        // En tots els casos refresquem email i avatar (font de veritat: Google).
+        if (existing.googleName == null) {
+          db.update(users)
+            .set({ name, email, avatarUrl: picture, googleName: name })
+            .where(eq(users.id, existing.id))
+            .run()
+        } else {
+          db.update(users)
+            .set({ email, avatarUrl: picture })
+            .where(eq(users.id, existing.id))
+            .run()
+        }
       } else {
         const [{ count }] = db
           .select({ count: sql<number>`count(*)`.as("count") })
@@ -57,6 +81,7 @@ export const authConfig = {
             googleId,
             email,
             name,
+            googleName: name,
             avatarUrl: picture,
             role,
           })
@@ -119,6 +144,25 @@ export const authConfig = {
         active: true,
       }
       return session
+    },
+  },
+  events: {
+    async signIn({ user, account }) {
+      const userId = user?.id ? Number(user.id) : undefined
+      logEvent({
+        type: "signin_success",
+        userId: Number.isFinite(userId) ? userId : null,
+        metadata: { provider: account?.provider },
+      })
+    },
+    async signOut(message) {
+      const sub = "token" in message ? message.token?.sub : undefined
+      const userId = sub ? Number(sub) : undefined
+      logEvent({
+        type: "signout",
+        userId: Number.isFinite(userId) ? userId : null,
+        metadata: {},
+      })
     },
   },
 } satisfies NextAuthConfig

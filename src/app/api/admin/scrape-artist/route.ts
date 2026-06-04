@@ -21,6 +21,7 @@ import { z } from "zod"
 import { parse } from "node-html-parser"
 import { requireAdmin } from "@/lib/session"
 import { defaultFetch } from "@/lib/importers/fetch"
+import { logEvent } from "@/lib/analytics/logEvent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -50,6 +51,7 @@ interface ScrapeResult {
 export async function POST(req: Request): Promise<Response> {
   const authResult = await requireAdmin()
   if (authResult instanceof NextResponse) return authResult
+  const { user } = authResult
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) {
@@ -84,6 +86,13 @@ export async function POST(req: Request): Promise<Response> {
         { status: 422 },
       )
     }
+    logEvent({
+      type: "admin_action",
+      request: req,
+      userId: user.id,
+      metadata: { action: "scrape_artist" },
+      status: 200,
+    })
     return NextResponse.json(result)
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error desconegut"

@@ -11,7 +11,9 @@
       "Read(//mnt/w/VSC/**)",
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/editor)",
       "Bash(echo \"EXIT=$?\")",
-      "Bash(node -e \"const fs=require\\('fs'\\); const files=['src/lib/i18n/index.ts','src/lib/i18n/ca/index.ts','src/lib/i18n/ca/common.ts','src/lib/i18n/ca/public.ts','src/lib/i18n/ca/app.ts','src/lib/i18n/ca/editor.ts','src/lib/i18n/ca/admin.ts','src/lib/i18n/ca/metadata.ts']; files.forEach\\(f=>{const s=fs.statSync\\(f\\); console.log\\(f, '->', s.size, 'bytes'\\);}\\);\")"
+      "Bash(node -e \"const fs=require\\('fs'\\); const files=['src/lib/i18n/index.ts','src/lib/i18n/ca/index.ts','src/lib/i18n/ca/common.ts','src/lib/i18n/ca/public.ts','src/lib/i18n/ca/app.ts','src/lib/i18n/ca/editor.ts','src/lib/i18n/ca/admin.ts','src/lib/i18n/ca/metadata.ts']; files.forEach\\(f=>{const s=fs.statSync\\(f\\); console.log\\(f, '->', s.size, 'bytes'\\);}\\);\")",
+      "Bash(curl -s -o NUL -w \"%{http_code}\\\\n\" http://localhost:3000/app --max-time 30)",
+      "Bash(curl -s -o NUL -w \"%{http_code}\\\\n\" http://localhost:3000/api/account --max-time 30)"
     ]
   }
 }

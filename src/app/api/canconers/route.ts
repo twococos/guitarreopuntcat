@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/session"
 import { canconerSaveSchema } from "@/lib/schemas/canconer"
 import { listCanconersByUser, saveOrUpdateCanconer } from "@/db/queries/canconers"
+import { logEvent } from "@/lib/analytics/logEvent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -33,6 +34,13 @@ export async function POST(request: Request) {
     }
 
     const result = await saveOrUpdateCanconer(user.id, parsed.data)
+    logEvent({
+      type: "canconer_create",
+      request,
+      userId: user.id,
+      metadata: { canconer_id: result.id },
+      status: result.created ? 201 : 200,
+    })
     return NextResponse.json({ id: result.id }, { status: result.created ? 201 : 200 })
   } catch (err) {
     if (err instanceof Error) {

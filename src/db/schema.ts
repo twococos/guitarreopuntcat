@@ -45,6 +45,7 @@ export const users = sqliteTable(
     googleId: text("google_id").notNull(),
     email: text("email").notNull(),
     name: text("name").notNull(),
+    googleName: text("google_name"),
     avatarUrl: text("avatar_url"),
     role: text("role", { enum: ["user", "admin"] }).default("user"),
     active: integer("active").default(1),

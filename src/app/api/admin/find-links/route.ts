@@ -26,6 +26,7 @@ import {
   isSpotifyConfigured,
 } from "@/lib/bulkImport/findSpotify"
 import { detectSongLanguage } from "@/lib/bulkImport/detectLanguage"
+import { logEvent } from "@/lib/analytics/logEvent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -51,6 +52,7 @@ const bodySchema = z.object({
 export async function POST(req: Request): Promise<Response> {
   const authResult = await requireAdmin()
   if (authResult instanceof NextResponse) return authResult
+  const { user } = authResult
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) {
@@ -59,6 +61,14 @@ export async function POST(req: Request): Promise<Response> {
 
   const { rows } = parsed.data
   const spotifyAvailable = isSpotifyConfigured()
+
+  logEvent({
+    type: "admin_action",
+    request: req,
+    userId: user.id,
+    metadata: { action: "find_links" },
+    status: 200,
+  })
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {

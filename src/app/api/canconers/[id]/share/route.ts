@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/session"
 import { shareActionSchema } from "@/lib/schemas/canconer"
 import { toggleShare } from "@/db/queries/canconers"
+import { logEvent } from "@/lib/analytics/logEvent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -32,6 +33,13 @@ export async function POST(
       return NextResponse.json({ error: "No trobat" }, { status: 404 })
     }
 
+    logEvent({
+      type: "canconer_share_open",
+      request,
+      userId: user.id,
+      metadata: { canconer_id: id, token: result.share_token ?? "" },
+      status: 200,
+    })
     return NextResponse.json(result)
   } catch (err) {
     console.error("[POST /api/canconers/[id]/share]", err)

@@ -1823,6 +1823,7 @@ body:has(#admin-tabs),
 body:has(.bulk-import-page),
 body:has(#mc-main),
 body:has(#shared-layout),
+body:has(.account-page),
 body:has(.public-nav) {
   overflow: auto;
   height: auto;
@@ -2053,6 +2054,138 @@ body:has(.public-nav) {
 /* ════════════════════════════════════════════════════════════
    3. ADMIN.CSS — pàgina /app/admin
    ════════════════════════════════════════════════════════════ */
+
+/* Panell d'analítica */
+#analytics-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.analytics-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.analytics-subtabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.analytics-subtabs-nested {
+  margin-bottom: 1rem;
+}
+.analytics-subtabs-nested .tab-sub {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.7rem;
+}
+.tab-sub {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.tab-sub:hover {
+  color: var(--text);
+}
+.tab-sub.active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.analytics-range {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+.analytics-range select {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+.analytics-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.analytics-stats {
+  margin-bottom: 0;
+}
+.analytics-chart-block,
+.analytics-table-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow);
+}
+.analytics-chart-block h3,
+.analytics-table-block h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.analytics-table {
+  font-size: 0.85rem;
+}
+.analytics-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.analytics-table code {
+  font-size: 0.8rem;
+}
+.stat-card .trend {
+  display: block;
+  font-size: 0.72rem;
+  margin-top: 0.35rem;
+  font-weight: 600;
+}
+.stat-card .trend.up {
+  color: #0a7c46;
+}
+.stat-card .trend.down {
+  color: #c0392b;
+}
+.stat-card .trend.flat {
+  color: var(--muted);
+}
+.badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.badge.danger {
+  background: #fdecea;
+  color: #c0392b;
+  border-color: #f5c2bd;
+}
+.btn-small {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+}
+.btn-danger {
+  background: #c0392b;
+  color: #fff;
+  border-color: #c0392b;
+}
+.btn-danger:hover {
+  background: #a93226;
+}
 
 #admin-tabs {
   display: flex;
@@ -6382,4 +6515,169 @@ header.songs-index-banner {
   margin-top: 0.75rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+/* ============================================================
+   COMPTE — /app/account
+   ============================================================ */
+
+/* Header sticky a /app/account: a diferència d'altres pàgines /app,
+   aquí la capçalera es queda fixa quan l'usuari fa scroll. */
+body:has(.account-page) > header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.account-page {
+  max-width: 920px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.account-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.account-card-full {
+  grid-column: 1 / -1;
+}
+
+.account-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+}
+
+.account-profile-header {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.user-avatar-xl {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.account-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.account-field label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.account-field input[type="text"],
+.account-field input[type="email"] {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: #fff;
+}
+
+.account-field input[type="text"]:disabled,
+.account-field input[type="email"]:disabled,
+.account-field input[type="text"][readonly],
+.account-field input[type="email"][readonly] {
+  background: #f5f5f5;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.account-field-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.account-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.account-stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+.account-stat-row:last-child {
+  border-bottom: none;
+}
+
+.account-stat-label {
+  color: var(--muted);
+}
+
+.account-stat-value {
+  font-weight: 600;
+}
+
+.account-danger {
+  border-color: #e0a8a8;
+  background: #fff8f8;
+}
+
+.account-danger-title {
+  color: #b03030;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+.account-danger-text {
+  color: #555;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+
+.account-confirm-dialog {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.account-confirm-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }

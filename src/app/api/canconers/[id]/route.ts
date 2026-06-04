@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/session"
 import { getCanconerById, deleteCanconer } from "@/db/queries/canconers"
+import { logEvent } from "@/lib/analytics/logEvent"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -33,7 +34,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -52,6 +53,13 @@ export async function DELETE(
       return NextResponse.json({ error: "No trobat" }, { status: 404 })
     }
 
+    logEvent({
+      type: "canconer_delete",
+      request,
+      userId: user.id,
+      metadata: { canconer_id: id },
+      status: 200,
+    })
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[DELETE /api/canconers/[id]]", err)

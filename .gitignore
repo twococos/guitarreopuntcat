@@ -11,6 +11,14 @@ package-lock.json
 data/*.db*
 backups/
 
+# BD d'analítica (no entra a git per a no engreixar el repo)
+data/analytics.db
+data/analytics.db-shm
+data/analytics.db-wal
+
+# Base de dades GeoIP MaxMind (descarregada per separat)
+data/GeoLite2-*.mmdb
+
 # Variables d'entorn
 .env
 .env.local
