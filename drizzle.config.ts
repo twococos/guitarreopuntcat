@@ -3,7 +3,7 @@ import "dotenv/config"
 
 export default {
   schema: "./src/db/schema.ts",
-  out: "./drizzle",
+  out: "./data/migrations",
   dialect: "sqlite",
   dbCredentials: {
     url: process.env.DB_PATH || "./data/canconer.db",

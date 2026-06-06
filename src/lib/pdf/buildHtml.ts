@@ -3,12 +3,8 @@ import { join } from "node:path"
 import { buildPdfStyles } from "./styles"
 import { buildQrSvg } from "./qr"
 import { renderSongHtml } from "@/components/song/SongView"
-import { transposeKey } from "@/lib/transpose"
-import {
-  type CanconerStyle,
-  type PdfOptions,
-  FONT_SCALE_FACTORS,
-} from "@/lib/schemas/canconer"
+import { transposeKey, respellAccidentals, ALL_SHARPS } from "@/lib/transpose"
+import { type CanconerStyle, type PdfOptions } from "@/lib/schemas/canconer"
 
 export interface PdfSong {
   title: string
@@ -78,16 +74,23 @@ export async function buildHtml(
 ): Promise<string> {
   const safeTitle = escHtml(title)
   const date = new Date().toLocaleDateString("ca-ES")
+  // Notació enharmònica del render (default sostinguts si el cançoner és antic).
+  const notationMap = options.notation ?? ALL_SHARPS
 
-  // ── Resolem link + QR per cada cançó en paral·lel ──────────
+  // ── Resolem link (títol) i QR per cada cançó, independents ──
   const linkUrls = songs.map((s) =>
     resolveLinkUrl(options.link_platform, s.youtubeUrl, s.spotifyUrl),
   )
-  const qrSvgs: Array<string | null> = options.show_qr
-    ? await Promise.all(
-        linkUrls.map((u) => (u ? buildQrSvg(u) : Promise.resolve(null))),
-      )
-    : linkUrls.map(() => null)
+  // El QR pot apuntar a una plataforma diferent de l'enllaç del títol.
+  const qrUrls = songs.map((s) =>
+    resolveLinkUrl(options.qr_platform, s.youtubeUrl, s.spotifyUrl),
+  )
+  const qrSvgs: Array<string | null> =
+    options.qr_platform !== "none"
+      ? await Promise.all(
+          qrUrls.map((u) => (u ? buildQrSvg(u) : Promise.resolve(null))),
+        )
+      : qrUrls.map(() => null)
 
   // ── Portada (full-bleed amb caixa semitransparent centrada) ─
   const coverHtml = options.show_cover
@@ -118,7 +121,7 @@ export async function buildHtml(
     ? (() => {
         const rows = songs
           .map((s, i) => {
-            const displayKey = transposeKey(s.key, s.semitones)
+            const displayKey = respellAccidentals(transposeKey(s.key, s.semitones), notationMap)
             const id = `song-${i + 1}`
             return (
               `<tr>` +
@@ -161,14 +164,15 @@ export async function buildHtml(
           accentColor,
           titleLinkUrl: linkUrls[i],
           qrSvg: qrSvgs[i],
-          qrUrl: qrSvgs[i] ? linkUrls[i] : null,
+          qrUrl: qrSvgs[i] ? qrUrls[i] : null,
+          notation: notationMap,
         }) +
         `</section>`,
     )
     .join("")
 
   // ── Variables CSS i classes globals ─────────────────
-  const fontScale = FONT_SCALE_FACTORS[options.font_scale]
+  const fontScale = options.font_scale
   const inlineVars = [
     accentColor ? `--accent: ${accentColor}` : "",
     `--pdf-cols: ${options.columns}`,

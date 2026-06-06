@@ -360,6 +360,28 @@ export const IconRotateCcw = (p: IconProps) =>
     p,
   )
 
+/** Sostingut (♯): dues astes verticals + dues travesseres ascendents. */
+export const IconSharp = (p: IconProps) =>
+  svg(
+    <>
+      <line x1="9" y1="3" x2="9" y2="21" />
+      <line x1="15" y1="3" x2="15" y2="21" />
+      <line x1="5" y1="9" x2="19" y2="7" />
+      <line x1="5" y1="17" x2="19" y2="15" />
+    </>,
+    p,
+  )
+
+/** Bemoll (♭): asta vertical llarga + bucle inferior. */
+export const IconFlat = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M8 2v17" />
+      <path d="M8 11c4-3 8-1 8 2 0 3-4 5-8 6" />
+    </>,
+    p,
+  )
+
 export const IconPlay = (p: IconProps) =>
   svg(<polygon points="6 4 20 12 6 20 6 4" />, p)
 

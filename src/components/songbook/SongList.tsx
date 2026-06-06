@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useRef } from "react"
 import { useSongbookStore } from "@/hooks/useSongbook"
+import { respellAccidentals } from "@/lib/transpose"
 import { getT } from "@/lib/i18n"
 
 export function SongList() {
@@ -13,6 +14,7 @@ export function SongList() {
   const setSongSortBy = useSongbookStore((s) => s.setSongSortBy)
   const addToCanconer = useSongbookStore((s) => s.addToCanconer)
   const loadSongs = useSongbookStore((s) => s.loadSongs)
+  const notation = useSongbookStore((s) => s.pdfOptions.notation)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -65,7 +67,7 @@ export function SongList() {
               className={already ? "in-canconer" : ""}
               onClick={!already ? () => addToCanconer(s.id) : undefined}
             >
-              <span className="song-key">{s.key}</span>
+              <span className="song-key">{respellAccidentals(s.key, notation)}</span>
               <div className="song-name">{s.title}</div>
               <div className="song-info">{s.artist}</div>
             </li>

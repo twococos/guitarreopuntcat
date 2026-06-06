@@ -4,10 +4,12 @@ import { useSession } from "next-auth/react"
 import { useSongbookStore, isDefaultCanconerTitle } from "@/hooks/useSongbook"
 import { useToastStore } from "@/hooks/useToasts"
 import { useUiStore } from "@/hooks/useUi"
+import { usePdfProgress } from "@/hooks/usePdfProgress"
 import { saveCanconer } from "@/lib/canconerApi"
 import { CanconerList } from "./CanconerList"
 import { CanconerGrid } from "./CanconerGrid"
 import { ConfirmToast } from "@/components/editor/ConfirmToast"
+import { PdfProgressOverlay } from "@/components/shared/PdfProgressOverlay"
 import { getT } from "@/lib/i18n"
 import { IconX, IconSave, IconClock, IconFileText, IconMusic } from "@/components/shared/Icons"
 import type { CanconerListItem } from "@/types/song"
@@ -30,7 +32,7 @@ export function CanconerPanel() {
   const showToast = useToastStore((s) => s.show)
   const setLoginPopup = useUiStore((s) => s.setLoginPopup)
 
-  const [pdfLoading, setPdfLoading] = useState(false)
+  const pdfProgress = usePdfProgress()
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   // Mentre el camp té focus mostrem el text "buit" perquè el placeholder
   // (el títol provisional) faci de hint. En perdre focus, si l'usuari no
@@ -105,8 +107,8 @@ export function CanconerPanel() {
   }
 
   async function onGeneratePdf() {
-    if (!hasItems || pdfLoading) return
-    setPdfLoading(true)
+    if (!hasItems || pdfProgress.active) return
+    pdfProgress.start(canconer.length, t.common.pdfProgress.missatges)
     try {
       const res = await fetch("/api/pdf/generate", {
         method: "POST",
@@ -121,6 +123,9 @@ export function CanconerPanel() {
       })
       if (!res.ok) throw new Error("PDF error")
       const blob = await res.blob()
+      // Accelerem la barra fins al 100% i tanquem l'overlay abans de
+      // disparar la descàrrega.
+      await pdfProgress.finish()
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
@@ -128,9 +133,8 @@ export function CanconerPanel() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
+      pdfProgress.fail()
       alert(t.app.songbook.canconerPanel.errorGenerantPdf)
-    } finally {
-      setPdfLoading(false)
     }
   }
 
@@ -183,11 +187,11 @@ export function CanconerPanel() {
           <button
             id="btn-generate"
             className="btn-icon-action"
-            disabled={!hasItems || pdfLoading}
+            disabled={!hasItems || pdfProgress.active}
             title={t.app.songbook.canconerPanel.generarPdfTitle}
             onClick={onGeneratePdf}
           >
-            {pdfLoading ? (
+            {pdfProgress.active ? (
               <IconClock />
             ) : (
               <>
@@ -214,6 +218,12 @@ export function CanconerPanel() {
         onConfirm={onConfirmDiscard}
         onCancel={() => setConfirmDiscard(false)}
         autoDismissMs={10000}
+      />
+      <PdfProgressOverlay
+        open={pdfProgress.active}
+        pct={pdfProgress.pct}
+        title={t.common.pdfProgress.titol}
+        message={pdfProgress.message}
       />
     </section>
   )

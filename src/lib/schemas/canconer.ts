@@ -32,6 +32,18 @@ export const STYLE_DEFAULT_ACCENTS: Record<CanconerStyle, string> = {
   compact: "#c0392b",
 }
 
+/** Pila de fonts del títol de cada estil — espill de song-styles.css.
+ *  S'usa al selector d'estil perquè cada opció es mostri amb la seva
+ *  pròpia tipografia (amb fallback, com al cançoner real). */
+export const STYLE_TITLE_FONTS: Record<CanconerStyle, string> = {
+  classic: '"Georgia", serif',
+  minimal: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+  bold: '"Impact", "Helvetica Neue", sans-serif',
+  serif: '"Georgia", "Cambria", serif',
+  handwritten: '"Bradley Hand", "Segoe Script", cursive',
+  compact: '"Georgia", serif',
+}
+
 /** Paleta predefinida del color picker (10 mostres). */
 export const ACCENT_COLOR_PALETTE = [
   "#c0392b",
@@ -57,20 +69,35 @@ export const accentColorSchema = z
 
 /* ── Opcions de generació de PDF ──────────────────────────── */
 
-export const FONT_SCALES = ["small", "normal", "large"] as const
-export type FontScale = (typeof FONT_SCALES)[number]
+/* Mida de lletra del cos com a factor multiplicador continu.
+ * Abans era un enum (small/normal/large); ara és un slider continu.
+ * Conservem el rang centrat a 1.0 i ampliem una mica els extrems. */
+export const FONT_SCALE_MIN = 0.7
+export const FONT_SCALE_MAX = 1.3
+export const FONT_SCALE_DEFAULT = 1.0
+export const FONT_SCALE_STEP = 0.05
 
-export const FONT_SCALE_LABELS: Record<FontScale, string> = {
-  small: "Petita",
-  normal: "Normal",
-  large: "Gran",
-}
-
-export const FONT_SCALE_FACTORS: Record<FontScale, number> = {
+/** Equivalència dels valors antics (enum) → factor numèric, per a
+ *  retrocompatibilitat amb cançoners guardats abans del slider. */
+const LEGACY_FONT_SCALE: Record<string, number> = {
   small: 0.85,
   normal: 1.0,
   large: 1.15,
 }
+
+/** Accepta un número (nou) o un dels strings antics (small/normal/large)
+ *  i el normalitza sempre a número dins del rang permès. */
+const fontScaleSchema = z.preprocess(
+  (v) => {
+    if (typeof v === "string" && v in LEGACY_FONT_SCALE) return LEGACY_FONT_SCALE[v]
+    return v
+  },
+  z.number().min(FONT_SCALE_MIN).max(FONT_SCALE_MAX).default(FONT_SCALE_DEFAULT),
+)
+
+/** Plataforma d'enllaç/QR. "none" desactiva la funció corresponent. */
+export const LINK_PLATFORMS = ["none", "youtube", "spotify"] as const
+export type LinkPlatform = (typeof LINK_PLATFORMS)[number]
 
 export const pdfOptionsSchema = z.object({
   page_breaks: z.boolean().default(true),
@@ -83,9 +110,24 @@ export const pdfOptionsSchema = z.object({
   margin_right: z.number().min(0).max(50).default(18),
   margin_bottom: z.number().min(0).max(50).default(20),
   margin_left: z.number().min(0).max(50).default(18),
-  font_scale: z.enum(FONT_SCALES).default("normal"),
-  link_platform: z.enum(["none", "youtube", "spotify"]).default("none"),
-  show_qr: z.boolean().default(false),
+  font_scale: fontScaleSchema,
+  // Enllaç clicable al títol i codi QR són independents: cadascú apunta a
+  // la plataforma que es triï ("none" = desactivat). Per defecte YouTube.
+  link_platform: z.enum(LINK_PLATFORMS).default("youtube"),
+  qr_platform: z.enum(LINK_PLATFORMS).default("youtube"),
+  // Notació enharmònica del render: per cada nota negra, true = bemoll.
+  // El nom intern de la tonalitat es guarda igual; això només afecta com
+  // es mostren les notes (acords + badge de tonalitat) a la preview i al PDF.
+  // .default() garanteix retrocompatibilitat amb cançoners ja guardats.
+  notation: z
+    .object({
+      "C#": z.boolean(),
+      "D#": z.boolean(),
+      "F#": z.boolean(),
+      "G#": z.boolean(),
+      "A#": z.boolean(),
+    })
+    .default({ "C#": false, "D#": false, "F#": false, "G#": false, "A#": false }),
 })
 
 export type PdfOptions = z.infer<typeof pdfOptionsSchema>

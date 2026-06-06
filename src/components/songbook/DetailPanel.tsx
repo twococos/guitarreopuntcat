@@ -1,8 +1,7 @@
 "use client"
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useSongbookStore, ALL_MAJOR_KEYS, RELATIVE_MINOR } from "@/hooks/useSongbook"
 import { useColumnSizesStore } from "@/hooks/useColumnSizes"
-import { useToastStore } from "@/hooks/useToasts"
 import { SongView } from "@/components/song/SongView"
 import { AccentPicker } from "./AccentPicker"
 import { getT } from "@/lib/i18n"
@@ -11,12 +10,21 @@ import {
   CANCONER_STYLES,
   STYLE_LABELS,
   STYLE_DEFAULT_ACCENTS,
-  FONT_SCALES,
-  FONT_SCALE_LABELS,
-  FONT_SCALE_FACTORS,
+  STYLE_TITLE_FONTS,
+  FONT_SCALE_MIN,
+  FONT_SCALE_MAX,
+  FONT_SCALE_STEP,
+  LINK_PLATFORMS,
   type CanconerStyle,
-  type FontScale,
+  type LinkPlatform,
 } from "@/lib/schemas/canconer"
+import {
+  ENHARMONIC_NOTES,
+  ALL_SHARPS,
+  ALL_FLATS,
+  SHARP_TO_FLAT,
+  type AccidentalMap,
+} from "@/lib/transpose"
 import type { CSSProperties } from "react"
 
 /** Conversions per dimensionar la pàgina A4 a la preview.
@@ -121,6 +129,11 @@ function PreviewTab() {
     songLike.youtube_url,
     songLike.spotify_url,
   )
+  const qrUrl = resolveLinkUrl(
+    pdfOptions.qr_platform,
+    songLike.youtube_url,
+    songLike.spotify_url,
+  )
 
   // Marges efectius del PDF (en mm). Mateixos càlculs que styles.ts:
   // marge usuari + zona reservada per a la capçalera/peu (que pdf-lib pinta).
@@ -142,7 +155,7 @@ function PreviewTab() {
   const accentStyle = accentColor
     ? ({ "--accent": accentColor } as CSSProperties)
     : undefined
-  const fontScale = FONT_SCALE_FACTORS[pdfOptions.font_scale]
+  const fontScale = pdfOptions.font_scale
   const pageVars = {
     "--pdf-cols": pdfOptions.columns,
     "--pdf-font-scale": fontScale,
@@ -170,7 +183,8 @@ function PreviewTab() {
               styleVariant={canconerStyle}
               accentColor={accentColor}
               titleLinkUrl={linkUrl}
-              qrUrl={pdfOptions.show_qr ? linkUrl : null}
+              qrUrl={qrUrl}
+              notation={pdfOptions.notation}
             />
           </div>
         </div>
@@ -197,9 +211,10 @@ function StyleSelect() {
         id="canconer-style"
         value={canconerStyle}
         onChange={(e) => setCanconerStyle(e.target.value as CanconerStyle)}
+        style={{ fontFamily: STYLE_TITLE_FONTS[canconerStyle] }}
       >
         {CANCONER_STYLES.map((s) => (
-          <option key={s} value={s}>
+          <option key={s} value={s} style={{ fontFamily: STYLE_TITLE_FONTS[s] }}>
             {STYLE_LABELS[s]}
           </option>
         ))}
@@ -277,6 +292,14 @@ function SortControls() {
 function KeyFilterGrid() {
   const allowedKeys = useSongbookStore((s) => s.allowedKeys)
   const toggleAllowedKey = useSongbookStore((s) => s.toggleAllowedKey)
+  const applyAllowedKeys = useSongbookStore((s) => s.applyAllowedKeys)
+
+  // El canvi s'aplica immediatament: en commutar una tonalitat es
+  // transposen les cançons afectades a l'instant (sense botó "Aplicar").
+  function onToggle(key: string) {
+    toggleAllowedKey(key)
+    applyAllowedKeys()
+  }
 
   return (
     <div id="key-filter-grid" className="key-filter-grid">
@@ -285,7 +308,7 @@ function KeyFilterGrid() {
           key={key}
           className={`key-filter-btn${allowedKeys.has(key) ? " active" : ""}`}
           title={`${key} major / ${RELATIVE_MINOR[key]}`}
-          onClick={() => toggleAllowedKey(key)}
+          onClick={() => onToggle(key)}
         >
           <span className="kf-major">{key}</span>
           <span className="kf-minor">{RELATIVE_MINOR[key]}</span>
@@ -295,10 +318,42 @@ function KeyFilterGrid() {
   )
 }
 
-/* ── ContentSection ──────────────────────────────────────────
- *  Opcions referents al contingut estructural del cançoner (portada,
- *  subtítol, índex i salt de pàgina entre cançons). Va al panell
- *  d'Opcions, no al format del PDF. */
+/* ── OptToggle ───────────────────────────────────────────────
+ *  Interruptor (switch) que llisca cap a la dreta agafant el color
+ *  --accent quan està actiu i queda --muted quan està desactivat.
+ *  Substitueix les caselles de verificació clàssiques. */
+
+function OptToggle({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+  disabled?: boolean
+}) {
+  return (
+    <label className={`switch-row${disabled ? " is-disabled" : ""}`}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        className={`opt-switch${checked ? " is-on" : ""}`}
+        onClick={() => !disabled && onChange(!checked)}
+        disabled={disabled}
+      >
+        <span className="opt-switch-knob" aria-hidden="true" />
+      </button>
+      <span className="switch-row-label">{label}</span>
+    </label>
+  )
+}
+
+/* ── ContentSection (Estructura del document) ────────────────
+ *  Portada + índex (mateixa fila) + subtítol + salt de pàgina.
+ *  Va al panell d'Opcions, no al format del PDF. */
 
 function ContentSection() {
   const t = getT()
@@ -307,15 +362,19 @@ function ContentSection() {
 
   return (
     <div className="options-section">
-      <h3 className="options-section-title">{t.app.songbook.detailPanel.portada}</h3>
-      <label className="opt-row">
-        <input
-          type="checkbox"
+      <h3 className="options-section-title">{t.app.songbook.detailPanel.estructuraDocument}</h3>
+      <div className="switch-row-pair">
+        <OptToggle
           checked={opts.show_cover}
-          onChange={(e) => setOpt("show_cover", e.target.checked)}
+          onChange={(v) => setOpt("show_cover", v)}
+          label={t.app.songbook.detailPanel.mostrarPortada}
         />
-        <span>{t.app.songbook.detailPanel.mostrarPortada}</span>
-      </label>
+        <OptToggle
+          checked={opts.show_index}
+          onChange={(v) => setOpt("show_index", v)}
+          label={t.app.songbook.detailPanel.mostrarIndex}
+        />
+      </div>
       <input
         type="text"
         className="opt-input-text"
@@ -325,33 +384,85 @@ function ContentSection() {
         onChange={(e) => setOpt("cover_subtitle", e.target.value || null)}
         maxLength={200}
       />
-      <h3 className="options-section-title" style={{ marginTop: "0.5rem" }}>
-        {t.app.songbook.detailPanel.index}
-      </h3>
-      <label className="opt-row">
-        <input
-          type="checkbox"
-          checked={opts.show_index}
-          onChange={(e) => setOpt("show_index", e.target.checked)}
-        />
-        <span>{t.app.songbook.detailPanel.mostrarIndex}</span>
-      </label>
-      <h3 className="options-section-title" style={{ marginTop: "0.5rem" }}>
-        {t.app.songbook.detailPanel.cos}
-      </h3>
-      <label className="opt-row">
-        <input
-          type="checkbox"
-          checked={opts.page_breaks}
-          onChange={(e) => setOpt("page_breaks", e.target.checked)}
-        />
-        <span>{t.app.songbook.detailPanel.saltPaginaEntreCancons}</span>
-      </label>
+      <OptToggle
+        checked={opts.page_breaks}
+        onChange={(v) => setOpt("page_breaks", v)}
+        label={t.app.songbook.detailPanel.saltPaginaEntreCancons}
+      />
     </div>
   )
 }
 
 /* ── PdfFormatSection ──────────────────────────────────────── */
+
+/** Desplegable de plataforma (YouTube/Spotify/Cap), reutilitzat per a
+ *  l'enllaç clicable del títol i per al codi QR (independents). */
+function PlatformSelect({
+  value,
+  onChange,
+}: {
+  value: LinkPlatform
+  onChange: (v: LinkPlatform) => void
+}) {
+  const t = getT()
+  const labels: Record<LinkPlatform, string> = {
+    youtube: t.app.songbook.detailPanel.youtube,
+    spotify: t.app.songbook.detailPanel.spotify,
+    none: t.app.songbook.detailPanel.cap,
+  }
+  return (
+    <select
+      className="opt-select"
+      value={value}
+      onChange={(e) => onChange(e.target.value as LinkPlatform)}
+    >
+      {LINK_PLATFORMS.map((p) => (
+        <option key={p} value={p}>
+          {labels[p]}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+/** Caixa de marges en disposició "rombo" (model de caixa CSS): inputs
+ *  als quatre costats d'una caixa interior dibuixada. */
+function MarginsBox() {
+  const t = getT()
+  const opts = useSongbookStore((s) => s.pdfOptions)
+  const setOpt = useSongbookStore((s) => s.setPdfOption)
+
+  function marginInput(key: "margin_top" | "margin_bottom" | "margin_left" | "margin_right") {
+    return (
+      <input
+        type="number"
+        min={0}
+        max={50}
+        value={opts[key]}
+        onChange={(e) => setOpt(key, Number(e.target.value))}
+        aria-label={t.app.songbook.detailPanel[
+          key === "margin_top"
+            ? "capçalera"
+            : key === "margin_bottom"
+              ? "peuDePagina"
+              : key === "margin_left"
+                ? "esquerra"
+                : "dreta"
+        ]}
+      />
+    )
+  }
+
+  return (
+    <div className="margins-box">
+      <div className="margins-box-edge margins-box-top">{marginInput("margin_top")}</div>
+      <div className="margins-box-edge margins-box-left">{marginInput("margin_left")}</div>
+      <div className="margins-box-inner" aria-hidden="true" />
+      <div className="margins-box-edge margins-box-right">{marginInput("margin_right")}</div>
+      <div className="margins-box-edge margins-box-bottom">{marginInput("margin_bottom")}</div>
+    </div>
+  )
+}
 
 function PdfFormatSection() {
   const t = getT()
@@ -377,113 +488,145 @@ function PdfFormatSection() {
           </button>
         ))}
       </div>
-      <label className="opt-row">
+      <label className="opt-slider-row">
         <span>{t.app.songbook.detailPanel.midaLletra}</span>
-        <select
-          className="opt-select"
-          value={opts.font_scale}
-          onChange={(e) => setOpt("font_scale", e.target.value as FontScale)}
-        >
-          {FONT_SCALES.map((s) => (
-            <option key={s} value={s}>
-              {FONT_SCALE_LABELS[s]}
-            </option>
-          ))}
-        </select>
-      </label>
-      <h4 className="options-subsection">{t.app.songbook.detailPanel.formatLlibre}</h4>
-      <label className="opt-row">
         <input
-          type="checkbox"
-          checked={opts.book_format}
-          onChange={(e) => setOpt("book_format", e.target.checked)}
+          type="range"
+          className="opt-slider"
+          min={FONT_SCALE_MIN}
+          max={FONT_SCALE_MAX}
+          step={FONT_SCALE_STEP}
+          value={opts.font_scale}
+          onChange={(e) => setOpt("font_scale", Number(e.target.value))}
+          style={
+            {
+              "--slider-fill": `${
+                ((opts.font_scale - FONT_SCALE_MIN) / (FONT_SCALE_MAX - FONT_SCALE_MIN)) * 100
+              }%`,
+            } as CSSProperties
+          }
         />
-        <span>{t.app.songbook.detailPanel.imprimirDoubleCara}</span>
+        <span className="opt-slider-value">{Math.round(opts.font_scale * 100)}%</span>
       </label>
+
+      <h4 className="options-subsection">{t.app.songbook.detailPanel.enllacosIQr}</h4>
+      <div className="pdf-links-row">
+        <label className="pdf-link-field">
+          <span>{t.app.songbook.detailPanel.enllacClicableTitol}</span>
+          <PlatformSelect
+            value={opts.link_platform}
+            onChange={(v) => setOpt("link_platform", v)}
+          />
+        </label>
+        <label className="pdf-link-field">
+          <span>{t.app.songbook.detailPanel.codiQr}</span>
+          <PlatformSelect
+            value={opts.qr_platform}
+            onChange={(v) => setOpt("qr_platform", v)}
+          />
+        </label>
+      </div>
+
+      <h4 className="options-subsection">{t.app.songbook.detailPanel.marges}</h4>
+      <MarginsBox />
+
+      <h4 className="options-subsection">{t.app.songbook.detailPanel.formatLlibre}</h4>
+      <OptToggle
+        checked={opts.book_format}
+        onChange={(v) => setOpt("book_format", v)}
+        label={t.app.songbook.detailPanel.imprimirDoubleCara}
+      />
       <p className="opt-hint">
         Alterna capçaleres i números de pàgina entre les pàgines senars (dreta) i parells
         (esquerra), i afegeix una pàgina en blanc després de l&apos;índex si cal perquè la primera
         cançó comenci a una pàgina senar.
       </p>
+    </div>
+  )
+}
 
-      <h4 className="options-subsection">{t.app.songbook.detailPanel.marges}</h4>
-      <div className="pdf-margins-grid">
-        <label className="opt-margin">
-          <span>{t.app.songbook.detailPanel.capçalera}</span>
-          <input
-            type="number"
-            min={0}
-            max={50}
-            value={opts.margin_top}
-            onChange={(e) => setOpt("margin_top", Number(e.target.value))}
-          />
-        </label>
-        <label className="opt-margin">
-          <span>{t.app.songbook.detailPanel.peuDePagina}</span>
-          <input
-            type="number"
-            min={0}
-            max={50}
-            value={opts.margin_bottom}
-            onChange={(e) => setOpt("margin_bottom", Number(e.target.value))}
-          />
-        </label>
-        <label className="opt-margin">
-          <span>{t.app.songbook.detailPanel.esquerra}</span>
-          <input
-            type="number"
-            min={0}
-            max={50}
-            value={opts.margin_left}
-            onChange={(e) => setOpt("margin_left", Number(e.target.value))}
-          />
-        </label>
-        <label className="opt-margin">
-          <span>{t.app.songbook.detailPanel.dreta}</span>
-          <input
-            type="number"
-            min={0}
-            max={50}
-            value={opts.margin_right}
-            onChange={(e) => setOpt("margin_right", Number(e.target.value))}
-          />
-        </label>
-      </div>
+/* ── NotationSection ───────────────────────────────────────── */
 
-      <h4 className="options-subsection">{t.app.songbook.detailPanel.enllacosIQr}</h4>
+type NotationMode = "sharps" | "flats" | "custom"
+
+/** Deriva el mode del desplegable a partir del mapa de notació. */
+function modeFromMap(map: AccidentalMap): NotationMode {
+  const all = ENHARMONIC_NOTES
+  if (all.every((n) => !map[n])) return "sharps"
+  if (all.every((n) => map[n])) return "flats"
+  return "custom"
+}
+
+/** Control de notació enharmònica: desplegable (sostinguts/bemolls/
+ *  personalitzat) + 5 toggles per nota negra quan el mode és personalitzat.
+ *  Es desa dins pdfOptions.notation i afecta el render (acords + tonalitat)
+ *  a la vista prèvia i al PDF. */
+function NotationSection() {
+  const t = getT()
+  const notation = useSongbookStore((s) => s.pdfOptions.notation)
+  const setOpt = useSongbookStore((s) => s.setPdfOption)
+  // Marca local: l'usuari ha triat "Personalitzat" explícitament. Cal perquè
+  // si els 5 toggles coincideixen amb un preset (tot # o tot b) el mode derivat
+  // del mapa tornaria a "sharps"/"flats" i el desplegable saltaria enrere.
+  // No es persisteix: en recarregar o reobrir el cançoner es deriva del mapa.
+  const [customLocked, setCustomLocked] = useState(false)
+  const mode: NotationMode = customLocked ? "custom" : modeFromMap(notation)
+
+  function onModeChange(next: NotationMode) {
+    if (next === "sharps") {
+      setCustomLocked(false)
+      setOpt("notation", ALL_SHARPS)
+    } else if (next === "flats") {
+      setCustomLocked(false)
+      setOpt("notation", ALL_FLATS)
+    } else {
+      // "custom": manté el mapa actual (hereta l'últim mode) i fixa la marca.
+      setCustomLocked(true)
+    }
+  }
+
+  function toggleNote(note: (typeof ENHARMONIC_NOTES)[number]) {
+    setOpt("notation", { ...notation, [note]: !notation[note] })
+  }
+
+  return (
+    <div className="options-section">
+      <h3 className="options-section-title">{t.app.songbook.detailPanel.formatAlteracions}</h3>
       <label className="opt-row">
-        <span>{t.app.songbook.detailPanel.enllacClicable}</span>
         <select
           className="opt-select"
-          value={opts.link_platform}
-          onChange={(e) =>
-            setOpt(
-              "link_platform",
-              e.target.value as "none" | "youtube" | "spotify",
-            )
-          }
+          value={mode}
+          onChange={(e) => onModeChange(e.target.value as NotationMode)}
         >
-          <option value="none">{t.app.songbook.detailPanel.cap}</option>
-          <option value="youtube">{t.app.songbook.detailPanel.youtube}</option>
-          <option value="spotify">{t.app.songbook.detailPanel.spotify}</option>
+          <option value="sharps">{t.app.songbook.detailPanel.notacioSostinguts}</option>
+          <option value="flats">{t.app.songbook.detailPanel.notacioBemolls}</option>
+          <option value="custom">{t.app.songbook.detailPanel.notacioPersonalitzat}</option>
         </select>
       </label>
-      <p className="opt-hint">
-        En clicar la capçalera d&apos;una cançó al PDF s&apos;obrirà l&apos;enllaç de la plataforma triada
-        (amb fallback automàtic a l&apos;altra si una cançó no en té).
-      </p>
-      <label className="opt-row">
-        <input
-          type="checkbox"
-          checked={opts.show_qr}
-          onChange={(e) => setOpt("show_qr", e.target.checked)}
-          disabled={opts.link_platform === "none"}
-        />
-        <span>{t.app.songbook.detailPanel.mostrarCodiQr}</span>
-      </label>
-      <p className="opt-hint">
-        Genera un QR a la dreta de la capçalera apuntant al mateix enllaç. Útil per a la versió impresa.
-      </p>
+      {mode === "custom" && (
+        <div className="accidental-switches">
+          {ENHARMONIC_NOTES.map((note) => {
+            const isFlat = notation[note]
+            return (
+              <button
+                key={note}
+                type="button"
+                className={`accidental-switch${isFlat ? " is-flat" : ""}`}
+                onClick={() => toggleNote(note)}
+                role="switch"
+                aria-checked={isFlat}
+                title={`${note} ⇄ ${SHARP_TO_FLAT[note]}`}
+              >
+                <span className="accidental-switch-side accidental-switch-sharp">{note}</span>
+                <span className="accidental-switch-side accidental-switch-flat">
+                  {SHARP_TO_FLAT[note]}
+                </span>
+                <span className="accidental-switch-knob" aria-hidden="true" />
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -492,36 +635,27 @@ function PdfFormatSection() {
 
 function OptionsTab() {
   const t = getT()
-  const canconer = useSongbookStore((s) => s.canconer)
-  const applyAllowedKeys = useSongbookStore((s) => s.applyAllowedKeys)
-  const showToast = useToastStore((s) => s.show)
-
-  function applyAndToast() {
-    if (canconer.length === 0) return
-    applyAllowedKeys()
-    showToast(t.app.songbook.detailPanel.toastTonalitatsAplicades)
-  }
 
   return (
     <div id="tab-options" className="tab-content">
+      {/* 1. Estructura del document */}
       <ContentSection />
       <div className="options-sep" />
+      {/* 2. Ordre de les cançons */}
       <div className="options-section">
-        <h3 className="options-section-title">{t.app.songbook.detailPanel.ordenacio}</h3>
+        <h3 className="options-section-title">{t.app.songbook.detailPanel.ordreCancons}</h3>
         <SortControls />
       </div>
       <div className="options-sep" />
+      {/* 3. Tonalitats permeses (s'apliquen al fer toggle, sense botó) */}
       <div className="options-section">
         <h3 className="options-section-title">{t.app.songbook.detailPanel.tonalitatPermeses}</h3>
         <KeyFilterGrid />
-        <p className="key-filter-hint">
-          Les cançons en tonalitats desactivades es transposaran a la més propera en aplicar. Si
-          reactiveu una tonalitat, les cançons que hi eren originalment recuperen el to original.
-        </p>
-        <button id="btn-apply-keys" className="btn-apply-keys" onClick={applyAndToast}>
-          {t.app.songbook.detailPanel.aplicar}
-        </button>
+        <p className="key-filter-hint">{t.app.songbook.detailPanel.tonalitatsPermesesHint}</p>
       </div>
+      <div className="options-sep" />
+      {/* 4. Format d'alteracions */}
+      <NotationSection />
     </div>
   )
 }
@@ -536,6 +670,22 @@ function OptionsTab() {
 function PdfFormatFloatingPanel({ onClose }: { onClose: () => void }) {
   const t = getT()
   const panelRef = useRef<HTMLDivElement | null>(null)
+  // Tancament animat: marquem `closing`, deixem que l'animació de sortida
+  // corri i només llavors desmuntem cridant `onClose()` real.
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<number | null>(null)
+
+  const requestClose = useCallback(() => {
+    if (closeTimer.current != null) return // ja s'està tancant
+    setClosing(true)
+    closeTimer.current = window.setTimeout(onClose, 160)
+  }, [onClose])
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current != null) window.clearTimeout(closeTimer.current)
+    }
+  }, [])
 
   // Aplica/treu la classe que difumina la resta del layout.
   useEffect(() => {
@@ -548,11 +698,11 @@ function PdfFormatFloatingPanel({ onClose }: { onClose: () => void }) {
   // Tancar amb Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose()
+      if (e.key === "Escape") requestClose()
     }
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
-  }, [onClose])
+  }, [requestClose])
 
   // Click fora del panell flotant → tanca. Atenció a no comptar el clic
   // inicial que l'ha obert (l'event d'obertura ja s'ha consumit perquè
@@ -568,7 +718,7 @@ function PdfFormatFloatingPanel({ onClose }: { onClose: () => void }) {
       if (panel.contains(target)) return
       const toggleBtn = document.querySelector(".detail-tab.is-toggle")
       if (toggleBtn && toggleBtn.contains(target)) return
-      onClose()
+      requestClose()
     }
     // Esperem un tick per no atrapar el mateix clic que obre el panell.
     const id = window.setTimeout(() => {
@@ -578,12 +728,12 @@ function PdfFormatFloatingPanel({ onClose }: { onClose: () => void }) {
       window.clearTimeout(id)
       document.removeEventListener("mousedown", onClick)
     }
-  }, [onClose])
+  }, [requestClose])
 
   return (
     <div
       ref={panelRef}
-      className="pdf-format-panel"
+      className={`pdf-format-panel${closing ? " is-closing" : ""}`}
       role="dialog"
       aria-modal="false"
     >
@@ -591,7 +741,7 @@ function PdfFormatFloatingPanel({ onClose }: { onClose: () => void }) {
         <h2 className="pdf-format-panel-title">{t.app.songbook.detailPanel.tabFormatPdf}</h2>
         <button
           className="pdf-format-panel-close"
-          onClick={onClose}
+          onClick={requestClose}
           title={t.app.songbook.detailPanel.tancarFormatPdf}
           aria-label={t.app.songbook.detailPanel.tancarFormatPdf}
         >

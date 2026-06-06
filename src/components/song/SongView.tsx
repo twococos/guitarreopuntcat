@@ -1,6 +1,13 @@
 import type { CSSProperties } from "react"
 import { QRCodeSVG } from "qrcode.react"
-import { transposeKey, transposeContent } from "@/lib/transpose"
+import {
+  transposeKey,
+  transposeContent,
+  respellAccidentals,
+  respellContent,
+  ALL_SHARPS,
+  type AccidentalMap,
+} from "@/lib/transpose"
 import type { Song, CanconerStyle } from "@/types/song"
 import { getT } from "@/lib/i18n"
 
@@ -34,6 +41,8 @@ export interface SongViewProps {
   titleLinkUrl?: string | null
   /** URL del QR. Si null/undef no es renderitza. */
   qrUrl?: string | null
+  /** Notació enharmònica del render. Default: tot sostinguts. */
+  notation?: AccidentalMap
 }
 
 /** Construeix la sublínia de l'artista amb separadors `·` només
@@ -62,11 +71,14 @@ export function SongView({
   accentColor,
   titleLinkUrl,
   qrUrl,
+  notation,
 }: SongViewProps) {
   const t = getT()
-  const displayKey = transposeKey(song.key, semitones)
-  const transposedContent = transposeContent(song.content, semitones)
-  const showOriginal = displayKey !== song.key
+  const map = notation ?? ALL_SHARPS
+  const displayKey = respellAccidentals(transposeKey(song.key, semitones), map)
+  const originalKey = respellAccidentals(song.key, map)
+  const transposedContent = respellContent(transposeContent(song.content, semitones), map)
+  const showOriginal = displayKey !== originalKey
 
   const inlineStyle = accentColor ? ({ "--accent": accentColor } as CSSProperties) : undefined
 
@@ -91,7 +103,7 @@ export function SongView({
           </div>
           <div className="song-keys">
             <span className="song-key">{displayKey}</span>
-            {showOriginal && <span className="song-key-original">(orig. {song.key})</span>}
+            {showOriginal && <span className="song-key-original">(orig. {originalKey})</span>}
           </div>
         </header>
         {qrUrl && (
@@ -143,6 +155,8 @@ export interface RenderSongHtmlOptions {
   qrSvg?: string | null
   /** Mateix URL del QR, perquè en clicar-lo s'obri (PDF clicable). */
   qrUrl?: string | null
+  /** Notació enharmònica del render. Default: tot sostinguts. */
+  notation?: AccidentalMap
 }
 
 /**
@@ -155,9 +169,11 @@ export interface RenderSongHtmlOptions {
  */
 export function renderSongHtml(opts: RenderSongHtmlOptions): string {
   const t = getT()
-  const displayKey = transposeKey(opts.key, opts.semitones)
-  const transposedContent = transposeContent(opts.content, opts.semitones)
-  const showOriginal = displayKey !== opts.key
+  const map = opts.notation ?? ALL_SHARPS
+  const displayKey = respellAccidentals(transposeKey(opts.key, opts.semitones), map)
+  const originalKey = respellAccidentals(opts.key, map)
+  const transposedContent = respellContent(transposeContent(opts.content, opts.semitones), map)
+  const showOriginal = displayKey !== originalKey
 
   const numberHtml = opts.number != null ? `<span class="song-number">${opts.number}</span>` : ""
 
@@ -169,7 +185,7 @@ export function renderSongHtml(opts: RenderSongHtmlOptions): string {
   const artistLine = artistLineParts.join(" · ")
 
   const originalHtml = showOriginal
-    ? `<span class="song-key-original">(orig. ${escHtml(opts.key)})</span>`
+    ? `<span class="song-key-original">(orig. ${escHtml(originalKey)})</span>`
     : ""
 
   const dataStyle = opts.styleVariant ?? "classic"

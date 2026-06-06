@@ -1,6 +1,6 @@
 "use client"
 import { useSongbookStore } from "@/hooks/useSongbook"
-import { transposeKey } from "@/lib/transpose"
+import { transposeKey, respellAccidentals } from "@/lib/transpose"
 import { getT } from "@/lib/i18n"
 import { IconX } from "@/components/shared/Icons"
 
@@ -11,11 +11,12 @@ export function CanconerGrid() {
   const setSelectedIdx = useSongbookStore((s) => s.setSelectedIdx)
   const openKeyMenu = useSongbookStore((s) => s.openKeyMenu)
   const remove = useSongbookStore((s) => s.removeFromCanconer)
+  const notation = useSongbookStore((s) => s.pdfOptions.notation)
 
   return (
     <div id="canconer-grid">
       {canconer.map((entry, idx) => {
-        const currentKey = transposeKey(entry.song.key, entry.semitones)
+        const currentKey = respellAccidentals(transposeKey(entry.song.key, entry.semitones), notation)
         const isSelected = selectedIdx === idx
         return (
           <div

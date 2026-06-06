@@ -33,6 +33,63 @@ const FLAT_MAP: Record<string, ChromaticNote> = {
   Cb: "B",
 }
 
+/* ── Notació enharmònica (respelling sostingut ⇄ bemoll) ──── */
+
+/** Les 5 notes negres, identificades per la seva forma en sostingut. */
+export const ENHARMONIC_NOTES = ["C#", "D#", "F#", "G#", "A#"] as const
+export type EnharmonicNote = (typeof ENHARMONIC_NOTES)[number]
+
+/** Per cada nota negra: true = mostrar bemoll, false = mostrar sostingut. */
+export type AccidentalMap = Record<EnharmonicNote, boolean>
+
+export const ALL_SHARPS: AccidentalMap = {
+  "C#": false,
+  "D#": false,
+  "F#": false,
+  "G#": false,
+  "A#": false,
+}
+
+export const ALL_FLATS: AccidentalMap = {
+  "C#": true,
+  "D#": true,
+  "F#": true,
+  "G#": true,
+  "A#": true,
+}
+
+/** Equivalent bemoll de cada nota negra (forma en sostingut → bemoll). */
+export const SHARP_TO_FLAT: Record<EnharmonicNote, string> = {
+  "C#": "Db",
+  "D#": "Eb",
+  "F#": "Gb",
+  "G#": "Ab",
+  "A#": "Bb",
+}
+
+/**
+ * Reescriu les notes negres d'una cadena (nota, acord o key) segons el mapa.
+ * S'aplica DESPRÉS de transposar, perquè el motor sempre normalitza a sostinguts.
+ * Opera nota a nota amb el mateix patró que la resta del motor.
+ */
+export function respellAccidentals(text: string, map: AccidentalMap): string {
+  return text.replace(/[A-G]#/g, (n) =>
+    map[n as EnharmonicNote] ? SHARP_TO_FLAT[n as EnharmonicNote] : n,
+  )
+}
+
+/**
+ * Variant de `respellAccidentals` per a contingut amb tags <ch>...</ch>.
+ * Reusa el patró de `transposeContent`.
+ */
+export function respellContent(content: string, map: AccidentalMap): string {
+  return content.replace(
+    /(<ch>)([^<]+)(<\/ch>)/g,
+    (_, open: string, chord: string, close: string) =>
+      `${open}${respellAccidentals(chord, map)}${close}`,
+  )
+}
+
 /** Tots els tons disponibles (per als selectors). */
 export const ALL_KEYS = [
   "C",

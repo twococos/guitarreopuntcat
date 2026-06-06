@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useSongbookStore, type CanconerEntry } from "@/hooks/useSongbook"
-import { transposeKey } from "@/lib/transpose"
+import { transposeKey, respellAccidentals } from "@/lib/transpose"
 import { getT } from "@/lib/i18n"
 import { IconX } from "@/components/shared/Icons"
 
@@ -32,8 +32,9 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
   const bump = useSongbookStore((s) => s.bumpSemitones)
   const remove = useSongbookStore((s) => s.removeFromCanconer)
   const openKeyMenu = useSongbookStore((s) => s.openKeyMenu)
+  const notation = useSongbookStore((s) => s.pdfOptions.notation)
 
-  const currentKey = transposeKey(entry.song.key, entry.semitones)
+  const currentKey = respellAccidentals(transposeKey(entry.song.key, entry.semitones), notation)
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition: transition ?? undefined,

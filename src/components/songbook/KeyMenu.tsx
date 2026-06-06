@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useSongbookStore } from "@/hooks/useSongbook"
-import { CHROMATIC } from "@/lib/transpose"
+import { CHROMATIC, respellAccidentals } from "@/lib/transpose"
 import { transposeKey } from "@/lib/transpose"
 import { getT } from "@/lib/i18n"
 
@@ -11,6 +11,7 @@ export function KeyMenu() {
   const canconer = useSongbookStore((s) => s.canconer)
   const setSemitones = useSongbookStore((s) => s.setSemitones)
   const closeKeyMenu = useSongbookStore((s) => s.closeKeyMenu)
+  const notation = useSongbookStore((s) => s.pdfOptions.notation)
 
   const menuRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 })
@@ -95,7 +96,7 @@ export function KeyMenu() {
               onSelectKey(k)
             }}
           >
-            {k}
+            {respellAccidentals(k, notation)}
           </button>
         ))}
       </div>

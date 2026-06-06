@@ -935,8 +935,7 @@ body.pdf-format-overlay-active #panel-canconer {
   filter: blur(7px) brightness(0.92);
   pointer-events: none;
   user-select: none;
-  transition:
-    filter 0.18s ease;
+  transition: filter 0.18s ease;
 }
 /* Quan els panells del fons es difuminen, el seu `border-right` també
    es difumina i sembla que desapareix. Restaurem la línia divisòria
@@ -962,6 +961,10 @@ body.pdf-format-overlay-active #panel-detail {
   overflow: hidden;
   animation: pdfFormatPanelIn 0.18s ease;
 }
+.pdf-format-panel.is-closing {
+  animation: pdfFormatPanelOut 0.16s ease forwards;
+  pointer-events: none;
+}
 @keyframes pdfFormatPanelIn {
   from {
     opacity: 0;
@@ -970,6 +973,16 @@ body.pdf-format-overlay-active #panel-detail {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+@keyframes pdfFormatPanelOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
   }
 }
 .pdf-format-panel-header {
@@ -1040,11 +1053,15 @@ body.pdf-format-overlay-active #panel-detail {
   min-width: 0;
   font-size: 0.84rem;
   padding: 0.38rem 0.6rem;
+  background: var(--surface);
   /* Restaurar l'aparença nativa del SO perquè el dropdown obert
      dibuixi les opcions amb el seu propi estil (i no amb residus
      del style.css global). */
   appearance: auto;
   -webkit-appearance: auto;
+}
+.sort-control select option {
+  background: var(--surface);
 }
 
 /* ── Color picker d'accent (a la pestanya Opcions) ── */
@@ -1291,13 +1308,16 @@ body.pdf-format-overlay-active #panel-detail {
   padding: 0.3rem 0.5rem;
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  background: var(--bg);
+  background: var(--surface);
   font-size: 0.85rem;
   cursor: pointer;
 }
 .opt-select:focus {
   outline: none;
   border-color: var(--accent);
+}
+.opt-select option {
+  background: var(--surface);
 }
 .opt-hint {
   font-size: 0.72rem;
@@ -1334,36 +1354,278 @@ body.pdf-format-overlay-active #panel-detail {
   background: #fdf4f3;
   color: var(--accent);
 }
-.pdf-margins-grid {
+/* ── Caixa de marges en rombo (model de caixa CSS) ──────────
+   Una caixa interior dibuixada amb un input a cada costat: dalt,
+   esquerra, dreta i baix, com l'editor de marges/padding del navegador. */
+.margins-box {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    ".    top    ."
+    "left inner right"
+    ".    bottom .";
+  align-items: center;
+  justify-items: center;
   gap: 0.4rem;
-}
-.opt-margin {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.2rem;
-  font-size: 0.72rem;
-  color: var(--muted);
-}
-.opt-margin span {
-  font-weight: 600;
-  white-space: nowrap;
-}
-.opt-margin input {
-  flex: 1;
-  width: 100%;
-  padding: 0.3rem 0.45rem;
-  border: 1.5px solid var(--border);
+  padding: 0.5rem;
+  border: 1.5px dashed var(--border);
   border-radius: var(--radius);
   background: var(--bg);
-  font-size: 0.82rem;
-  color: var(--text);
 }
-.opt-margin input:focus {
+.margins-box-top {
+  grid-area: top;
+}
+.margins-box-left {
+  grid-area: left;
+}
+.margins-box-right {
+  grid-area: right;
+}
+.margins-box-bottom {
+  grid-area: bottom;
+}
+.margins-box-inner {
+  grid-area: inner;
+  width: 100%;
+  min-width: 48px;
+  min-height: 38px;
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+}
+.margins-box-edge input {
+  width: 100px;
+  padding: 0.25rem 0.35rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 0.8rem;
+  color: var(--text);
+  text-align: center;
+}
+.margins-box-edge input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+/* ── Interruptor (switch) genèric ───────────────────────────
+   Llisca cap a la dreta agafant --accent en actiu, --muted en repòs. */
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.switch-row.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.switch-row-label {
+  user-select: none;
+}
+.switch-row-pair {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.switch-row-pair .switch-row {
+  flex: 1;
+  min-width: 0;
+}
+.opt-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease;
+}
+.opt-switch:disabled {
+  cursor: not-allowed;
+}
+.opt-switch.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.opt-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease;
+}
+.opt-switch.is-on .opt-switch-knob {
+  transform: translateX(16px);
+  background: #fff;
+}
+
+/* ── Switches d'alteracions (C# ⇄ Db) en una fila ───────────
+   Pastilla amb les dues notes; el "knob" cobreix la cara activa.
+   En repòs (sostingut) el knob és a l'esquerra; en bemoll, a la dreta. */
+.accidental-switches {
+  display: flex;
+  gap: 0.3rem;
+}
+.accidental-switch {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+}
+.accidental-switch-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  z-index: 1;
+  transition: color 0.16s ease;
+  color: var(--muted);
+}
+/* La cara activa es ressalta; l'altra queda atenuada. */
+.accidental-switch:not(.is-flat) .accidental-switch-sharp {
+  color: var(--accent);
+}
+.accidental-switch.is-flat .accidental-switch-flat {
+  color: var(--accent);
+}
+.accidental-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  height: calc(100% - 4px);
+  border-radius: 999px;
+  background: #fdf4f3;
+  border: 1.5px solid var(--accent);
+  transition: transform 0.16s ease;
+  z-index: 0;
+}
+.accidental-switch.is-flat .accidental-switch-knob {
+  transform: translateX(100%);
+}
+
+/* ── Slider de mida de lletra ───────────────────────────────── */
+.opt-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+/* Slider modern: track fi sense vora; la part recorreguda (esquerra del
+   thumb) es pinta amb --accent i la restant amb --border via un gradient
+   controlat per --slider-fill (percentatge calculat al component). El thumb
+   és un cercle d'accent semi-transparent, sense vora. */
+.opt-slider {
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+  cursor: pointer;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.opt-slider:focus {
+  outline: none;
+}
+.opt-slider::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--accent) var(--slider-fill, 50%),
+    var(--border) var(--slider-fill, 50%),
+    var(--border) 100%
+  );
+}
+.opt-slider::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  border: none;
+  background: var(--border);
+}
+.opt-slider::-moz-range-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.opt-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  border: none;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  transition: background 0.12s ease;
+}
+.opt-slider:hover::-webkit-slider-thumb {
+  background: color-mix(in srgb, var(--accent) 75%, transparent);
+}
+.opt-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.opt-slider:hover::-moz-range-thumb {
+  background: color-mix(in srgb, var(--accent) 75%, transparent);
+}
+.opt-slider-value {
+  flex-shrink: 0;
+  width: 3.2em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* ── Enllaços i QR: dos desplegables en fila ─────────────────── */
+.pdf-links-row {
+  display: flex;
+  gap: 0.6rem;
+}
+.pdf-link-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.pdf-link-field .opt-select {
+  width: 100%;
 }
 
 /* ── Toast ─────────────────────────────────────────────────── */
@@ -2089,7 +2351,10 @@ body:has(.public-nav) {
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--muted);
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
 }
 .tab-sub:hover {
   color: var(--text);
@@ -6680,4 +6945,65 @@ body:has(.account-page) > header {
   max-width: 420px;
   width: 90%;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Overlay de progrés de generació de PDF ──────────────────
+   Barra gran simulada amb textos de conya rotatius. Vegeu
+   usePdfProgress + PdfProgressOverlay. */
+.pdf-progress-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  animation: fadeIn 0.18s ease;
+}
+.pdf-progress-card {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: min(540px, 92vw);
+  padding: 2.5rem 2.25rem 2rem;
+  text-align: center;
+  animation: slideUp 0.2s ease;
+}
+.pdf-progress-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: var(--text);
+}
+.pdf-progress-bar {
+  height: 22px;
+  width: 100%;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.pdf-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hv));
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+.pdf-progress-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.pdf-progress-message {
+  font-size: 1.05rem;
+  color: var(--text);
+  font-style: italic;
+}
+.pdf-progress-pct {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }

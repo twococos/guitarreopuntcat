@@ -1,8 +1,9 @@
 "use client"
-import { useState } from "react"
 import type { CanconerStyle } from "@/types/song"
 import type { PdfOptions } from "@/lib/schemas/canconer"
 import { getT } from "@/lib/i18n"
+import { usePdfProgress } from "@/hooks/usePdfProgress"
+import { PdfProgressOverlay } from "@/components/shared/PdfProgressOverlay"
 import { IconClock, IconFileText } from "@/components/shared/Icons"
 
 interface Props {
@@ -15,11 +16,11 @@ interface Props {
 
 export function SharedPdfButton({ title, style, accentColor, pdfOptions, songs }: Props) {
   const t = getT()
-  const [loading, setLoading] = useState(false)
+  const pdfProgress = usePdfProgress()
 
   async function handleClick() {
-    if (loading) return
-    setLoading(true)
+    if (pdfProgress.active) return
+    pdfProgress.start(songs.length, t.common.pdfProgress.missatges)
     try {
       const body: Record<string, unknown> = {
         title,
@@ -38,6 +39,9 @@ export function SharedPdfButton({ title, style, accentColor, pdfOptions, songs }
       })
       if (!res.ok) throw new Error("error")
       const blob = await res.blob()
+      // Accelerem la barra fins al 100% i tanquem l'overlay abans de
+      // disparar la descàrrega.
+      await pdfProgress.finish()
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
@@ -45,23 +49,30 @@ export function SharedPdfButton({ title, style, accentColor, pdfOptions, songs }
       a.click()
       URL.revokeObjectURL(url)
     } catch {
+      pdfProgress.fail()
       alert(t.public.sharedView.errorGenerantPdf)
-    } finally {
-      setLoading(false)
     }
   }
 
   return (
-    <button className="btn-pdf" onClick={handleClick} disabled={loading}>
-      {loading ? (
-        <>
-          <IconClock /> {t.public.sharedView.generantPdf}
-        </>
-      ) : (
-        <>
-          <IconFileText /> {t.public.sharedView.descarregarPdf}
-        </>
-      )}
-    </button>
+    <>
+      <button className="btn-pdf" onClick={handleClick} disabled={pdfProgress.active}>
+        {pdfProgress.active ? (
+          <>
+            <IconClock /> {t.public.sharedView.generantPdf}
+          </>
+        ) : (
+          <>
+            <IconFileText /> {t.public.sharedView.descarregarPdf}
+          </>
+        )}
+      </button>
+      <PdfProgressOverlay
+        open={pdfProgress.active}
+        pct={pdfProgress.pct}
+        title={t.common.pdfProgress.titol}
+        message={pdfProgress.message}
+      />
+    </>
   )
 }

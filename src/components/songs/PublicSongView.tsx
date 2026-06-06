@@ -5,10 +5,18 @@ import { useRouter } from "next/navigation"
 import { QRCodeSVG } from "qrcode.react"
 import { PublicKeyMenu } from "@/components/songs/PublicKeyMenu"
 import { guardMobileApp } from "@/components/public/MobileGateLink"
-import { transposeKey, transposeContent, CHROMATIC } from "@/lib/transpose"
+import {
+  transposeKey,
+  transposeContent,
+  respellAccidentals,
+  respellContent,
+  ALL_SHARPS,
+  ALL_FLATS,
+  CHROMATIC,
+} from "@/lib/transpose"
 import type { Song } from "@/types/song"
 import { getT } from "@/lib/i18n"
-import { IconPlay } from "@/components/shared/Icons"
+import { IconPlay, IconSharp, IconFlat } from "@/components/shared/Icons"
 
 interface Props {
   song: Pick<
@@ -51,6 +59,7 @@ export function PublicSongView({ song }: Props) {
   const t = getT()
   const router = useRouter()
   const [semitones, setSemitones] = useState(0)
+  const [flats, setFlats] = useState(false)
   const [fontSize, setFontSize] = useState(FONT_DEFAULT)
   const [scrollSpeed, setScrollSpeed] = useState<number>(2)
   const [autoscroll, setAutoscroll] = useState(false)
@@ -60,9 +69,14 @@ export function PublicSongView({ song }: Props) {
   const keyBadgeRef = useRef<HTMLButtonElement>(null)
   const autoBtnRef = useRef<HTMLButtonElement>(null)
 
-  const displayKey = transposeKey(song.key, semitones)
-  const transposedContent = transposeContent(song.content, semitones)
-  const showOriginal = displayKey !== song.key
+  const notationMap = flats ? ALL_FLATS : ALL_SHARPS
+  const displayKey = respellAccidentals(transposeKey(song.key, semitones), notationMap)
+  const originalKey = respellAccidentals(song.key, notationMap)
+  const transposedContent = respellContent(
+    transposeContent(song.content, semitones),
+    notationMap,
+  )
+  const showOriginal = displayKey !== originalKey
 
   /* ── Autoscroll ──────────────────────────────────────────── */
 
@@ -226,7 +240,7 @@ export function PublicSongView({ song }: Props) {
                   <span className="public-song-key-current">{displayKey}</span>
                   {showOriginal && (
                     <span className="public-song-key-original">
-                      − Orig. {song.key}
+                      − Orig. {originalKey}
                     </span>
                   )}
                 </button>
@@ -311,6 +325,27 @@ export function PublicSongView({ song }: Props) {
               disabled={semitones >= SEMITONES_MAX}
             >
               +
+            </button>
+          </div>
+
+          <div className="public-song-bar-group" aria-label={t.public.publicSong.controls.notacio}>
+            <button
+              type="button"
+              className={`public-song-btn ${flats ? "is-active" : ""}`}
+              onClick={() => setFlats((v) => !v)}
+              aria-pressed={flats}
+              aria-label={
+                flats
+                  ? t.public.publicSong.controls.mostrarSostinguts
+                  : t.public.publicSong.controls.mostrarBemolls
+              }
+              title={
+                flats
+                  ? t.public.publicSong.controls.mostrarSostinguts
+                  : t.public.publicSong.controls.mostrarBemolls
+              }
+            >
+              {flats ? <IconFlat /> : <IconSharp />}
             </button>
           </div>
 

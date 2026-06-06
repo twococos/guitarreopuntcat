@@ -94,7 +94,8 @@ export default function CanconerPreviewLayout({
     : undefined
 
   const linkPlatform = canconer.pdf_options?.link_platform ?? "none"
-  const showQr = canconer.pdf_options?.show_qr ?? false
+  const qrPlatform = canconer.pdf_options?.qr_platform ?? "none"
+  const notation = canconer.pdf_options?.notation
 
   return (
     <>
@@ -122,6 +123,7 @@ export default function CanconerPreviewLayout({
         <main id="shared-songs">
           {canconer.songs.map((s, i) => {
             const linkUrl = resolveLinkUrl(linkPlatform, s.youtube_url, s.spotify_url)
+            const qrUrl = resolveLinkUrl(qrPlatform, s.youtube_url, s.spotify_url)
             return (
               <SongView
                 key={s.id}
@@ -132,7 +134,8 @@ export default function CanconerPreviewLayout({
                 styleVariant={style}
                 accentColor={accentColor}
                 titleLinkUrl={linkUrl}
-                qrUrl={showQr ? linkUrl : null}
+                qrUrl={qrUrl}
+                notation={notation}
               />
             )
           })}
