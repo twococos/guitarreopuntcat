@@ -549,8 +549,33 @@ function decode(s: string): string {
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(parseInt(n, 10)))
-    .replace(/&([a-z]+);/g, (m, name: string) => HTML_ENTITIES[name] ?? m)
+    // Codis numèrics hexadecimals (&#x2019;) — abans del decimal per evitar
+    // que el patró decimal s'empassi la 'x'.
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h: string) =>
+      decodeCodePoint(parseInt(h, 16)),
+    )
+    // Codis numèrics decimals (&#8217;)
+    .replace(/&#(\d+);/g, (_, n: string) => decodeCodePoint(parseInt(n, 10)))
+    // Entitats nominals: incloem majúscules (&Aacute;) i les tipogràfiques.
+    .replace(/&([a-zA-Z]+);/g, (m, name: string) => HTML_ENTITIES[name] ?? m)
+}
+
+/**
+ * Converteix un code point Unicode a caràcter, normalitzant els caràcters
+ * tipogràfics a les seves versions ASCII rectes (apòstrofs i cometes), per
+ * coherència amb la resta del catàleg.
+ */
+function decodeCodePoint(code: number): string {
+  switch (code) {
+    case 0x2018: // ‘ left single quote
+    case 0x2019: // ’ right single quote / apòstrof
+      return "'"
+    case 0x201c: // “ left double quote
+    case 0x201d: // ” right double quote
+      return '"'
+    default:
+      return String.fromCodePoint(code)
+  }
 }
 
 // Subconjunt suficient per a acordscatala (català + caràcters habituals).
@@ -587,4 +612,19 @@ const HTML_ENTITIES: Record<string, string> = {
   Ouml: "Ö",
   Uuml: "Ü",
   auml: "ä",
+  // ── Tipogràfiques (normalitzades a ASCII recte per coherència) ──
+  rsquo: "'", // ’ apòstrof tipogràfic dret
+  lsquo: "'", // ‘ cometa simple esquerra
+  sbquo: "'", // ‚ cometa simple baixa
+  rdquo: '"', // ” cometa doble dreta
+  ldquo: '"', // “ cometa doble esquerra
+  bdquo: '"', // „ cometa doble baixa
+  hellip: "…",
+  mdash: "—",
+  ndash: "–",
+  laquo: "«",
+  raquo: "»",
+  deg: "°",
+  bull: "•",
+  times: "×",
 }

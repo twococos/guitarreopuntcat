@@ -204,4 +204,19 @@ export const editor = {
   wysiwyg: {
     reproductorYoutube: "Reproductor YouTube",
   },
+
+  findBar: {
+    cercaPlaceholder: "Cerca…",
+    reemplacaPlaceholder: "Reemplaça per…",
+    anteriorTitle: "Anterior (Maj+Enter)",
+    seguentTitle: "Següent (Enter)",
+    reemplaca: "Reemplaça",
+    reemplacaTot: "Reemplaça tot",
+    reemplacaTitle: "Reemplaça la coincidència actual",
+    reemplacaTotTitle: "Reemplaça totes les coincidències",
+    tancaTitle: "Tanca (Esc)",
+    senseResultats: "Sense resultats",
+    // (n de N) — index 1-based de la coincidència activa sobre el total.
+    comptador: (actual: number, total: number) => `${actual} de ${total}`,
+  },
 } as const

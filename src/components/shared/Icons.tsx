@@ -404,3 +404,8 @@ export const IconSection = (p: IconProps) =>
     </>,
     p,
   )
+
+export const IconChevronUp = (p: IconProps) => svg(<polyline points="18 15 12 9 6 15" />, p)
+
+export const IconChevronDown = (p: IconProps) =>
+  svg(<polyline points="6 9 12 15 18 9" />, p)

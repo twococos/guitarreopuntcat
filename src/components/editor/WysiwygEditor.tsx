@@ -37,9 +37,12 @@ import type { ReactNode } from "react"
 import { parse, serialize } from "@/lib/editor/model"
 import type { Block, Doc, Inline } from "@/lib/editor/model"
 import { renumberEstrofas } from "@/lib/editor/sections"
+import { findMatches, replaceMatch, replaceAll } from "@/lib/editor/search"
+import type { SearchMatch } from "@/lib/editor/search"
 
 import { ChordContextMenu } from "./ChordContextMenu"
 import { SectionContextMenu } from "./SectionContextMenu"
+import { EditorFindBar } from "./EditorFindBar"
 
 // ── Props i Handle ────────────────────────────────────────────────────────────
 
@@ -401,6 +404,77 @@ function computeCharOffsetInBlock(
 }
 
 /**
+ * Normalitza un punt DOM (node, offset) — tal com el dóna una Selection — a un
+ * CursorPos lògic. És robust als casos en què el navegador situa el punt:
+ *  - en un text node / span dins un bloc (cas normal),
+ *  - directament sobre un `div[data-block]` (offset = índex de fill),
+ *  - sobre el contenidor de l'editor (offset = índex de bloc).
+ *
+ * Aquests dos darrers casos passen sovint amb seleccions multi-bloc, triple
+ * clic o Ctrl+A, i abans retornaven null (findBlockAncestor s'aturava al
+ * contenidor) → copy/cut/paste no llegien bé la selecció.
+ */
+function resolveDomPoint(
+  container: HTMLElement,
+  node: Node,
+  domOffset: number,
+): CursorPos | null {
+  // Cas 1: el punt és el contenidor mateix. L'offset és un índex entre blocs.
+  if (node === container) {
+    const children = Array.from(container.children).filter(
+      (c): c is HTMLElement => c instanceof HTMLElement && c.hasAttribute("data-block"),
+    )
+    if (children.length === 0) return { blockIdx: 0, charOffset: 0 }
+    // offset == nombre de fills → final del darrer bloc.
+    if (domOffset >= children.length) {
+      const last = children[children.length - 1]!
+      return endOfBlockPos(last)
+    }
+    const target = children[domOffset]!
+    return { blockIdx: blockIndex(target), charOffset: 0 }
+  }
+
+  // Cas 2/3: busquem el bloc ancestre. Si el node és el propi div[data-block],
+  // findBlockAncestor el retorna directament.
+  const block = findBlockAncestor(node, container)
+  if (!block) return null
+  const bIdx = blockIndex(block)
+  if (bIdx < 0) return null
+
+  // Si el punt és el div[data-block] amb offset = índex de fill, el traduïm a
+  // offset textual sumant la longitud dels fills anteriors.
+  if (node === block) {
+    const kids = Array.from(block.childNodes)
+    let acc = 0
+    for (let i = 0; i < Math.min(domOffset, kids.length); i++) {
+      const k = kids[i]
+      if (k instanceof HTMLElement && k.hasAttribute("data-chord")) continue
+      acc += (k?.textContent ?? "").length
+    }
+    return { blockIdx: bIdx, charOffset: acc }
+  }
+
+  return {
+    blockIdx: bIdx,
+    charOffset: computeCharOffsetInBlock(block, node, domOffset),
+  }
+}
+
+/** Retorna la posició lògica al final d'un bloc (DOM element). */
+function endOfBlockPos(block: HTMLElement): CursorPos {
+  const bIdx = blockIndex(block)
+  if (block.getAttribute("data-block") !== "lyric") {
+    return { blockIdx: bIdx, charOffset: 0 }
+  }
+  let acc = 0
+  for (const child of Array.from(block.childNodes)) {
+    if (child instanceof HTMLElement && child.hasAttribute("data-chord")) continue
+    acc += (child.textContent ?? "").length
+  }
+  return { blockIdx: bIdx, charOffset: acc }
+}
+
+/**
  * Llegeix la posició actual del cursor.
  * Retorna null si no hi ha selecció dins el contenidor.
  */
@@ -409,19 +483,7 @@ function readCursorPosition(container: HTMLElement): CursorPos | null {
   if (!sel || sel.rangeCount === 0) return null
 
   const range = sel.getRangeAt(0)
-  const block = findBlockAncestor(range.startContainer, container)
-  if (!block) return null
-
-  const bIdx = blockIndex(block)
-  if (bIdx < 0) return null
-
-  const charOffset = computeCharOffsetInBlock(
-    block,
-    range.startContainer,
-    range.startOffset,
-  )
-
-  return { blockIdx: bIdx, charOffset }
+  return resolveDomPoint(container, range.startContainer, range.startOffset)
 }
 
 /**
@@ -1204,50 +1266,89 @@ function insertDocAtPos(
     }
   }
 
-  // Cas multi-bloc o secció/empty: dividim el bloc actual i intercalem.
+  // Cas multi-bloc (o un sol bloc section/empty): dividim el bloc actual pel
+  // cursor i intercalem els blocs inserits, fusionant la PRIMERA línia inserida
+  // amb el tros esquerre i l'ÚLTIMA amb el tros dret (semàntica natural
+  // d'enganxar text multi-línia al mig d'una línia).
   let leftBlock: Block | null = null
   let rightBlock: Block | null = null
-
   if (block && block.kind === "lyric") {
     const [l, r] = splitLyricBlock(block, pos.charOffset)
     leftBlock = l
     rightBlock = r
   }
 
-  const newBlocks = [...insert.blocks]
-  let newBlockIdx = pos.blockIdx
-  let newCharOffset = 0
+  const insertBlocks = insert.blocks
+  const middle: Block[] = []
 
-  // Calculem la nova posició: després del darrer bloc inserit
-  const lastInserted = newBlocks[newBlocks.length - 1]
-  if (lastInserted && lastInserted.kind === "lyric") {
-    newCharOffset = blockTextLength(lastInserted)
+  // 1) Primera línia inserida: es fusiona amb leftBlock si tots dos són lyric.
+  const firstInserted = insertBlocks[0]!
+  let firstMerged = false
+  if (leftBlock && leftBlock.kind === "lyric" && firstInserted.kind === "lyric") {
+    middle.push({
+      kind: "lyric",
+      spans: mergeAdjacentText([...leftBlock.spans, ...firstInserted.spans]),
+    })
+    firstMerged = true
+  } else {
+    if (leftBlock) middle.push(leftBlock)
+    middle.push(firstInserted)
   }
 
-  if (leftBlock !== null && rightBlock !== null) {
-    blocks.splice(pos.blockIdx, 1, leftBlock, ...newBlocks, rightBlock)
-    newBlockIdx = pos.blockIdx + newBlocks.length
-    // Si el darrer inserit i el rightBlock són lyric, els fusionem
-    if (
-      lastInserted &&
-      lastInserted.kind === "lyric" &&
-      rightBlock.kind === "lyric"
-    ) {
-      const idx = pos.blockIdx + newBlocks.length // posició del rightBlock
-      const merged: Block = {
-        kind: "lyric",
-        spans: mergeAdjacentText([
-          ...lastInserted.spans,
-          ...rightBlock.spans,
-        ]),
+  // 2) Blocs intermedis: tal qual.
+  for (let i = 1; i < insertBlocks.length - 1; i++) {
+    middle.push(insertBlocks[i]!)
+  }
+
+  // 3) Última línia inserida (si n'hi ha més d'una): es fusiona amb rightBlock.
+  //    L'índex del bloc final i el charOffset depenen d'aquesta fusió.
+  let newBlockIdx: number
+  let newCharOffset: number
+
+  if (insertBlocks.length === 1) {
+    // Un sol bloc inserit: el cursor va al final d'aquest bloc; el rightBlock
+    // (si existeix i és lyric) es fusiona amb ell quan firstInserted és lyric.
+    if (firstMerged && rightBlock && rightBlock.kind === "lyric") {
+      const idx = middle.length - 1
+      const m = middle[idx]!
+      if (m.kind === "lyric") {
+        newCharOffset = blockTextLength(m)
+        middle[idx] = {
+          kind: "lyric",
+          spans: mergeAdjacentText([...m.spans, ...rightBlock.spans]),
+        }
+        newBlockIdx = pos.blockIdx + idx
+      } else {
+        newCharOffset = 0
+        middle.push(rightBlock)
+        newBlockIdx = pos.blockIdx + idx
       }
-      blocks.splice(idx - 1, 2, merged)
-      newBlockIdx = idx - 1
+    } else {
+      // firstInserted no fusionable (section/empty) o sense rightBlock lyric.
+      const lastIdx = middle.length - 1
+      const last = middle[lastIdx]!
+      newCharOffset = last.kind === "lyric" ? blockTextLength(last) : 0
+      newBlockIdx = pos.blockIdx + lastIdx
+      if (rightBlock) middle.push(rightBlock)
     }
   } else {
-    blocks.splice(pos.blockIdx, block ? 1 : 0, ...newBlocks)
-    newBlockIdx = pos.blockIdx + newBlocks.length - 1
+    const lastInserted = insertBlocks[insertBlocks.length - 1]!
+    if (lastInserted.kind === "lyric" && rightBlock && rightBlock.kind === "lyric") {
+      newCharOffset = blockTextLength(lastInserted)
+      middle.push({
+        kind: "lyric",
+        spans: mergeAdjacentText([...lastInserted.spans, ...rightBlock.spans]),
+      })
+      newBlockIdx = pos.blockIdx + middle.length - 1
+    } else {
+      newCharOffset = lastInserted.kind === "lyric" ? blockTextLength(lastInserted) : 0
+      middle.push(lastInserted)
+      newBlockIdx = pos.blockIdx + middle.length - 1
+      if (rightBlock) middle.push(rightBlock)
+    }
   }
+
+  blocks.splice(pos.blockIdx, block ? 1 : 0, ...middle)
 
   return { doc: { blocks }, newPos: { blockIdx: newBlockIdx, charOffset: newCharOffset } }
 }
@@ -1383,6 +1484,15 @@ export const WysiwygEditor = forwardRef<
     mode: "insert",
   })
 
+  // ── Barra de cerca/reemplaç (Ctrl+F) ───────────────────────────────────────
+  const [findBar, setFindBar] = useState<{
+    open: boolean
+    query: string
+    replace: string
+  }>({ open: false, query: "", replace: "" })
+  /** Índex 0-based de la coincidència activa dins la llista de matches. */
+  const [findActiveIdx, setFindActiveIdx] = useState<number>(0)
+
   /**
    * Estat del drag-and-drop. És un useRef (no useState) perquè:
    * - Evitem re-renders durant el moviment.
@@ -1491,23 +1601,27 @@ export const WysiwygEditor = forwardRef<
         startPos = { blockIdx: lastIdx, charOffset: lastOffset }
       }
 
-      // Detectem si hi ha selecció no buida
+      // Detectem si hi ha selecció no buida. Usem resolveDomPoint per a tots
+      // dos extrems perquè les seleccions multi-bloc (els límits de les quals
+      // poden caure sobre el contenidor o un div[data-block]) es llegeixin bé.
       let endPos: CursorPos = startPos
       let hasSelection = false
       if (sel.rangeCount > 0 && !sel.isCollapsed) {
         const range = sel.getRangeAt(0)
-        const endBlock = findBlockAncestor(range.endContainer, container)
-        if (endBlock) {
-          const endBlockIdx = blockIndex(endBlock)
-          if (endBlockIdx >= 0) {
-            const endChar = computeCharOffsetInBlock(
-              endBlock,
-              range.endContainer,
-              range.endOffset,
-            )
-            endPos = { blockIdx: endBlockIdx, charOffset: endChar }
-            hasSelection = comparePos(startPos, endPos) !== 0
-          }
+        const resolvedStart = resolveDomPoint(
+          container,
+          range.startContainer,
+          range.startOffset,
+        )
+        const resolvedEnd = resolveDomPoint(
+          container,
+          range.endContainer,
+          range.endOffset,
+        )
+        if (resolvedStart) startPos = resolvedStart
+        if (resolvedEnd) {
+          endPos = resolvedEnd
+          hasSelection = comparePos(startPos, endPos) !== 0
         }
       }
 
@@ -1610,6 +1724,170 @@ export const WysiwygEditor = forwardRef<
     [commitDoc],
   )
 
+  // ── Cerca / Reemplaç ───────────────────────────────────────────────────────
+
+  // Coincidències actuals. Es recalculen quan canvia el contingut (`value`) o
+  // la query. Operen sobre el Doc, no sobre el DOM.
+  const findMatchList = useMemo<SearchMatch[]>(() => {
+    if (!findBar.open || findBar.query === "") return []
+    return findMatches(parse(value), findBar.query)
+  }, [findBar.open, findBar.query, value])
+
+  // Manté l'índex actiu dins el rang vàlid quan canvia la llista.
+  useEffect(() => {
+    setFindActiveIdx((idx) => {
+      if (findMatchList.length === 0) return 0
+      return Math.min(idx, findMatchList.length - 1)
+    })
+  }, [findMatchList])
+
+  /** Ressalta la coincidència activa al DOM (overlay per a text, classe per a
+   *  acord/secció) i fa scroll perquè sigui visible. */
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const wrap = container.parentElement
+
+    // Neteja ressaltats anteriors.
+    container.querySelectorAll(".wch--search, .wsec--search").forEach((el) => {
+      el.classList.remove("wch--search", "wsec--search")
+    })
+    if (wrap) {
+      wrap.querySelectorAll(".editor-find-highlight").forEach((el) => el.remove())
+    }
+
+    if (!findBar.open || findMatchList.length === 0) return
+    const match = findMatchList[findActiveIdx]
+    if (!match) return
+
+    // Localitza el bloc DOM corresponent.
+    let blockEl: HTMLElement | null = null
+    for (const b of Array.from(container.querySelectorAll("[data-block]"))) {
+      if (b instanceof HTMLElement && blockIndex(b) === match.blockIdx) {
+        blockEl = b
+        break
+      }
+    }
+    if (!blockEl) return
+
+    if (match.kind === "section") {
+      const inner = blockEl.querySelector(".wsec")
+      if (inner) inner.classList.add("wsec--search")
+      blockEl.scrollIntoView({ block: "nearest" })
+      return
+    }
+
+    if (match.kind === "chord") {
+      // El n-èsim span d'acord del bloc (match.spanIdx és l'índex dins
+      // block.spans; el convertim a ordinal d'acord).
+      const doc = docRef.current
+      const dblock = doc.blocks[match.blockIdx]
+      if (!dblock || dblock.kind !== "lyric") return
+      let ordinal = -1
+      for (let i = 0; i <= match.spanIdx && i < dblock.spans.length; i++) {
+        if (dblock.spans[i]?.kind === "chord") ordinal++
+      }
+      const chords = Array.from(blockEl.children).filter(
+        (c) => c instanceof HTMLElement && c.hasAttribute("data-chord"),
+      ) as HTMLElement[]
+      const target = chords[ordinal]
+      if (target) {
+        target.classList.add("wch--search")
+        target.scrollIntoView({ block: "nearest" })
+      }
+      return
+    }
+
+    // kind === "text": overlay posicionat sobre el rang [start, end) del text.
+    const doc = docRef.current
+    const dblock = doc.blocks[match.blockIdx]
+    if (!dblock || dblock.kind !== "lyric") return
+    // Localitzem l'element de text que conté l'span coincident. Comparem per
+    // text + ordinal (un bloc que comença/acaba amb acord té text spans buits
+    // injectats al DOM que no existeixen al model).
+    let textOrdinal = -1
+    for (let i = 0; i <= match.spanIdx && i < dblock.spans.length; i++) {
+      if (dblock.spans[i]?.kind === "text") textOrdinal++
+    }
+    const textEls = Array.from(blockEl.children).filter(
+      (c) => c instanceof HTMLElement && c.hasAttribute("data-text"),
+    ) as HTMLElement[]
+    const spanText =
+      dblock.spans[match.spanIdx]?.kind === "text"
+        ? (dblock.spans[match.spanIdx] as { kind: "text"; text: string }).text
+        : ""
+    let textEl: HTMLElement | undefined = textEls[textOrdinal]
+    if (!textEl || textEl.textContent !== spanText) {
+      textEl = textEls.find((el) => el.textContent === spanText) ?? textEl
+    }
+    const textNode = textEl?.firstChild
+    if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return
+
+    const range = document.createRange()
+    const len = (textNode.textContent ?? "").length
+    range.setStart(textNode, Math.min(match.start, len))
+    range.setEnd(textNode, Math.min(match.end, len))
+    const rects = range.getClientRects()
+    if (rects.length === 0 || !wrap) return
+
+    const wrapRect = wrap.getBoundingClientRect()
+    for (const rect of Array.from(rects)) {
+      const hl = document.createElement("div")
+      hl.className = "editor-find-highlight"
+      hl.style.position = "absolute"
+      hl.style.left = `${rect.left - wrapRect.left + wrap.scrollLeft}px`
+      hl.style.top = `${rect.top - wrapRect.top + wrap.scrollTop}px`
+      hl.style.width = `${rect.width}px`
+      hl.style.height = `${rect.height}px`
+      hl.style.pointerEvents = "none"
+      wrap.appendChild(hl)
+    }
+    blockEl.scrollIntoView({ block: "nearest" })
+  }, [findBar.open, findMatchList, findActiveIdx, value])
+
+  const openFindBar = useCallback(() => {
+    // Preomple amb la selecció actual si n'hi ha una de simple (com el natiu).
+    const container = containerRef.current
+    let initial = ""
+    const sel = window.getSelection()
+    if (sel && !sel.isCollapsed && container && container.contains(sel.anchorNode)) {
+      const s = sel.toString()
+      if (s && !s.includes("\n")) initial = s
+    }
+    setFindBar((f) => ({ ...f, open: true, query: initial || f.query }))
+    setFindActiveIdx(0)
+  }, [])
+
+  const closeFindBar = useCallback(() => {
+    setFindBar((f) => ({ ...f, open: false }))
+    containerRef.current?.focus()
+  }, [])
+
+  const gotoMatch = useCallback(
+    (delta: number) => {
+      setFindActiveIdx((idx) => {
+        const n = findMatchList.length
+        if (n === 0) return 0
+        return (((idx + delta) % n) + n) % n
+      })
+    },
+    [findMatchList.length],
+  )
+
+  const handleReplaceOne = useCallback(() => {
+    const match = findMatchList[findActiveIdx]
+    if (!match) return
+    const next = replaceMatch(parse(value), match, findBar.replace)
+    commitDoc(next, null, true)
+  }, [findMatchList, findActiveIdx, value, findBar.replace, commitDoc])
+
+  const handleReplaceAll = useCallback(() => {
+    if (findBar.query === "") return
+    const next = replaceAll(parse(value), findBar.query, findBar.replace)
+    commitDoc(next, null, true)
+    setFindActiveIdx(0)
+  }, [findBar.query, findBar.replace, value, commitDoc])
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       // Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z
@@ -1628,6 +1906,13 @@ export const WysiwygEditor = forwardRef<
         return
       }
 
+      // Ctrl+F: obre la barra de cerca pròpia (no la del navegador).
+      if (ctrl && e.key.toLowerCase() === "f") {
+        e.preventDefault()
+        openFindBar()
+        return
+      }
+
       if (e.key === "Tab") {
         e.preventDefault()
         const container = containerRef.current
@@ -1642,7 +1927,7 @@ export const WysiwygEditor = forwardRef<
         )
       }
     },
-    [onUndo, onRedo, commitDoc],
+    [onUndo, onRedo, commitDoc, openFindBar],
   )
 
   // ── Copy / Cut / Paste ─────────────────────────────────────────────────────
@@ -1656,28 +1941,9 @@ export const WysiwygEditor = forwardRef<
     const sel = window.getSelection()
     if (!sel || sel.rangeCount === 0) return null
     const range = sel.getRangeAt(0)
-    const startBlock = findBlockAncestor(range.startContainer, container)
-    const endBlock = findBlockAncestor(range.endContainer, container)
-    if (!startBlock || !endBlock) return null
-    const startBlockIdx = blockIndex(startBlock)
-    const endBlockIdx = blockIndex(endBlock)
-    if (startBlockIdx < 0 || endBlockIdx < 0) return null
-    const start: CursorPos = {
-      blockIdx: startBlockIdx,
-      charOffset: computeCharOffsetInBlock(
-        startBlock,
-        range.startContainer,
-        range.startOffset,
-      ),
-    }
-    const end: CursorPos = {
-      blockIdx: endBlockIdx,
-      charOffset: computeCharOffsetInBlock(
-        endBlock,
-        range.endContainer,
-        range.endOffset,
-      ),
-    }
+    const start = resolveDomPoint(container, range.startContainer, range.startOffset)
+    const end = resolveDomPoint(container, range.endContainer, range.endOffset)
+    if (!start || !end) return null
     return { start, end }
   }, [])
 
@@ -1853,6 +2119,17 @@ export const WysiwygEditor = forwardRef<
       const info = inspectTarget(target)
       placeCursorAtClick(clientX, clientY)
 
+      // Si el clic no ha caigut sobre cap bloc concret (p. ex. al marge del
+      // contenidor), info.blockIdx és -1. En aquest cas usem la posició on
+      // placeCursorAtClick ha deixat el cursor; si tampoc n'hi ha, el final del
+      // document. Evita que la inserció caigui sempre al principi (blockIdx 0).
+      const container = containerRef.current
+      let insertBlockIdx = info.blockIdx
+      if (insertBlockIdx < 0) {
+        const pos = container ? readCursorPosition(container) : null
+        insertBlockIdx = pos ? pos.blockIdx : docRef.current.blocks.length
+      }
+
       if (button === 1) {
         // Botó mig: menú de seccions. Tanca el menú d'acords si està obert.
         setChordMenu((m) => ({ ...m, open: false }))
@@ -1871,7 +2148,7 @@ export const WysiwygEditor = forwardRef<
             x: clientX,
             y: clientY,
             mode: "insert",
-            blockIdx: info.blockIdx,
+            blockIdx: insertBlockIdx,
           })
         }
         return
@@ -1910,7 +2187,7 @@ export const WysiwygEditor = forwardRef<
             x: clientX,
             y: clientY,
             mode: "insert",
-            blockIdx: info.blockIdx,
+            blockIdx: insertBlockIdx,
           })
         }
       }
@@ -2523,7 +2800,9 @@ export const WysiwygEditor = forwardRef<
 
   const handleSectionInsert = useCallback(
     (name: string) => {
-      const blockIdx = sectionMenu.blockIdx ?? 0
+      // Fallback al final del document (no al principi) si per algun motiu el
+      // blockIdx no s'ha capturat — així mai apareix inesperadament a dalt.
+      const blockIdx = sectionMenu.blockIdx ?? docRef.current.blocks.length
       insertSectionAtBlockIdx(blockIdx, name)
       setSectionMenu((m) => ({ ...m, open: false }))
     },
@@ -2675,13 +2954,21 @@ export const WysiwygEditor = forwardRef<
         const container = containerRef.current
         if (!container) return
         const { x, y } = getCursorOrContainerAnchor(container)
-        setSectionMenu({ open: true, x, y, mode: "insert" })
+        // Capturem la posició del cursor ARA perquè handleSectionInsert sàpiga
+        // on inserir. Sense això queda undefined → fallback a 0 (principi).
+        // Si no hi ha cursor dins l'editor (focus perdut en clicar la toolbar),
+        // inserim al final del document.
+        const pos = readCursorPosition(container)
+        const blockIdx = pos ? pos.blockIdx : docRef.current.blocks.length
+        setSectionMenu({ open: true, x, y, mode: "insert", blockIdx })
       },
       openChordMenuAtCursor: () => {
         const container = containerRef.current
         if (!container) return
         const { x, y } = getCursorOrContainerAnchor(container)
-        setChordMenu({ open: true, x, y, mode: "insert" })
+        const pos = readCursorPosition(container)
+        const blockIdx = pos ? pos.blockIdx : docRef.current.blocks.length
+        setChordMenu({ open: true, x, y, mode: "insert", blockIdx })
       },
     }),
     [insertChordAtPos, insertSectionAtBlockIdx],
@@ -2813,6 +3100,24 @@ export const WysiwygEditor = forwardRef<
         onModify={handleChordModify}
         onDelete={handleChordDelete}
         onClose={() => setChordMenu((m) => ({ ...m, open: false }))}
+      />
+
+      <EditorFindBar
+        open={findBar.open}
+        query={findBar.query}
+        replace={findBar.replace}
+        total={findMatchList.length}
+        activeIndex={findMatchList.length > 0 ? findActiveIdx + 1 : 0}
+        onQueryChange={(q) => {
+          setFindBar((f) => ({ ...f, query: q }))
+          setFindActiveIdx(0)
+        }}
+        onReplaceChange={(r) => setFindBar((f) => ({ ...f, replace: r }))}
+        onNext={() => gotoMatch(1)}
+        onPrev={() => gotoMatch(-1)}
+        onReplaceOne={handleReplaceOne}
+        onReplaceAll={handleReplaceAll}
+        onClose={closeFindBar}
       />
     </div>
   )
