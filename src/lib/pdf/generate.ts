@@ -37,7 +37,18 @@ export async function generatePdf(
 ): Promise<Buffer> {
   const browser = await puppeteer.launch({
     headless: true,
-    args: ["--no-sandbox"],
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      // Dins d'un contenidor, /dev/shm són 64 MB per defecte i Chromium hi
+      // peta en documents llargs. Amb aquest flag usa /tmp en lloc de la
+      // memòria compartida.
+      "--disable-dev-shm-usage",
+      // Sense GPU ni servidor gràfic al servidor: evita que intenti
+      // inicialitzar acceleració que no hi és.
+      "--disable-gpu",
+      "--font-render-hinting=none",
+    ],
   })
   let pdfBytes: Uint8Array
   let songAnchors: SongAnchor[] = []
