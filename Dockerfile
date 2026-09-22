@@ -78,6 +78,13 @@ ENV DB_PATH=/app/data/canconer.db
 ENV ANALYTICS_DB_PATH=/app/data/analytics.db
 ENV ANALYTICS_GEOIP_DB_PATH=/app/data/GeoLite2-Country.mmdb
 
+# Rutes ABSOLUTES de les migracions, FORA de /app/data: aquest directori és
+# el punt de muntatge del volum i el bind-mount del host hi tapa qualsevol
+# contingut de la imatge. Amb les migracions a dins desapareixien en arrencar
+# i migrate() petava amb "Can't find meta/_journal.json file" a cada petició.
+ENV DB_MIGRATIONS_PATH=/app/migrations
+ENV ANALYTICS_MIGRATIONS_PATH=/app/analytics-migrations
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
@@ -85,10 +92,10 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/next.config.mjs ./next.config.mjs
 
 # Les migracions s'apliquen en arrencada (src/db/client.ts i
-# analyticsClient.ts criden `migrate()`), així que els .sql han de ser
-# a la imatge.
-COPY --from=builder /app/data/migrations ./data/migrations
-COPY --from=builder /app/data/analytics-migrations ./data/analytics-migrations
+# analyticsClient.ts criden `migrate()`), així que els .sql han de ser a la
+# imatge — i fora de /app/data, que el volum del host sobreescriu.
+COPY --from=builder /app/data/migrations ./migrations
+COPY --from=builder /app/data/analytics-migrations ./analytics-migrations
 
 # L'usuari `node` ja existeix a la imatge base. El volum de dades s'ha
 # de poder escriure: el chown s'aplica al punt de muntatge des del host

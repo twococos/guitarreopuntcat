@@ -33,8 +33,15 @@ export const db = drizzle(sqlite, { schema })
 // l'esquema complet i el primer usuari que s'hi registri esdevé admin (vegeu
 // el callback `signIn` a src/lib/auth.ts). Idempotent: drizzle guarda quines
 // migracions ja ha aplicat a la taula `__drizzle_migrations`.
+//
+// La carpeta és configurable amb DB_MIGRATIONS_PATH: el middleware s'empaqueta
+// en un bundle propi i `process.cwd()` no hi és fiable. A diferència de les
+// analítiques, aquí un error SÍ que ha de propagar-se: sense esquema no hi ha
+// catàleg i val més fallar de seguida que servir una web trencada.
 if (!globalForDb.migrated) {
-  migrate(db, { migrationsFolder: path.join(process.cwd(), "data", "migrations") })
+  const migrationsFolder =
+    process.env.DB_MIGRATIONS_PATH || path.join(process.cwd(), "data", "migrations")
+  migrate(db, { migrationsFolder })
   globalForDb.migrated = true
 }
 export { schema }
