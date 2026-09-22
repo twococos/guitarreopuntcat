@@ -22,6 +22,12 @@ data/GeoLite2-*.mmdb
 # Variables d'entorn
 .env
 .env.local
+# El .env del desplegament viu al servidor, mai al repo
+# (deploy/.env.example sí que hi entra: és la plantilla).
+deploy/.env
+
+# Còpia de la BD preparada per pujar al servidor
+canconer-prod.db
 
 # Next.js
 .next/
