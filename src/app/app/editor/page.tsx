@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { getT } from "@/lib/i18n"
@@ -83,7 +83,25 @@ function snapshotOf(meta: SongMetadata, content: string): string {
   })
 }
 
+// `useSearchParams` obliga a renderitzar al client. Next no pot prerenderitzar
+// aquest arbre estàticament, així que el contingut va dins d'un <Suspense> amb
+// el mateix estat de càrrega que s'usa mentre la sessió es resol.
 export default function EditorPage() {
+  const t = getT()
+  return (
+    <Suspense
+      fallback={
+        <div id="editor-loading" aria-busy="true" style={{ padding: "2rem" }}>
+          {t.editor.page.carregant}
+        </div>
+      }
+    >
+      <EditorPageContent />
+    </Suspense>
+  )
+}
+
+function EditorPageContent() {
   const t = getT()
   const router = useRouter()
   const searchParams = useSearchParams()

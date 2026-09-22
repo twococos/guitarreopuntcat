@@ -1,0 +1,50 @@
+# ─────────────────────────────────────────────────────────────────
+# Desplegament d'El Cançoner al home server.
+#
+# Aquest fitxer viu al SERVIDOR (p. ex. /opt/canconer/docker-compose.yml),
+# no s'executa des del repo. Amb ell hi ha d'anar un .env germà.
+#
+# Una sola rèplica, sempre: la BD és SQLite en fitxer i
+# instrumentation.ts arrenca un scheduler en procés. Dues instàncies
+# alhora corrompirien la BD i duplicarien l'agregació d'analítiques.
+# ─────────────────────────────────────────────────────────────────
+
+services:
+  canconer:
+    image: ghcr.io/${GHCR_OWNER}/canconer:latest
+    container_name: canconer
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    volumes:
+      # Volum persistent: les dues BD + la BD GeoIP. L'únic que cal
+      # incloure als backups.
+      - ./data:/app/data
+
+    # Nginx Proxy Manager arriba al contenidor per la xarxa de Docker.
+    # Si NPM corre en una altra xarxa, afegeix-hi aquest servei (vegeu
+    # el README) en lloc de publicar el port a l'amfitrió.
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    # Next.js darrere d'un proxy: confia en els headers X-Forwarded-*
+    # perquè el middleware d'analítiques llegeixi la IP real del
+    # visitant i no la del proxy.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+    # Chromium necessita més memòria compartida de la que Docker dona
+    # per defecte (64 MB) o peta generant PDF llargs.
+    shm_size: 512mb
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

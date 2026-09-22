@@ -1,0 +1,21 @@
+node_modules
+.next
+out
+.git
+.github
+.claude
+backups
+*.tsbuildinfo
+.tmp-*
+
+# Les BD viuen al volum del servidor, no dins la imatge.
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/GeoLite2-*.mmdb
+
+.env
+.env.local
+.DS_Store
+.vscode
+.idea

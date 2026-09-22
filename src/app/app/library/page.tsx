@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { UserWidget } from "@/components/UserWidget"
@@ -14,7 +14,20 @@ type Tab = "canconers" | "proposals"
 
 const VALID_TABS: Tab[] = ["canconers", "proposals"]
 
+// Vegeu la nota a /app/editor: `useSearchParams` requereix un <Suspense> que
+// delimiti la part de l'arbre que Next no pot prerenderitzar.
 export default function LibraryPage() {
+  const t = getT()
+  return (
+    <Suspense
+      fallback={<div style={{ padding: "2rem" }}>{t.common.accions.carregant}</div>}
+    >
+      <LibraryPageContent />
+    </Suspense>
+  )
+}
+
+function LibraryPageContent() {
   const t = getT()
   const router = useRouter()
   const searchParams = useSearchParams()

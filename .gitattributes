@@ -1,0 +1,9 @@
+# Els fitxers que s'executen en entorns Linux han de conservar finals de
+# línia LF encara que es desenvolupin des de Windows. Amb CRLF, bash falla
+# amb "bad interpreter: /usr/bin/env bash^M" i Docker no els interpreta bé.
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+.dockerignore   text eol=lf
+.env.example    text eol=lf
