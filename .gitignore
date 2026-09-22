@@ -1,6 +1,7 @@
 # Dependències
 node_modules/
-package-lock.json
+# package-lock.json SÍ que entra al repo: fixa les versions exactes i fa
+# que el build de la imatge de producció sigui reproduïble (`npm ci`).
 
 # Base de dades
 *.db
