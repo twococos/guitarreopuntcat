@@ -312,16 +312,26 @@ cd /opt/canconer && docker compose logs -f --tail=100
 ### Tornar enrere a una versió anterior
 
 Cada build etiqueta la imatge amb el SHA del commit. Busca el que vols a la
-pestanya Packages de GitHub i:
+pestanya Packages de GitHub, i re-etiqueta'l localment com a `latest` perquè
+el compose l'agafi sense canviar cap fitxer:
 
 ```bash
 cd /opt/canconer
-docker compose down
-docker run -d --name canconer --env-file .env -v ./data:/app/data \
-  -p 127.0.0.1:3000:3000 ghcr.io/twococos/canconer:sha-<EL-SHA-COMPLET>
+SHA=sha-<EL-SHA-COMPLET>
+docker pull ghcr.io/twococos/canconer:$SHA
+docker tag ghcr.io/twococos/canconer:$SHA ghcr.io/twococos/canconer:latest
+docker compose up -d
 ```
 
-Per tornar a `latest`, `docker rm -f canconer && docker compose up -d`.
+**Atura el cron mentre investigues**, o al cap de dos minuts l'autodeploy
+tornarà a baixar la versió trencada:
+
+```bash
+crontab -l | grep -v autodeploy | crontab -
+```
+
+Per tornar a la versió bona: restaura la línia del cron i executa
+`docker compose pull && docker compose up -d`.
 
 **Important:** si el commit que revertit incloïa una migració de BD, tornar
 enrere el codi **no** desfà la migració. Restaura també el backup de la BD.
@@ -332,28 +342,35 @@ L'únic que cal salvar és `/opt/canconer/data/`. Un backup diari en calent,
 consistent gràcies a l'API `.backup` de SQLite:
 
 ```bash
-sudo tee /opt/canconer/backup.sh > /dev/null <<'EOF'
+tee ~/guitarreopuntcat/backup.sh > /dev/null <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-DEST="/opt/canconer/backups"
+STACK_DIR="${STACK_DIR:-$HOME/guitarreopuntcat}"
+DEST="$STACK_DIR/backups"
 mkdir -p "$DEST"
 STAMP="$(date +%Y%m%d-%H%M)"
-docker exec canconer node -e "
+cd "$STACK_DIR"
+
+# El nom del contenidor el resol compose, no el fixem a mà.
+CID="$(docker compose ps -q canconer)"
+[ -n "$CID" ] || { echo "El contenidor no corre"; exit 1; }
+
+docker exec "$CID" node -e "
   const D=require('better-sqlite3');
-  const d=new D('/app/data/canconer.db');
+  const d=new D('/app/data/canconer.db', { readonly: true });
   d.backup('/app/data/canconer-backup.db').then(()=>process.exit(0));
 "
-mv /opt/canconer/data/canconer-backup.db "$DEST/canconer-$STAMP.db"
+mv "$STACK_DIR/data/canconer-backup.db" "$DEST/canconer-$STAMP.db"
 # Conserva els 14 més recents.
 ls -1t "$DEST"/canconer-*.db | tail -n +15 | xargs -r rm --
 EOF
-sudo chmod +x /opt/canconer/backup.sh
+chmod +x ~/guitarreopuntcat/backup.sh
 ```
 
 I al cron:
 
 ```cron
-0 4 * * * /opt/canconer/backup.sh >> /var/log/canconer-backup.log 2>&1
+0 4 * * * $HOME/guitarreopuntcat/backup.sh >> $HOME/canconer-backup.log 2>&1
 ```
 
 ---
@@ -382,7 +399,7 @@ si tot i així falla, mira la memòria lliure del servidor amb `free -h` —
 Chromium en necessita uns 300-500 MB per PDF. Prova:
 
 ```bash
-docker exec canconer /usr/bin/chromium --version
+docker compose exec canconer /usr/bin/chromium --version
 ```
 
 Ha de respondre amb la versió. Si no, la imatge no s'ha construït bé.

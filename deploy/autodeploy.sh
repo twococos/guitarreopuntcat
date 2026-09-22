@@ -63,14 +63,36 @@ log "  ara:   $NEW"
 docker compose up -d "$SERVICE"
 
 # Espera que el healthcheck passi abans de donar-ho per bo.
+#
+# El nom del contenidor el demanem a compose: depèn de si el compose fixa
+# `container_name` o deixa que Docker el derivi del directori del stack.
+CONTAINER="$(docker compose ps -q "$SERVICE" 2>/dev/null | head -n1)"
+if [ -z "$CONTAINER" ]; then
+  log "ERROR: el contenidor del servei '$SERVICE' no s'està executant."
+  exit 1
+fi
+
 log "Esperant que l'aplicació respongui…"
-for i in $(seq 1 30); do
-  STATUS="$(docker inspect --format '{{.State.Health.Status}}' "$SERVICE" 2>/dev/null || echo "unknown")"
-  if [ "$STATUS" = "healthy" ]; then
-    log "Desplegament correcte."
-    docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
-    exit 0
-  fi
+for _ in $(seq 1 30); do
+  STATUS="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$CONTAINER" 2>/dev/null || echo "unknown")"
+  case "$STATUS" in
+    healthy)
+      log "Desplegament correcte."
+      docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
+      exit 0
+      ;;
+    none)
+      # Sense healthcheck definit no hi ha res a esperar.
+      log "Desplegat (el servei no declara healthcheck)."
+      docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
+      exit 0
+      ;;
+    unhealthy)
+      log "ATENCIÓ: el contenidor ha arrencat però el healthcheck falla."
+      log "Revisa: docker compose logs --tail=50 $SERVICE"
+      exit 1
+      ;;
+  esac
   sleep 5
 done
 
