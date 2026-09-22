@@ -12,7 +12,9 @@
 services:
   canconer:
     image: ghcr.io/${GHCR_OWNER}/canconer:latest
-    container_name: canconer
+    # Sense `container_name`: Docker el deriva del directori del stack. Així
+    # el fitxer serveix tant a /opt/canconer com a ~/guitarreopuntcat, i
+    # autodeploy.sh el resol amb `docker compose ps -q`.
     restart: unless-stopped
 
     env_file:
