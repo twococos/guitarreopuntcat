@@ -30,7 +30,10 @@ import type { SongAnchor, TocAnchor } from "./generate"
  */
 
 const BRAND_TEXT = "guitarreo.cat"
-const BRAND_LOGO_PATH = join(process.cwd(), "public", "img", "logo.png")
+// Atenció a la majúscula: el fitxer és "Logo.png". A Windows la ruta en
+// minúscula funciona igualment, però a Linux (el contenidor de producció)
+// no, i el logo desapareixia de la capçalera sense cap error visible.
+const BRAND_LOGO_PATH = join(process.cwd(), "public", "img", "Logo.png")
 
 /** Mapeja l'estil del cançoner a una família de fonts PDF estàndard.
  *  pdf-lib ofereix Helvetica, TimesRoman i Courier; per a Bradley Hand

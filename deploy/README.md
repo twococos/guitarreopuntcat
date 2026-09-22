@@ -198,6 +198,25 @@ Comprova que respon:
 curl http://127.0.0.1:3000/api/health
 ```
 
+### 2.7 Provar-ho des del navegador abans de tenir el domini
+
+El compose publica el port a `127.0.0.1`, així que la web **no** és accessible
+des d'altres màquines de la xarxa. Per fer-hi una ullada des del teu PC, obre
+un túnel SSH i visita `http://localhost:3000`:
+
+```bash
+ssh -L 3000:127.0.0.1:3000 usuari@IP-DEL-SERVIDOR
+```
+
+Si prefereixes obrir-lo a tota la LAN mentre proves, canvia el `ports` del
+compose a `"3000:3000"` i fes `docker compose up -d`. Recorda tornar-lo a
+`127.0.0.1:3000:3000` quan NPM ja funcioni: el proxy hi arriba per la xarxa
+de Docker i no cal que el port quedi exposat.
+
+> **El login amb Google no funcionarà per IP ni per `localhost`.** `AUTH_URL`
+> apunta al domini públic i Google rebutja qualsevol altre redirect. La resta
+> del lloc (catàleg, cerca, editor, muntar cançoners) sí que es pot provar.
+
 ---
 
 ## Part 3 — Nginx Proxy Manager
