@@ -88,6 +88,11 @@ La copiarem al servidor al pas 2.3.
 
 ## Part 2 — Configuració al servidor
 
+> **Nota sobre les rutes.** Aquesta guia usa `/opt/canconer`, però el stack
+> pot viure on vulguis — per exemple `~/guitarreopuntcat`. Si el canvies,
+> adapta totes les rutes d'aquesta guia, inclosa la variable `STACK_DIR`
+> del cron (Part 4). Res del codi depèn d'aquesta ubicació.
+
 ### 2.1 Crea l'estructura
 
 Connecta't al servidor i:
@@ -118,12 +123,22 @@ scp canconer-prod.db usuari@IP-DEL-SERVIDOR:/opt/canconer/data/canconer.db
 scp data/GeoLite2-Country.mmdb usuari@IP-DEL-SERVIDOR:/opt/canconer/data/
 ```
 
-Al **servidor**, dona-hi els permisos que el contenidor necessita. L'usuari
-`node` de la imatge té UID 1000:
+Al **servidor**, comprova que el contenidor podrà escriure al volum. L'usuari
+`node` de la imatge té UID 1000; si el teu usuari del servidor va ser el
+primer que es va crear, també el té i no cal fer res:
+
+```bash
+id -u        # si diu 1000, ja estàs
+```
+
+Si dona un número diferent:
 
 ```bash
 sudo chown -R 1000:1000 /opt/canconer/data
 ```
+
+A partir d'aquí caldrà `sudo` per tocar els fitxers de `data/` a mà. És
+normal.
 
 ### 2.4 Omple el `.env`
 
@@ -138,13 +153,13 @@ nano .env
 
 Cal omplir, com a mínim:
 
-| Variable | Valor |
-|---|---|
-| `GHCR_OWNER` | `twococos` (en minúscules) |
-| `AUTH_SECRET` | Genera'l amb `openssl rand -base64 32` |
-| `AUTH_URL` | `https://guitarreo.cat` — el domini públic real |
-| `NEXT_PUBLIC_SITE_URL` | El mateix domini |
-| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Els de Google Cloud Console |
+| Variable                                | Valor                                           |
+| --------------------------------------- | ----------------------------------------------- |
+| `GHCR_OWNER`                            | `twococos` (en minúscules)                      |
+| `AUTH_SECRET`                           | Genera'l amb `openssl rand -base64 32`          |
+| `AUTH_URL`                              | `https://guitarreo.cat` — el domini públic real |
+| `NEXT_PUBLIC_SITE_URL`                  | El mateix domini                                |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Els de Google Cloud Console                     |
 
 ### 2.5 Autoritza el domini a Google
 
@@ -189,14 +204,14 @@ curl http://127.0.0.1:3000/api/health
 
 Al teu NPM, crea un **Proxy Host**:
 
-| Camp | Valor |
-|---|---|
-| Domain Names | `guitarreo.cat` (i `www.guitarreo.cat` si el vols) |
-| Scheme | `http` |
+| Camp                  | Valor                                                |
+| --------------------- | ---------------------------------------------------- |
+| Domain Names          | `guitarreo.cat` (i `www.guitarreo.cat` si el vols)   |
+| Scheme                | `http`                                               |
 | Forward Hostname / IP | La IP del servidor a la xarxa Docker, o `172.17.0.1` |
-| Forward Port | `3000` |
-| Websockets Support | ✅ activat |
-| Block Common Exploits | ✅ activat |
+| Forward Port          | `3000`                                               |
+| Websockets Support    | ✅ activat                                           |
+| Block Common Exploits | ✅ activat                                           |
 
 A la pestanya **SSL**: certificat Let's Encrypt nou, **Force SSL** i **HTTP/2**
 activats.
@@ -206,14 +221,13 @@ activats.
 Depèn d'on corre NPM:
 
 - **NPM en un contenidor de la mateixa màquina**: el compose publica el port a
-  `127.0.0.1:3000`, que NPM *no* veu des del seu contenidor. Tens dues opcions:
+  `127.0.0.1:3000`, que NPM _no_ veu des del seu contenidor. Tens dues opcions:
   1. Posa `172.17.0.1` (la gateway de Docker) com a Forward Hostname. Funciona
      sense tocar res més.
   2. **Més net:** connecta els dos a una xarxa Docker compartida i usa
      `canconer` com a hostname. Vegeu l'[Annex B](#annex-b--xarxa-compartida-amb-npm).
 - **NPM en una altra màquina**: canvia el `ports` del compose de
   `"127.0.0.1:3000:3000"` a `"3000:3000"` i apunta a la IP del servidor.
-  Assegura't que el firewall només permet l'accés des de la IP de NPM.
 
 ### Mida màxima de pujada
 
@@ -261,6 +275,13 @@ Crea el log amb els permisos correctes:
 ```bash
 sudo touch /var/log/canconer-deploy.log
 sudo chown $USER /var/log/canconer-deploy.log
+```
+
+**Si el stack no és a `/opt/canconer`**, indica-ho amb `STACK_DIR` i deixa el
+log al teu home, que t'estalvia el `sudo`:
+
+```cron
+*/2 * * * * STACK_DIR=$HOME/guitarreopuntcat $HOME/guitarreopuntcat/autodeploy.sh >> $HOME/canconer-deploy.log 2>&1
 ```
 
 **Ja està.** A partir d'ara, cada `git push` a `main` arriba a producció en

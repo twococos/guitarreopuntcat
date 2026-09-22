@@ -31,11 +31,28 @@ export const analyticsDb = drizzle(sqliteAnalytics, { schema: analyticsSchema })
 
 // Aplica les migracions pendents a l'arrencada (un sol cop pel singleton), de
 // manera que des d'un clon net del repo la BD d'analítiques es crea sola.
+//
+// La carpeta és configurable: el middleware s'empaqueta en un bundle propi i
+// `process.cwd()` no hi és fiable, de manera que en producció (Docker) es
+// fixa amb ANALYTICS_MIGRATIONS_PATH.
 if (!globalForAnalytics.analyticsMigrated) {
-  migrate(analyticsDb, {
-    migrationsFolder: path.join(process.cwd(), "data", "analytics-migrations"),
-  })
-  globalForAnalytics.analyticsMigrated = true
+  const migrationsFolder =
+    process.env.ANALYTICS_MIGRATIONS_PATH ||
+    path.join(process.cwd(), "data", "analytics-migrations")
+  try {
+    migrate(analyticsDb, { migrationsFolder })
+    globalForAnalytics.analyticsMigrated = true
+  } catch (err) {
+    // Les analítiques no poden tombar el lloc: el middleware corre a cada
+    // petició i una excepció aquí deixaria tota la web inaccessible. Marquem
+    // l'intent com a fet per no repetir-lo a cada request i deixem constància.
+    globalForAnalytics.analyticsMigrated = true
+    console.error(
+      `[analytics] No s'han pogut aplicar les migracions des de "${migrationsFolder}".`,
+      `Les analítiques quedaran inactives fins que es resolgui.`,
+      err,
+    )
+  }
 }
 export { analyticsSchema as schema }
 export type AnalyticsDB = typeof analyticsDb
