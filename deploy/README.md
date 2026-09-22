@@ -264,25 +264,15 @@ Hauria de dir `Cap canvi`. Si és així, programa'l al cron:
 crontab -e
 ```
 
-I afegeix-hi aquesta línia:
+I afegeix-hi aquesta línia, amb la ruta del teu stack:
 
 ```cron
-*/2 * * * * /opt/canconer/autodeploy.sh >> /var/log/canconer-deploy.log 2>&1
+*/2 * * * * /opt/canconer/autodeploy.sh >> $HOME/canconer-deploy.log 2>&1
 ```
 
-Crea el log amb els permisos correctes:
-
-```bash
-sudo touch /var/log/canconer-deploy.log
-sudo chown $USER /var/log/canconer-deploy.log
-```
-
-**Si el stack no és a `/opt/canconer`**, indica-ho amb `STACK_DIR` i deixa el
-log al teu home, que t'estalvia el `sudo`:
-
-```cron
-*/2 * * * * STACK_DIR=$HOME/guitarreopuntcat $HOME/guitarreopuntcat/autodeploy.sh >> $HOME/canconer-deploy.log 2>&1
-```
+L'script dedueix el directori del stack de la seva pròpia ubicació, així que
+funciona des d'on el posis sense cap variable. El log va al teu home per
+estalviar-te el `sudo` de `/var/log`.
 
 **Ja està.** A partir d'ara, cada `git push` a `main` arriba a producció en
 2-4 minuts (el que triga el build d'Actions més el polling).
@@ -290,7 +280,7 @@ log al teu home, que t'estalvia el `sudo`:
 Per veure què ha fet:
 
 ```bash
-tail -f /var/log/canconer-deploy.log
+tail -f ~/canconer-deploy.log
 ```
 
 ---

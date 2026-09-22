@@ -14,7 +14,12 @@
 
 set -euo pipefail
 
-STACK_DIR="${STACK_DIR:-/opt/canconer}"
+# El stack és allà on viu aquest script: el docker-compose.yml és el seu
+# veí. Així el fitxer funciona a /opt/canconer, a ~/guitarreopuntcat o on
+# el posis, sense editar res ni haver de passar STACK_DIR des del cron.
+# Es pot forçar igualment amb STACK_DIR=/una/altra/ruta.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STACK_DIR="${STACK_DIR:-$SCRIPT_DIR}"
 SERVICE="canconer"
 LOG_TAG="canconer-deploy"
 
@@ -23,11 +28,18 @@ log() {
   logger -t "$LOG_TAG" "$*" 2>/dev/null || true
 }
 
-cd "$STACK_DIR"
+cd "$STACK_DIR" || { echo "No existeix el directori $STACK_DIR"; exit 1; }
+
+if [ ! -f docker-compose.yml ] && [ ! -f compose.yml ]; then
+  log "ERROR: no hi ha cap docker-compose.yml a $STACK_DIR."
+  exit 1
+fi
 
 # Un sol desplegament alhora: si el build anterior encara descarrega,
-# una segona execució del cron no s'hi ha d'encavalcar.
-exec 9>/tmp/canconer-deploy.lock
+# una segona execució del cron no s'hi ha d'encavalcar. El lock viu al
+# directori del stack i no a /tmp, on un fitxer d'un altre usuari ens
+# bloquejaria per sempre.
+exec 9>"$STACK_DIR/.deploy.lock"
 if ! flock -n 9; then
   log "Ja hi ha un desplegament en curs; sortim."
   exit 0
@@ -38,10 +50,11 @@ IMAGE="$(docker compose config --images "$SERVICE" | head -n1)"
 # Digest de la imatge que el contenidor està executant ara mateix.
 CURRENT="$(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}' 2>/dev/null || echo "cap")"
 
-# Digest del tag `latest` al registre. `docker manifest inspect` no
-# baixa les capes: només consulta el manifest.
-if ! REMOTE_RAW="$(docker manifest inspect "$IMAGE" 2>&1)"; then
-  log "No s'ha pogut consultar el registre: $REMOTE_RAW"
+# Comprovació prèvia del registre: `docker manifest inspect` no baixa cap
+# capa, només consulta el manifest. Serveix per distingir un problema de
+# xarxa o d'autenticació (imatge privada sense login) d'un pull fallit.
+if ! REGISTRY_ERR="$(docker manifest inspect "$IMAGE" 2>&1 >/dev/null)"; then
+  log "No s'ha pogut consultar el registre: $REGISTRY_ERR"
   exit 1
 fi
 
