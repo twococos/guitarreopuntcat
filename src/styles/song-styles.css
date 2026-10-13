@@ -28,10 +28,10 @@
    ════════════════════════════════════════════════════════ */
 
 [data-style="classic"] { --accent: #c0392b; }
-[data-style="minimal"] { --accent: #111111; --song-title-font: system-ui, -apple-system, "Segoe UI", sans-serif; }
-[data-style="bold"] { --accent: #2563eb; --song-title-font: "Impact", "Helvetica Neue", sans-serif; }
-[data-style="serif"] { --accent: #5d3a1f; --song-title-font: "Georgia", "Cambria", serif; }
-[data-style="handwritten"] { --accent: #1e3a5f; --song-title-font: "Bradley Hand", "Segoe Script", cursive; }
+[data-style="minimal"] { --accent: #111111; --song-title-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
+[data-style="bold"] { --accent: #2563eb; --song-title-font: "Anton", "Impact", "Helvetica Neue", sans-serif; }
+[data-style="serif"] { --accent: #5d3a1f; --song-title-font: "Gelasio", "Georgia", "Cambria", serif; }
+[data-style="handwritten"] { --accent: #1e3a5f; --song-title-font: "Caveat", "Bradley Hand", "Segoe Script", cursive; }
 [data-style="compact"] { --accent: #c0392b; }
 
 .song[data-style="classic"] {
@@ -47,7 +47,7 @@
    ════════════════════════════════════════════════════════ */
 
 .song[data-style="minimal"] {
-  --song-body-font: ui-monospace, "SF Mono", "Consolas", monospace;
+  --song-body-font: "JetBrains Mono", ui-monospace, "SF Mono", "Consolas", monospace;
   --song-key-color: var(--accent);
   --song-key-bg: transparent;
   --song-key-border: transparent;
@@ -65,7 +65,7 @@
 
 [data-style="minimal"] .cover h1,
 [data-style="minimal"] #shared-title {
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-weight: 600;
 }
 
@@ -75,7 +75,7 @@
    ════════════════════════════════════════════════════════ */
 
 .song[data-style="bold"] {
-  --song-body-font: "Consolas", "Courier New", monospace;
+  --song-body-font: "Inconsolata", "Consolas", "Courier New", monospace;
   --song-key-color: #fff;
   --song-key-bg: var(--accent);
   --song-key-border: color-mix(in srgb, var(--accent) 70%, black);
@@ -89,12 +89,12 @@
 
 .song[data-style="bold"] .song-number {
   color: var(--accent);
-  font-family: "Impact", sans-serif;
+  font-family: "Anton", "Impact", sans-serif;
 }
 
 [data-style="bold"] .cover h1,
 [data-style="bold"] #shared-title {
-  font-family: "Impact", "Helvetica Neue", sans-serif;
+  font-family: "Anton", "Impact", "Helvetica Neue", sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -106,7 +106,7 @@
    ════════════════════════════════════════════════════════ */
 
 .song[data-style="serif"] {
-  --song-body-font: "Cambria", "Georgia", serif;
+  --song-body-font: "Caladea", "Cambria", "Georgia", serif;
   --song-key-color: var(--accent);
   --song-key-bg: #fff;
   --song-key-border: var(--accent);
@@ -129,7 +129,7 @@
 
 [data-style="serif"] .cover h1,
 [data-style="serif"] #shared-title {
-  font-family: "Georgia", "Cambria", serif;
+  font-family: "Gelasio", "Georgia", "Cambria", serif;
   font-style: italic;
   color: var(--accent);
 }
@@ -140,7 +140,7 @@
    ════════════════════════════════════════════════════════ */
 
 .song[data-style="handwritten"] {
-  --song-body-font: "Bradley Hand", "Segoe Script", cursive;
+  --song-body-font: "Caveat", "Bradley Hand", "Segoe Script", cursive;
   --song-key-color: var(--accent);
   --song-key-bg: #fff;
   --song-key-border: var(--accent);
@@ -156,13 +156,13 @@
 }
 
 .song[data-style="handwritten"] .song-number {
-  font-family: "Bradley Hand", "Segoe Script", cursive;
+  font-family: "Caveat", "Bradley Hand", "Segoe Script", cursive;
   color: var(--accent);
 }
 
 [data-style="handwritten"] .cover h1,
 [data-style="handwritten"] #shared-title {
-  font-family: "Bradley Hand", "Segoe Script", cursive;
+  font-family: "Caveat", "Bradley Hand", "Segoe Script", cursive;
   color: var(--accent);
 }
 

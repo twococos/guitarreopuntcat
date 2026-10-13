@@ -8,18 +8,51 @@
      · vista prèvia del cançoner (col 3)
      · editor (popup de vista prèvia)
      · pàgina pública /c/[token]
-     · PDF generat per Puppeteer (via src/lib/pdf/styles.ts)
+     · PDF generat al navegador (iframe de src/lib/pdf-client,
+       servit per /api/pdf/styles)
+     · PDF generat per Puppeteer (via src/lib/pdf/styles.ts, en retirada)
 
    CANVIAR ALGUNA REGLA AQUÍ → es propaga a tots els llocs.
    Les variants d'estil del cançoner viuen a song-styles.css.
+
+   ⚠ PDF del navegador: l'escriptor DOM→PDF només sap "calcar" un
+   subconjunt de CSS (text, colors, fons, vores solid/double,
+   border-radius, imatges, SVG, degradats lineals). Ombres, filtres
+   o transformacions complexes NO sortiran al PDF. Vegeu
+   src/lib/pdf-client/writer/.
    ════════════════════════════════════════════════════════════ */
 
 /* IMPORTANT: les @import-rules han d'anar abans de qualsevol
-   altra regla CSS. Al PDF (Puppeteer) l'@import no funciona
-   perquè el HTML s'injecta amb setContent() sense base URL —
-   per això src/lib/pdf/styles.ts concatena song-styles.css
-   manualment. */
+   altra regla CSS. Als PDF l'@import no es resol (Puppeteer injecta
+   l'HTML amb setContent() i l'iframe client rep el CSS d'una ruta
+   d'API), per això src/lib/pdf/styles.ts i /api/pdf/styles
+   concatenen song-styles.css manualment. */
 @import "./song-styles.css";
+
+/* ── Fonts pròpies ──────────────────────────────────────────
+   Servides des de public/fonts/ (TTF, llicències obertes). Són
+   les MATEIXES que el generador de PDF del client incrusta al
+   document, de manera que web i PDF es veuen idèntics a tots els
+   dispositius. Registre espill: src/lib/pdf-client/fonts.ts —
+   si n'afegeixes o en treus aquí, actualitza'l també. */
+@font-face { font-family: "Gelasio"; src: url("/fonts/Gelasio-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Gelasio"; src: url("/fonts/Gelasio-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Gelasio"; src: url("/fonts/Gelasio-400i.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Gelasio"; src: url("/fonts/Gelasio-700i.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "Caladea"; src: url("/fonts/Caladea-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Caladea"; src: url("/fonts/Caladea-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Cousine"; src: url("/fonts/Cousine-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Cousine"; src: url("/fonts/Cousine-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Inconsolata"; src: url("/fonts/Inconsolata-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Inconsolata"; src: url("/fonts/Inconsolata-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Anton"; src: url("/fonts/Anton-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("/fonts/Inter-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("/fonts/Inter-600.ttf") format("truetype"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("/fonts/Inter-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Caveat"; src: url("/fonts/Caveat-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Caveat"; src: url("/fonts/Caveat-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
 
 /* Variables locals — perquè aquest fitxer sigui autosuficient
    en contextos que no tenen :root global (p.ex. PDF amb Puppeteer).
@@ -32,8 +65,8 @@
   --accent: #c0392b;
   --muted: #888;
   --border: #e5e5e3;
-  --song-body-font: "Courier New", monospace;
-  --song-title-font: "Georgia", serif;
+  --song-body-font: "Cousine", "Courier New", monospace;
+  --song-title-font: "Gelasio", "Georgia", serif;
   --song-body-size: 0.9rem;
   --song-body-line: 1.9;
   --song-key-color: var(--accent);
@@ -45,6 +78,10 @@
 /* ── Contenidor de la cançó ─────────────────────────────── */
 
 .song {
+  /* Cap negreta ni cursiva sintètiques: si una font no té la variant,
+     es fa servir la que hi ha. El PDF incrusta fonts reals i no pot
+     imitar les falses, així que web i PDF només coincideixen així. */
+  font-synthesis: none;
   scroll-margin-top: 1.5rem;
   display: flex;
   flex-direction: column;

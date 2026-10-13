@@ -34,6 +34,9 @@ export type EventMetadataMap = {
     songs_count: number
     style?: string
     success: boolean
+    /** Motor de generació. Amb "client", l'event es registra quan se serveixen
+     *  les dades (el PDF es genera després, al navegador). */
+    engine?: "client" | "server"
   }
   song_search: { q: string; results: number }
   song_random: { song_id?: number }

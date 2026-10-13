@@ -97,9 +97,10 @@ COPY --from=builder /app/next.config.mjs ./next.config.mjs
 COPY --from=builder /app/data/migrations ./migrations
 COPY --from=builder /app/data/analytics-migrations ./analytics-migrations
 
-# src/lib/pdf/styles.ts llegeix aquests dos CSS amb readFileSync() EN TEMPS
-# D'EXECUCIÓ, no els empaqueta el bundler. Sense ells, /api/pdf/generate peta
-# amb ENOENT. Van a la mateixa ruta relativa que espera el codi.
+# src/lib/pdf/styles.ts i /api/pdf/styles llegeixen aquests CSS amb
+# readFileSync() EN TEMPS D'EXECUCIÓ, no els empaqueta el bundler. Sense ells,
+# /api/pdf/generate i el PDF del navegador (que carrega /api/pdf/styles) fallen.
+# Van a la mateixa ruta relativa que espera el codi.
 COPY --from=builder /app/src/styles ./src/styles
 
 # L'usuari `node` ja existeix a la imatge base. El volum de dades s'ha

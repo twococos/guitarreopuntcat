@@ -3,6 +3,7 @@ import type { CanconerStyle } from "@/types/song"
 import type { PdfOptions } from "@/lib/schemas/canconer"
 import { getT } from "@/lib/i18n"
 import { usePdfProgress } from "@/hooks/usePdfProgress"
+import { requestPdf, downloadBlob } from "@/lib/pdf-client/request"
 import { PdfProgressOverlay } from "@/components/shared/PdfProgressOverlay"
 import { IconClock, IconFileText } from "@/components/shared/Icons"
 
@@ -22,33 +23,18 @@ export function SharedPdfButton({ title, style, accentColor, pdfOptions, songs }
     if (pdfProgress.active) return
     pdfProgress.start(songs.length, t.common.pdfProgress.missatges)
     try {
-      const body: Record<string, unknown> = {
-        title,
-        style,
-        accent_color: accentColor,
-        songs,
-      }
-      // Si el cançoner té opcions guardades, les enviem; si no,
-      // l'endpoint aplica els defaults del schema.
-      if (pdfOptions) body.pdf_options = pdfOptions
-
-      const res = await fetch("/api/pdf/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) throw new Error("error")
-      const blob = await res.blob()
+      // Sense opcions guardades, requestPdf aplica els defaults del schema.
+      const blob = await requestPdf(
+        { title, style, accentColor, options: pdfOptions, songs },
+        pdfProgress.report,
+      )
       // Accelerem la barra fins al 100% i tanquem l'overlay abans de
       // disparar la descàrrega.
       await pdfProgress.finish()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${title}.pdf`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch {
+      downloadBlob(blob, `${title}.pdf`)
+    } catch (err) {
+      console.error("Error generant el PDF:", err)
+      // Aquesta pàgina no munta <ToastHost />: per això alert().
       pdfProgress.fail()
       alert(t.public.sharedView.errorGenerantPdf)
     }
