@@ -86,4 +86,10 @@ export const common = {
       "Empaperant la sala",
     ] as string[],
   },
+  // Textos que apareixen DINS del PDF generat (portada, índex, capçalera).
+  pdfDocument: {
+    index: "Índex",
+    generatEl: (data: string) => `Generat el ${data}`,
+    marca: "guitarreo.cat",
+  },
 } as const

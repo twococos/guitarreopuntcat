@@ -36,12 +36,12 @@ export const STYLE_DEFAULT_ACCENTS: Record<CanconerStyle, string> = {
  *  S'usa al selector d'estil perquè cada opció es mostri amb la seva
  *  pròpia tipografia (amb fallback, com al cançoner real). */
 export const STYLE_TITLE_FONTS: Record<CanconerStyle, string> = {
-  classic: '"Georgia", serif',
-  minimal: 'system-ui, -apple-system, "Segoe UI", sans-serif',
-  bold: '"Impact", "Helvetica Neue", sans-serif',
-  serif: '"Georgia", "Cambria", serif',
-  handwritten: '"Bradley Hand", "Segoe Script", cursive',
-  compact: '"Georgia", serif',
+  classic: '"Gelasio", "Georgia", serif',
+  minimal: '"Inter", system-ui, -apple-system, "Segoe UI", sans-serif',
+  bold: '"Anton", "Impact", "Helvetica Neue", sans-serif',
+  serif: '"Gelasio", "Georgia", "Cambria", serif',
+  handwritten: '"Caveat", "Bradley Hand", "Segoe Script", cursive',
+  compact: '"Gelasio", "Georgia", serif',
 }
 
 /** Paleta predefinida del color picker (10 mostres). */

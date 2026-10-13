@@ -6,6 +6,7 @@ import { useToastStore } from "@/hooks/useToasts"
 import { useUiStore } from "@/hooks/useUi"
 import { usePdfProgress } from "@/hooks/usePdfProgress"
 import { saveCanconer } from "@/lib/canconerApi"
+import { requestPdf, downloadBlob } from "@/lib/pdf-client/request"
 import { CanconerList } from "./CanconerList"
 import { CanconerGrid } from "./CanconerGrid"
 import { ConfirmToast } from "@/components/editor/ConfirmToast"
@@ -110,31 +111,24 @@ export function CanconerPanel() {
     if (!hasItems || pdfProgress.active) return
     pdfProgress.start(canconer.length, t.common.pdfProgress.missatges)
     try {
-      const res = await fetch("/api/pdf/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const blob = await requestPdf(
+        {
           title: canconerTitle || "El meu cançoner",
           style: canconerStyle,
-          accent_color: accentColor,
-          pdf_options: pdfOptions,
+          accentColor,
+          options: pdfOptions,
           songs: canconer.map((e) => ({ id: e.song.id, semitones: e.semitones })),
-        }),
-      })
-      if (!res.ok) throw new Error("PDF error")
-      const blob = await res.blob()
+        },
+        pdfProgress.report,
+      )
       // Accelerem la barra fins al 100% i tanquem l'overlay abans de
       // disparar la descàrrega.
       await pdfProgress.finish()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${canconerTitle || "canconer"}.pdf`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch {
+      downloadBlob(blob, `${canconerTitle || "canconer"}.pdf`)
+    } catch (err) {
+      console.error("Error generant el PDF:", err)
       pdfProgress.fail()
-      alert(t.app.songbook.canconerPanel.errorGenerantPdf)
+      showToast(t.app.songbook.canconerPanel.errorGenerantPdf, { type: "error" })
     }
   }
 
