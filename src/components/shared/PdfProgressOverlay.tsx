@@ -14,7 +14,7 @@ interface Props {
 
 /**
  * Overlay gran centrat amb una barra de progrés ben visible mentre es
- * genera el PDF d'un cançoner. El progrés és simulat (vegeu usePdfProgress);
+ * genera el PDF d'un cançoner. El progrés el reporta el generador (vegeu usePdfProgress);
  * aquest component és purament presentacional i controlat.
  */
 export function PdfProgressOverlay({ open, pct, title, message }: Props): ReactNode {

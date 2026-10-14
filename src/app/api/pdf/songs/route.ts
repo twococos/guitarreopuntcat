@@ -75,7 +75,6 @@ export async function POST(request: Request) {
       songs_count: songs.length,
       style: parsed.style,
       success: true,
-      engine: "client",
     },
     status: 200,
     durationMs: Date.now() - startedAt,

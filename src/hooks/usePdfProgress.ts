@@ -2,35 +2,21 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 /**
- * Progrés SIMULAT de la generació d'un PDF.
+ * Progrés de la generació d'un PDF (al navegador, src/lib/pdf-client).
  *
- * La generació real és una sola petició HTTP bloquejant sense fases
- * reportables, i amb cançoners llargs no es pot estimar bé quant trigarà
- * Puppeteer. Per això la barra:
- *
- *   · Puja amb una corba asimptòtica que s'apropa a un SOSTRE (~92%) però
- *     no hi arriba mai sola — així cap cançoner llarg "es planta" al 100%.
- *   · La corba escala amb el nombre de cançons: més cançons → s'apropa al
- *     sostre més lentament.
- *   · Quan arriba la resposta (`finish()`), accelera ràpidament fins al 100%
- *     i tanca l'overlay.
+ * El generador reporta el progrés real amb `report(pct)`. La barra:
+ *   · Mai va enrere.
+ *   · Queda limitada a un SOSTRE (~92%) fins que arriba `finish()`: l'última
+ *     part (desar el fitxer) no és reportable i no ha de semblar encallada
+ *     al 100%.
+ *   · Amb `finish()`, accelera ràpidament fins al 100% i tanca l'overlay.
  *
  * Els missatges de conya van rotant en ordre aleatori (sense repetir fins
  * esgotar la llista).
- *
- * Mode REAL: amb el generador del client sí que hi ha fases mesurables. La
- * primera crida a `report(pct)` atura la corba simulada i, a partir
- * d'aquí, la barra segueix el progrés real (mai enrere, i limitat al
- * sostre fins que arriba `finish()`).
  */
 
-/** Sostre que la corba simulada no supera mentre s'espera la resposta. */
+/** Sostre que la barra no supera fins a finish(). */
 const CEILING = 92
-/** A la durada de referència s'arriba a aquesta fracció del sostre. */
-const REFERENCE_FRACTION = 0.85
-/** Durada de referència: base + per cançó (ms). */
-const BASE_MS = 2000
-const PER_SONG_MS = 1200
 /** Cadència de rotació dels missatges (ms). */
 const MESSAGE_INTERVAL_MS = 1800
 /** Durada de l'acceleració final fins a 100% (ms). */
@@ -43,13 +29,13 @@ export interface PdfProgress {
   pct: number
   /** Missatge de conya actual. */
   message: string
-  /** Engega la simulació per a `songCount` cançons amb la llista de missatges. */
-  start: (songCount: number, messages: readonly string[]) => void
-  /** Passa a progrés real (0..100). Atura la simulació a la primera crida. */
+  /** Obre l'overlay a 0% amb la llista de missatges. */
+  start: (messages: readonly string[]) => void
+  /** Progrés real (0..100) reportat pel generador. */
   report: (pct: number) => void
   /** Accelera fins a 100% i tanca l'overlay. Resol quan s'ha tancat. */
   finish: () => Promise<void>
-  /** Atura la simulació i tanca l'overlay immediatament (cas d'error). */
+  /** Tanca l'overlay immediatament (cas d'error). */
   fail: () => void
 }
 
@@ -68,17 +54,12 @@ export function usePdfProgress(): PdfProgress {
   const [pct, setPct] = useState(0)
   const [message, setMessage] = useState("")
 
-  // Refs per als temporitzadors i l'estat intern de la simulació, perquè els
-  // callbacks no es recreïn i puguem netejar de forma fiable.
   const rafRef = useRef<number | null>(null)
   const msgTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const startedAtRef = useRef(0)
-  const tauRef = useRef(1)
   const messagesRef = useRef<string[]>([])
   const msgIdxRef = useRef(0)
   /** Últim percentatge mostrat (per a finish() i per no anar mai enrere). */
   const pctRef = useRef(0)
-  const realRef = useRef(false)
 
   const showPct = useCallback((v: number) => {
     pctRef.current = v
@@ -109,35 +90,13 @@ export function usePdfProgress(): PdfProgress {
   }, [])
 
   const start = useCallback(
-    (songCount: number, messages: readonly string[]) => {
+    (messages: readonly string[]) => {
       cancelTimers()
-
-      // Durada de referència segons el nombre de cançons.
-      const referenceMs = BASE_MS + PER_SONG_MS * Math.max(1, songCount)
-      // pct(t) = CEILING · (1 - e^(-t/τ)); volem pct(referenceMs) =
-      // CEILING · REFERENCE_FRACTION ⇒ τ = referenceMs / ln(1/(1-frac)).
-      tauRef.current = referenceMs / Math.log(1 / (1 - REFERENCE_FRACTION))
-
       messagesRef.current = shuffled(messages)
       msgIdxRef.current = 0
-      startedAtRef.current =
-        typeof performance !== "undefined" ? performance.now() : Date.now()
-
-      realRef.current = false
       setActive(true)
       showPct(0)
       nextMessage()
-
-      const tick = () => {
-        const now =
-          typeof performance !== "undefined" ? performance.now() : Date.now()
-        const elapsed = now - startedAtRef.current
-        const value = CEILING * (1 - Math.exp(-elapsed / tauRef.current))
-        showPct(value)
-        rafRef.current = requestAnimationFrame(tick)
-      }
-      rafRef.current = requestAnimationFrame(tick)
-
       msgTimerRef.current = setInterval(nextMessage, MESSAGE_INTERVAL_MS)
     },
     [cancelTimers, nextMessage, showPct],
@@ -145,14 +104,6 @@ export function usePdfProgress(): PdfProgress {
 
   const report = useCallback(
     (value: number) => {
-      if (!realRef.current) {
-        realRef.current = true
-        if (rafRef.current !== null) {
-          cancelAnimationFrame(rafRef.current)
-          rafRef.current = null
-        }
-      }
-      // El 100% només el posa finish(): encara pot faltar desar el fitxer.
       const capped = Math.min(CEILING, Math.max(pctRef.current, value))
       if (capped !== pctRef.current) showPct(capped)
     },
@@ -163,13 +114,9 @@ export function usePdfProgress(): PdfProgress {
     cancelTimers()
     return new Promise<void>((resolve) => {
       const startPct = pctRef.current
-      const finishStart =
-        typeof performance !== "undefined" ? performance.now() : Date.now()
-
+      const finishStart = performance.now()
       const tick = () => {
-        const now =
-          typeof performance !== "undefined" ? performance.now() : Date.now()
-        const t = Math.min(1, (now - finishStart) / FINISH_MS)
+        const t = Math.min(1, (performance.now() - finishStart) / FINISH_MS)
         showPct(startPct + (100 - startPct) * t)
         if (t < 1) {
           rafRef.current = requestAnimationFrame(tick)

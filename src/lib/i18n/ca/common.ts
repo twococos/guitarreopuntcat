@@ -48,8 +48,8 @@ export const common = {
     alemany: "de · Alemany",
     altre: "other · Altre",
   },
-  // Overlay de progrés mentre es genera el PDF d'un cançoner. El progrés és
-  // simulat al client (vegeu usePdfProgress); els missatges van rotant.
+  // Overlay de progrés mentre es genera el PDF d'un cançoner (vegeu
+  // usePdfProgress); els missatges van rotant.
   pdfProgress: {
     titol: "Generant el cançoner…",
     // Textos de conya que van rotant mentre es genera. Ampliables lliurement.

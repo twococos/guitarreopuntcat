@@ -51,14 +51,11 @@ RUN npm run build
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 
-# Chromium + les fonts i llibreries que necessita per renderitzar els PDF.
-# fonts-liberation i fonts-dejavu cobreixen les piles de fonts de
-# song-styles.css; sense elles el PDF surt amb caixes buides.
+# Chromium NOMÉS per a l'importador d'Ultimate Guitar (puppeteerFetch.ts,
+# admin). Els PDF ja es generen al navegador i no el necessiten; tampoc cal
+# cap paquet de fonts: les fonts dels PDF viuen a public/fonts.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       chromium \
-      fonts-liberation \
-      fonts-dejavu-core \
-      fonts-noto-color-emoji \
       ca-certificates \
       tini \
     && rm -rf /var/lib/apt/lists/*
@@ -69,7 +66,7 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
 # Puppeteer llegeix aquesta variable a `launch()` — per això no cal
-# tocar src/lib/pdf/generate.ts ni src/lib/importers/puppeteerFetch.ts.
+# tocar src/lib/importers/puppeteerFetch.ts.
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
@@ -97,10 +94,9 @@ COPY --from=builder /app/next.config.mjs ./next.config.mjs
 COPY --from=builder /app/data/migrations ./migrations
 COPY --from=builder /app/data/analytics-migrations ./analytics-migrations
 
-# src/lib/pdf/styles.ts i /api/pdf/styles llegeixen aquests CSS amb
-# readFileSync() EN TEMPS D'EXECUCIÓ, no els empaqueta el bundler. Sense ells,
-# /api/pdf/generate i el PDF del navegador (que carrega /api/pdf/styles) fallen.
-# Van a la mateixa ruta relativa que espera el codi.
+# /api/pdf/styles llegeix aquests CSS amb readFileSync() EN TEMPS
+# D'EXECUCIÓ, no els empaqueta el bundler. Sense ells, el PDF (que es
+# maqueta amb aquest CSS) falla. Van a la ruta relativa que espera el codi.
 COPY --from=builder /app/src/styles ./src/styles
 
 # L'usuari `node` ja existeix a la imatge base. El volum de dades s'ha

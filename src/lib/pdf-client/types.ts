@@ -14,7 +14,7 @@ export interface PdfSong {
   spotifyUrl: string | null
 }
 
-/** Entrada pública del generador: el mateix que rebia /api/pdf/generate. */
+/** Entrada pública del generador. */
 export interface PdfClientInput {
   title: string
   style: CanconerStyle

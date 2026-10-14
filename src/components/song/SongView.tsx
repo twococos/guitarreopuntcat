@@ -19,7 +19,7 @@ import { getT } from "@/lib/i18n"
  *   · vista prèvia de l'editor
  *   · pàgina pública /c/[token]
  *
- * El PDF generat per Puppeteer reutilitza la mateixa estructura HTML
+ * El PDF (generat al navegador, src/lib/pdf-client) reutilitza la mateixa estructura HTML
  * via la funció `renderSongHtml()` exportada aquí sota.
  *
  * Tot l'estil viu a src/styles/song.css. Canvis allà es propaguen
@@ -127,7 +127,7 @@ export function SongView({
   )
 }
 
-/* ── Helper per al PDF (Puppeteer) ─────────────────────────── */
+/* ── Helper per al PDF ─────────────────────────────────────── */
 
 function escHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -161,7 +161,7 @@ export interface RenderSongHtmlOptions {
 
 /**
  * Genera l'HTML d'una cançó com a string, amb la mateixa estructura
- * que produeix <SongView />. S'usa al PDF (Puppeteer) per garantir
+ * que produeix <SongView />. S'usa al PDF per garantir
  * que React i el PDF mai no es desincronitzen.
  *
  * El `content` ja conté tags `<ch>` i `<sec>` literals i NO s'escapa.

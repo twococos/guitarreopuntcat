@@ -32,8 +32,8 @@ export async function puppeteerFetch(
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
-      // Vegeu la nota a lib/pdf/generate.ts: dins d'un contenidor /dev/shm
-      // és massa petit i Chromium hi peta.
+      // Dins d'un contenidor /dev/shm és massa petit (64 MB) i Chromium hi
+      // peta: amb aquest flag usa /tmp.
       "--disable-dev-shm-usage",
       "--disable-gpu",
       "--disable-blink-features=AutomationControlled",
