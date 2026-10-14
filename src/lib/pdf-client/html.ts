@@ -1,4 +1,4 @@
-import { buildQrSvg } from "@/lib/pdf/qr"
+import { buildQrSvg } from "./qr"
 import { renderSongHtml } from "@/components/song/SongView"
 import { transposeKey, respellAccidentals, ALL_SHARPS } from "@/lib/transpose"
 import type { CanconerStyle, PdfOptions } from "@/lib/schemas/canconer"
@@ -8,10 +8,9 @@ import type { PdfSong } from "./types"
 /**
  * Peces HTML del cançoner, a punt perquè el paginador les col·loqui.
  *
- * És el port client de src/lib/pdf/buildHtml.ts: mateixa estructura i
- * mateixes classes (perquè song.css i song-styles.css apliquin igual),
- * però retorna les peces per separat en lloc d'un document sencer, i
- * parteix el cos de cada cançó en unitats paginables.
+ * Mateixes classes que la vista de la web (perquè song.css i
+ * song-styles.css apliquin igual). Retorna les peces per separat i parteix
+ * el cos de cada cançó en unitats paginables.
  */
 export interface BookParts {
   coverHtml: string | null

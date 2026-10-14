@@ -8,14 +8,13 @@
      · vista prèvia del cançoner (col 3)
      · editor (popup de vista prèvia)
      · pàgina pública /c/[token]
-     · PDF generat al navegador (iframe de src/lib/pdf-client,
-       servit per /api/pdf/styles)
-     · PDF generat per Puppeteer (via src/lib/pdf/styles.ts, en retirada)
+     · PDF (generat al navegador a l'iframe de src/lib/pdf-client,
+       que rep aquest CSS de /api/pdf/styles)
 
    CANVIAR ALGUNA REGLA AQUÍ → es propaga a tots els llocs.
    Les variants d'estil del cançoner viuen a song-styles.css.
 
-   ⚠ PDF del navegador: l'escriptor DOM→PDF només sap "calcar" un
+   ⚠ PDF: l'escriptor DOM→PDF només sap "calcar" un
    subconjunt de CSS (text, colors, fons, vores solid/double,
    border-radius, imatges, SVG, degradats lineals). Ombres, filtres
    o transformacions complexes NO sortiran al PDF. Vegeu
@@ -23,10 +22,9 @@
    ════════════════════════════════════════════════════════════ */
 
 /* IMPORTANT: les @import-rules han d'anar abans de qualsevol
-   altra regla CSS. Als PDF l'@import no es resol (Puppeteer injecta
-   l'HTML amb setContent() i l'iframe client rep el CSS d'una ruta
-   d'API), per això src/lib/pdf/styles.ts i /api/pdf/styles
-   concatenen song-styles.css manualment. */
+   altra regla CSS. Al PDF l'@import no es resol (l'iframe rep el CSS
+   d'una ruta d'API), per això /api/pdf/styles concatena
+   song-styles.css manualment. */
 @import "./song-styles.css";
 
 /* ── Fonts pròpies ──────────────────────────────────────────
@@ -55,7 +53,7 @@
 @font-face { font-family: "Caveat"; src: url("/fonts/Caveat-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
 
 /* Variables locals — perquè aquest fitxer sigui autosuficient
-   en contextos que no tenen :root global (p.ex. PDF amb Puppeteer).
+   en contextos que no tenen :root global (p.ex. l'iframe del PDF).
    Si el context global ja defineix --accent, aquest valor queda
    sobreescrit silenciosament.
 

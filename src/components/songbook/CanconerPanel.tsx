@@ -109,7 +109,7 @@ export function CanconerPanel() {
 
   async function onGeneratePdf() {
     if (!hasItems || pdfProgress.active) return
-    pdfProgress.start(canconer.length, t.common.pdfProgress.missatges)
+    pdfProgress.start(t.common.pdfProgress.missatges)
     try {
       const blob = await requestPdf(
         {

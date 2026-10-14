@@ -25,6 +25,7 @@ import {
   SHARP_TO_FLAT,
   type AccidentalMap,
 } from "@/lib/transpose"
+import { HEADER_AREA_MM, FOOTER_AREA_MM } from "@/lib/pdf-client/frame"
 import type { CSSProperties } from "react"
 
 /** Conversions per dimensionar la pàgina A4 a la preview.
@@ -36,12 +37,8 @@ const PX_PER_MM = 96 / 25.4
 const A4_WIDTH_PX = A4_WIDTH_MM * PX_PER_MM
 const A4_HEIGHT_PX = A4_HEIGHT_MM * PX_PER_MM
 
-/** Espai reservat per a la capçalera/peu de pàgina al PDF (mm).
- *  Mirroreja les constants HEADER_AREA_MM / FOOTER_AREA_MM de
- *  src/lib/pdf/styles.ts perquè la preview tingui els mateixos
- *  marges efectius que el PDF generat. */
-const HEADER_AREA_MM = 12
-const FOOTER_AREA_MM = 10
+/* HEADER_AREA_MM / FOOTER_AREA_MM (espai de capçalera i peu) venen del
+   frame del PDF perquè la preview tingui els mateixos marges efectius. */
 
 /* ── PreviewTab ────────────────────────────────────────────── */
 

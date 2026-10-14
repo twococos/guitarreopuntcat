@@ -874,7 +874,7 @@ select:focus {
   /* width/height/padding/transform venen del style inline (JS) */
 }
 /* Columnes del PDF també a la preview, perquè la coincidència sigui
-   completa. Mirroreja la regla equivalent de src/lib/pdf/styles.ts. */
+   completa. Mirroreja la regla equivalent de src/lib/pdf-client/frame.ts. */
 .preview-page .song-body {
   column-count: var(--pdf-cols, 1);
   column-fill: balance;

@@ -33,10 +33,9 @@ export type EventMetadataMap = {
     canconer_id?: number
     songs_count: number
     style?: string
+    /** El PDF es genera al navegador: l'event es registra quan se serveixen
+     *  les dades (/api/pdf/songs), no quan acaba la generació. */
     success: boolean
-    /** Motor de generació. Amb "client", l'event es registra quan se serveixen
-     *  les dades (el PDF es genera després, al navegador). */
-    engine?: "client" | "server"
   }
   song_search: { q: string; results: number }
   song_random: { song_id?: number }

@@ -21,7 +21,7 @@ export function SharedPdfButton({ title, style, accentColor, pdfOptions, songs }
 
   async function handleClick() {
     if (pdfProgress.active) return
-    pdfProgress.start(songs.length, t.common.pdfProgress.missatges)
+    pdfProgress.start(t.common.pdfProgress.missatges)
     try {
       // Sense opcions guardades, requestPdf aplica els defaults del schema.
       const blob = await requestPdf(
