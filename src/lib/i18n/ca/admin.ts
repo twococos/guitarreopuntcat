@@ -14,6 +14,7 @@ export const admin = {
     cancons: "Cançons",
     usuaris: "Usuaris",
     canconers: "Cançoners",
+    transcripcions: "Transcripcions",
   },
 
   statsCards: {
@@ -178,6 +179,65 @@ export const admin = {
     },
   },
 
+  transcriptionsTab: {
+    encuarTitol: "Encuar cançons",
+    encuarHint:
+      "Una cançó per línia: enllaç de YouTube, títol, artista (títol i artista opcionals). Es crearan propostes a nom de l'usuari «Transcriptor».",
+    encuarPlaceholder: "https://www.youtube.com/watch?v=…, Bon dia, Els Pets",
+    encuar: "Encuar",
+    analitzarFalten: "Analitzar les cançons publicades sense anàlisi",
+    analitzarFaltenTitle:
+      "Afegeix a la cua totes les cançons públiques amb YouTube que encara no tenen anàlisi. No en toca el contingut.",
+    confirmAnalitzarFalten: "Encuar l'anàlisi de totes les cançons publicades que encara no en tenen?",
+    actualitzar: "Actualitzar",
+    cuaTitol: "Cua",
+    capFeina: "No hi ha cap feina.",
+    colCanco: "Cançó",
+    colMode: "Mode",
+    colEstat: "Estat",
+    colWorker: "Worker",
+    colIntents: "Intents",
+    colTemps: "Temps",
+    colAccions: "Accions",
+    modeNew: "Nova",
+    modeAnalyze: "Anàlisi",
+    statusLabels: {
+      queued: "En cua",
+      running: "En curs",
+      done: "Feta",
+      failed: "Fallada",
+      cancelled: "Cancel·lada",
+    },
+    sensTitol: "(sense títol)",
+    reintentA: (data: string) => `reintent a partir de ${data}`,
+    revisar: "Revisar",
+    obrir: "Obrir",
+    cancellar: "Cancel·lar",
+    reintentar: "Reintentar",
+    workersTitol: "Workers",
+    workersHint: "Cada ordinador que transcriu té el seu token. Desactivar-lo el revoca a l'instant.",
+    capWorker: "Encara no hi ha cap worker.",
+    colNom: "Nom",
+    colDispositiu: "Dispositiu",
+    colVersio: "Versió",
+    colVist: "Vist per últim cop",
+    colFetes: "Fetes",
+    colMitjana: "Mitjana",
+    nouWorkerPlaceholder: "Nom del worker (p. ex. PC de casa)",
+    crearWorker: "Crear worker",
+    tokenTitol: (nom: string) => `Token de «${nom}»`,
+    tokenHint:
+      "Copia'l ara: no es tornarà a mostrar. Enganxa'l a l'app del transcriptor o fes servir «tx worker --api <url> --token <token>».",
+    copiar: "Copiar",
+    tancar: "Tancar",
+    activar: "Activar",
+    desactivar: "Desactivar",
+    eliminar: "Eliminar",
+    confirmEliminarWorker: (nom: string) =>
+      `Eliminar el worker «${nom}»? Les feines que tingui en curs tornaran a la cua.`,
+    mai: "mai",
+  },
+
   toasts: {
     canconsTrobades: (added: number, total: number) =>
       `${added} cançons afegides · ${total} ja hi eren (omeses)`,
@@ -186,5 +246,9 @@ export const admin = {
     copiat: "Copiat al porta-retalls",
     errorCopiar: "No s'ha pogut copiar",
     totesJaHiEren: "Totes les cançons ja eren a la cua",
+    transcripcionsEncuades: (encuades: number, duplicades: number, errors: number) =>
+      `${encuades} encuades · ${duplicades} duplicades · ${errors} errors`,
+    errorEncuar: "No s'ha pogut encuar",
+    errorAccio: "No s'ha pogut fer l'acció",
   },
 } as const

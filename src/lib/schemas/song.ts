@@ -45,6 +45,12 @@ export const songUpdateSchema = z.object({
     .regex(/^https?:\/\/open\.spotify\.com\//, "URL de Spotify no vàlida")
     .nullable()
     .optional(),
+  bpm: z.number().int().min(20).max(400).nullable().optional(),
+  timeSignature: z
+    .string()
+    .regex(/^\d{1,2}\/\d{1,2}$/, "Compàs no vàlid")
+    .nullable()
+    .optional(),
 })
 
 export type SongUpdate = z.infer<typeof songUpdateSchema>

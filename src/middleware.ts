@@ -19,8 +19,9 @@ export const runtime = "nodejs"
 
 export const config = {
   matcher: [
-    // Exclou estàtics de Next, recursos de imatge, favicon, assets, rutes d'auth i track intern
-    "/((?!_next/static|_next/image|favicon|assets|api/auth|api/track).*)",
+    // Exclou estàtics de Next, recursos de imatge, favicon, assets, rutes d'auth i track intern,
+    // i l'API dels workers de transcripció (els heartbeats no són visites)
+    "/((?!_next/static|_next/image|favicon|assets|api/auth|api/track|api/transcriber).*)",
   ],
 }
 

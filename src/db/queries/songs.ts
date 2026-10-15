@@ -8,7 +8,7 @@ import type { SongQuery } from "@/lib/schemas/song"
 // `state` no està a la llista: només volem traçar canvis de contingut.
 const SONG_CONTENT_KEYS = [
   "title", "artist", "key", "capo", "content", "language", "tags",
-  "album", "year", "youtubeUrl", "spotifyUrl",
+  "album", "year", "youtubeUrl", "spotifyUrl", "bpm", "timeSignature",
 ] as const
 
 // ─── GET /api/songs ──────────────────────────────────────────
@@ -198,6 +198,8 @@ export async function updateSong(
     year: number | null
     youtubeUrl: string | null
     spotifyUrl: string | null
+    bpm: number | null
+    timeSignature: string | null
     state: number
   }>,
 ) {

@@ -29,6 +29,8 @@ export function mapSong(song: {
   year: number | null
   youtubeUrl: string | null
   spotifyUrl: string | null
+  bpm?: number | null
+  timeSignature?: string | null
   state: number
   createdAt: string | null
   updatedAt: string | null
@@ -48,6 +50,8 @@ export function mapSong(song: {
     year: song.year,
     youtube_url: song.youtubeUrl,
     spotify_url: song.spotifyUrl,
+    bpm: song.bpm ?? null,
+    time_signature: song.timeSignature ?? null,
     state: song.state,
     created_at: song.createdAt,
     updated_at: song.updatedAt,

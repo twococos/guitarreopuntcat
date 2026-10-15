@@ -9,6 +9,7 @@ import { ProposalsTab } from "@/components/admin/ProposalsTab"
 import { SongsTab } from "@/components/admin/SongsTab"
 import { UsersTab } from "@/components/admin/UsersTab"
 import { CanconersTab } from "@/components/admin/CanconersTab"
+import { TranscriptionsTab } from "@/components/admin/TranscriptionsTab"
 import { AnalyticsPanel } from "@/components/admin/analytics/AnalyticsPanel"
 import {
   IconBarChart,
@@ -16,12 +17,13 @@ import {
   IconMusic,
   IconUsers,
   IconBookOpen,
+  IconWand,
 } from "@/components/shared/Icons"
 import { AppHeader } from "@/components/songbook/AppHeader"
 
-type Tab = "stats" | "proposals" | "songs" | "users" | "canconers" | "analytics"
+type Tab = "stats" | "proposals" | "songs" | "users" | "canconers" | "transcriptions" | "analytics"
 
-const VALID_TABS: Tab[] = ["stats", "proposals", "songs", "users", "canconers", "analytics"]
+const VALID_TABS: Tab[] = ["stats", "proposals", "songs", "users", "canconers", "transcriptions", "analytics"]
 
 interface Stats {
   songs: number
@@ -103,6 +105,12 @@ export default function AdminPage() {
           <IconBookOpen /> {t.admin.tabs.canconers}
         </button>
         <button
+          className={`tab ${tab === "transcriptions" ? "active" : ""}`}
+          onClick={() => setTab("transcriptions")}
+        >
+          <IconWand /> {t.admin.tabs.transcripcions}
+        </button>
+        <button
           className={`tab ${tab === "analytics" ? "active" : ""}`}
           onClick={() => setTab("analytics")}
         >
@@ -116,6 +124,7 @@ export default function AdminPage() {
         {tab === "songs" && <SongsTab />}
         {tab === "users" && <UsersTab />}
         {tab === "canconers" && <CanconersTab />}
+        {tab === "transcriptions" && <TranscriptionsTab />}
         {tab === "analytics" && <AnalyticsPanel />}
       </div>
     </>

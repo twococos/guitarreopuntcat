@@ -137,6 +137,12 @@ export const editor = {
     o: "o",
     noSHaPogutImportar: "No s'ha pogut importar la cançó.",
     errorDesconegut: "Error desconegut.",
+    transcriure: "Transcriure des de l'àudio",
+    transcriureHint:
+      "Amb un enllaç de YouTube, el transcriptor n'extreu la lletra i els acords. Triga uns minuts i el resultat apareix a Propostes.",
+    transcriureEncuada: "Afegida a la cua de transcripcions. La trobaràs a Propostes quan estigui feta.",
+    transcriureDuplicada: "Aquest vídeo o cançó ja és a la cua o al cançoner.",
+    veureCua: "Veure la cua",
   },
 
   propose: {

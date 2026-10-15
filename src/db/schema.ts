@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm"
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 import type { PdfOptions } from "@/lib/schemas/canconer"
+import type { AnalysisCompact, WorkerDeviceInfo } from "@/lib/schemas/transcriber"
 
 // ─── Cançons ────────────────────────────────────────────────
 export const songs = sqliteTable(
@@ -25,6 +26,9 @@ export const songs = sqliteTable(
     year: integer("year"),
     youtubeUrl: text("youtube_url"),
     spotifyUrl: text("spotify_url"),
+    // Tempo i compàs. Els omple el transcriptor (si són buits) i es poden corregir a mà.
+    bpm: integer("bpm"),
+    timeSignature: text("time_signature"), // "4/4", "3/4", "6/8"
     state: integer("state").notNull().default(0),
     // 0 pública, 1 privada, 2 pendent, 3 rebutjada, 4 cancel·lada
     createdAt: text("created_at").default(sql`(datetime('now'))`),
@@ -110,6 +114,82 @@ export const songProposals = sqliteTable("song_proposals", {
   resubmittedAt: text("resubmitted_at"),
 })
 
+// ─── Transcripció automàtica (worker extern, vegeu src/lib/transcriber/) ──
+// Workers autoritzats a demanar feina. Autenticació per token (només se'n desa
+// el SHA-256), a part de NextAuth.
+export const transcriptionWorkers = sqliteTable(
+  "transcription_workers",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    active: integer("active").notNull().default(1),
+    deviceInfo: text("device_info", { mode: "json" }).$type<WorkerDeviceInfo>(),
+    appVersion: text("app_version"),
+    lastSeenAt: text("last_seen_at"),
+    jobsDone: integer("jobs_done").notNull().default(0),
+    avgSeconds: real("avg_seconds"),
+    createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: text("created_at").default(sql`(datetime('now'))`),
+  },
+  (t) => ({
+    tokenHashUnique: uniqueIndex("transcription_workers_token_hash_unique").on(t.tokenHash),
+  }),
+)
+
+// Cua de feines. `new`: crea una proposta. `analyze`: només desa l'anàlisi
+// d'una cançó existent (`songId`), sense tocar-ne el content.
+export const transcriptionJobs = sqliteTable(
+  "transcription_jobs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    mode: text("mode", { enum: ["new", "analyze"] }).notNull().default("new"),
+    sourceUrl: text("source_url").notNull(),
+    title: text("title"),
+    artist: text("artist"),
+    language: text("language"),
+    lyricsText: text("lyrics_text"),
+    songId: integer("song_id").references(() => songs.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["queued", "running", "done", "failed", "cancelled"] })
+      .notNull()
+      .default("queued"),
+    priority: integer("priority").notNull().default(0),
+    workerId: integer("worker_id").references(() => transcriptionWorkers.id, { onDelete: "set null" }),
+    leaseUntil: text("lease_until"),
+    attempts: integer("attempts").notNull().default(0),
+    notBefore: text("not_before"), // no es reintenta abans d'aquesta data
+    error: text("error"),
+    resultSongId: integer("result_song_id").references(() => songs.id, { onDelete: "set null" }),
+    elapsedSeconds: real("elapsed_seconds"),
+    createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: text("created_at").default(sql`(datetime('now'))`),
+    startedAt: text("started_at"),
+    finishedAt: text("finished_at"),
+  },
+  (t) => ({
+    statusIdx: index("transcription_jobs_status_idx").on(t.status, t.priority, t.id),
+  }),
+)
+
+// Última anàlisi de cada cançó (se sobreescriu en reprocessar). És la sortida
+// de la màquina i no s'edita mai: la sincronització amb el content es calcula
+// al moment. Si el youtubeUrl de la cançó ja no coincideix amb `youtubeId`,
+// l'anàlisi és d'un altre àudio i no s'ha de fer servir.
+export const songAnalyses = sqliteTable("song_analyses", {
+  songId: integer("song_id")
+    .primaryKey()
+    .references(() => songs.id, { onDelete: "cascade" }),
+  jobId: integer("job_id").references(() => transcriptionJobs.id, { onDelete: "set null" }),
+  youtubeId: text("youtube_id"),
+  durationS: real("duration_s").notNull(),
+  formatVersion: integer("format_version").notNull(),
+  appVersion: text("app_version"),
+  device: text("device"),
+  lyricsSource: text("lyrics_source"),
+  analysis: text("analysis", { mode: "json" }).$type<AnalysisCompact>().notNull(),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
+})
+
 // ─── Tipus inferits ─────────────────────────────────────────
 export type Song = typeof songs.$inferSelect
 export type SongInsert = typeof songs.$inferInsert
@@ -121,3 +201,6 @@ export type CanconerSong = typeof canconerSongs.$inferSelect
 export type CanconerSongInsert = typeof canconerSongs.$inferInsert
 export type SongProposal = typeof songProposals.$inferSelect
 export type SongProposalInsert = typeof songProposals.$inferInsert
+export type TranscriptionWorker = typeof transcriptionWorkers.$inferSelect
+export type TranscriptionJob = typeof transcriptionJobs.$inferSelect
+export type SongAnalysis = typeof songAnalyses.$inferSelect

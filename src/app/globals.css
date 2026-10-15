@@ -2512,6 +2512,50 @@ body:has(.public-nav) {
   margin-bottom: 1rem;
 }
 
+/* ─── Admin: transcripcions ─── */
+.transcriptions-section {
+  margin-bottom: 2rem;
+}
+.transcriptions-section h3 {
+  margin: 0 0 0.5rem;
+}
+.transcriptions-section .panel-toolbar {
+  flex-wrap: wrap;
+}
+.transcriptions-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0 0 0.75rem;
+}
+.transcriptions-textarea {
+  width: 100%;
+  max-width: 720px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+.transcriptions-error {
+  color: #c0392b;
+  font-size: 0.75rem;
+  max-width: 420px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.transcriptions-token {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  max-width: 720px;
+}
+.transcriptions-token code {
+  display: block;
+  word-break: break-all;
+  margin-bottom: 0.75rem;
+  user-select: all;
+}
+
 #stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
