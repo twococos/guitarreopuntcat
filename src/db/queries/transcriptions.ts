@@ -2,7 +2,7 @@ import "server-only"
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, ne, notInArray, or, sql } from "drizzle-orm"
 import { db, schema } from "@/db/client"
 import type { TranscriptionJob, TranscriptionWorker } from "@/db/schema"
-import type { AnalysisCompact, EnqueueJob, WorkerDeviceInfo } from "@/lib/schemas/transcriber"
+import type { AnalysisCompact, EnqueueJob, JobStats, WorkerDeviceInfo } from "@/lib/schemas/transcriber"
 import type { z } from "zod"
 import type { proposalResultSchema } from "@/lib/schemas/transcriber"
 import { cleanupContent } from "@/lib/importers/cleanupContent"
@@ -194,24 +194,28 @@ function analysisRow(songId: number, jobId: number, analysis: AnalysisCompact, w
 /**
  * Desa el resultat d'una feina. Mode `new`: crea la cançó pendent + proposta
  * de l'usuari "Transcriptor" + anàlisi. Mode `analyze`: només desa (o
- * sobreescriu) l'anàlisi i omple bpm/compàs si la cançó no en té.
+ * sobreescriu) l'anàlisi i omple bpm/compàs si la cançó no en té. Les
+ * estadístiques (si el worker les envia) es desen a la feina en tots els casos.
  */
 export function completeJob(
   worker: TranscriptionWorker,
   jobId: number,
   proposal: ProposalResult,
   analysis: AnalysisCompact,
+  stats: JobStats | null = null,
 ): CompleteResult {
   const job = ownedRunningJob(worker.id, jobId)
   if (!job) return { status: "lost" }
 
   const metrics = songMetrics(analysis)
+  const elapsedSeconds = sql`round((julianday('now') - julianday(${schema.transcriptionJobs.startedAt})) * 86400, 1)`
   const finish = {
     status: "done" as const,
     leaseUntil: null,
     error: null,
     finishedAt: NOW,
-    elapsedSeconds: sql`round((julianday('now') - julianday(${schema.transcriptionJobs.startedAt})) * 86400, 1)`,
+    elapsedSeconds,
+    stats,
   }
 
   let songId: number
@@ -247,7 +251,14 @@ export function completeJob(
     const dup = findExistingSongByArtistTitle(artist, title)
     if (dup) {
       db.update(schema.transcriptionJobs)
-        .set({ status: "failed", leaseUntil: null, finishedAt: NOW, error: `Ja existeix (cançó ${dup.id})` })
+        .set({
+          status: "failed",
+          leaseUntil: null,
+          finishedAt: NOW,
+          error: `Ja existeix (cançó ${dup.id})`,
+          elapsedSeconds,
+          stats,
+        })
         .where(eq(schema.transcriptionJobs.id, job.id))
         .run()
       return { status: "duplicate", songId: dup.id }
@@ -502,6 +513,7 @@ export function listJobs() {
     resultSongId: schema.transcriptionJobs.resultSongId,
     resultProposalId: sql<number | null>`(SELECT id FROM song_proposals WHERE song_id = ${schema.transcriptionJobs.resultSongId} ORDER BY id DESC LIMIT 1)`,
     elapsedSeconds: schema.transcriptionJobs.elapsedSeconds,
+    stats: schema.transcriptionJobs.stats,
     createdAt: schema.transcriptionJobs.createdAt,
     startedAt: schema.transcriptionJobs.startedAt,
     finishedAt: schema.transcriptionJobs.finishedAt,
@@ -536,6 +548,7 @@ export function listJobs() {
     result_song_id: j.resultSongId,
     result_proposal_id: j.mode === "new" ? j.resultProposalId : null,
     elapsed_seconds: j.elapsedSeconds,
+    stats: j.stats ?? null,
     created_at: j.createdAt,
     started_at: j.startedAt,
     finished_at: j.finishedAt,
@@ -628,6 +641,141 @@ export function deleteWorker(id: number): boolean {
     .run()
   const r = db.delete(schema.transcriptionWorkers).where(eq(schema.transcriptionWorkers.id, id)).run()
   return r.changes > 0
+}
+
+// ─── Classificacions dels workers ───────────────────────────
+
+/** Mínim de cançons (sense cache i amb durada) per entrar a la classificació de rapidesa. */
+export const LEADERBOARD_MIN_SONGS_SPEED = 5
+const LEADERBOARD_TOP = 3
+
+export type LeaderboardKey = "songs" | "total_time" | "speed"
+export interface LeaderboardEntry {
+  rank: number
+  worker_id: number
+  name: string
+  value: number
+  me: boolean
+}
+export interface LeaderboardBoard {
+  top: LeaderboardEntry[]
+  /** Posició del worker que consulta; `rank` null si no hi arriba (rapidesa: menys cançons del mínim). */
+  me: { rank: number | null; value: number | null; songs: number } | null
+}
+export type LeaderboardPeriod = Record<LeaderboardKey, LeaderboardBoard>
+
+interface WorkerTotals {
+  id: number
+  name: string
+  songs: number
+  total_time: number | null
+  speed_e: number | null
+  speed_dur: number | null
+  speed_n: number
+  first_at: string
+}
+
+/**
+ * Totals per worker de les feines acabades. Hi surten tots els workers, també els
+ * desactivats; els eliminats perden les feines (FK `SET NULL`). Les feines amb
+ * alguna etapa servida de la cache local del worker compten com a cançó però no
+ * per als temps. El temps és `elapsed_seconds`, mesurat pel servidor.
+ */
+function workerTotals(since: string | null): WorkerTotals[] {
+  return db.all<WorkerTotals>(sql`
+    WITH j AS (
+      SELECT worker_id, elapsed_seconds AS e, finished_at,
+             CASE WHEN stats IS NULL THEN NULL
+                  ELSE coalesce(json_array_length(stats, '$.timing.cached'), 0) END AS n_cached,
+             json_extract(stats, '$.audio.duration_s') AS dur
+      FROM transcription_jobs
+      WHERE status = 'done' AND worker_id IS NOT NULL
+        ${since ? sql`AND finished_at >= ${since}` : sql``}
+    ), v AS (
+      SELECT *, (n_cached = 0 AND dur > 0 AND e IS NOT NULL) AS speed_ok FROM j
+    )
+    SELECT w.id AS id, w.name AS name,
+           count(*) AS songs,
+           sum(CASE WHEN coalesce(n_cached, 0) = 0 THEN e END) AS total_time,
+           sum(CASE WHEN speed_ok THEN e END) AS speed_e,
+           sum(CASE WHEN speed_ok THEN dur END) AS speed_dur,
+           coalesce(sum(speed_ok), 0) AS speed_n,
+           min(finished_at) AS first_at
+    FROM v JOIN transcription_workers w ON w.id = v.worker_id
+    GROUP BY w.id
+  `)
+}
+
+interface BoardSpec {
+  value: (t: WorkerTotals) => number | null
+  /** Cançons que compten per a aquesta classificació. */
+  count: (t: WorkerTotals) => number
+  ascending: boolean
+  minSongs: number
+}
+
+const round1 = (x: number) => Math.round(x * 10) / 10
+
+const BOARDS: Record<LeaderboardKey, BoardSpec> = {
+  songs: { value: (t) => t.songs, count: (t) => t.songs, ascending: false, minSongs: 1 },
+  total_time: {
+    value: (t) => (t.total_time === null ? null : Math.round(t.total_time)),
+    count: (t) => t.songs,
+    ascending: false,
+    minSongs: 1,
+  },
+  // Segons de càlcul per minut d'àudio: com més baix, millor
+  speed: {
+    value: (t) => (t.speed_e !== null && t.speed_dur ? round1(t.speed_e / (t.speed_dur / 60)) : null),
+    count: (t) => t.speed_n,
+    ascending: true,
+    minSongs: LEADERBOARD_MIN_SONGS_SPEED,
+  },
+}
+
+function board(totals: WorkerTotals[], meId: number | null, top: number, spec: BoardSpec): LeaderboardBoard {
+  // En cas d'empat, guanya qui hi va arribar primer
+  const ranked = totals
+    .map((t) => ({ t, v: spec.value(t) }))
+    .filter((x): x is { t: WorkerTotals; v: number } => x.v !== null && spec.count(x.t) >= spec.minSongs)
+    .sort((a, b) => (spec.ascending ? a.v - b.v : b.v - a.v) || a.t.first_at.localeCompare(b.t.first_at))
+  const entries = ranked.map(({ t, v }, i) => ({
+    rank: i + 1,
+    worker_id: t.id,
+    name: t.name,
+    value: v,
+    me: t.id === meId,
+  }))
+  const mine = meId === null ? undefined : totals.find((t) => t.id === meId)
+  const myEntry = entries.find((e) => e.me)
+  return {
+    top: entries.slice(0, top),
+    me: mine ? { rank: myEntry?.rank ?? null, value: spec.value(mine), songs: spec.count(mine) } : null,
+  }
+}
+
+function leaderboardPeriod(since: string | null, meId: number | null, top: number): LeaderboardPeriod {
+  const totals = workerTotals(since)
+  return {
+    songs: board(totals, meId, top, BOARDS.songs),
+    total_time: board(totals, meId, top, BOARDS.total_time),
+    speed: board(totals, meId, top, BOARDS.speed),
+  }
+}
+
+/**
+ * Classificacions de sempre i del mes en curs (UTC). `meId`: worker que consulta
+ * (null a l'admin). `top`: quantes posicions es retornen (l'admin les vol totes).
+ */
+export function getLeaderboards(meId: number | null, top = LEADERBOARD_TOP) {
+  const monthStart = db.get<{ d: string }>(sql`SELECT datetime('now', 'start of month') AS d`)!.d
+  return {
+    min_songs_speed: LEADERBOARD_MIN_SONGS_SPEED,
+    periods: {
+      all: leaderboardPeriod(null, meId, top),
+      month: leaderboardPeriod(monthStart, meId, top),
+    },
+  }
 }
 
 // ─── Anàlisi d'una cançó ────────────────────────────────────

@@ -89,9 +89,37 @@ export const proposalResultSchema = z.object({
   youtubeUrl: z.string().nullable().optional(),
 })
 
+// ─── Estadístiques de la feina ─────────────────────────────────
+// Com s'ha fet (no què hi ha a l'àudio, que és l'anàlisi): temps per etapa,
+// dispositiu, font de la lletra, confiances… Només es validen els camps que fa
+// servir el servidor (classificacions); la resta passa tal qual perquè el worker
+// hi pugui afegir dades noves sense migracions. Detall a docs/api_worker.md.
+
+const MAX_STATS_BYTES = 32 * 1024
+
+export const jobStatsSchema = z
+  .object({
+    v: z.number().int().positive(),
+    audio: z.object({ duration_s: z.number().positive() }).passthrough().optional(),
+    timing: z
+      .object({
+        total_s: z.number().nonnegative(),
+        cached: z.array(z.string()).default([]),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough()
+  .refine((s) => JSON.stringify(s).length <= MAX_STATS_BYTES, {
+    message: `Les estadístiques no poden passar de ${MAX_STATS_BYTES / 1024} KB`,
+  })
+
+export type JobStats = z.infer<typeof jobStatsSchema>
+
 export const resultBodySchema = z.object({
   proposal: proposalResultSchema,
   analysis: analysisCompactSchema,
+  stats: jobStatsSchema.optional(),
 })
 
 // ─── Admin ─────────────────────────────────────────────────────

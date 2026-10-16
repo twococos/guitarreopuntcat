@@ -7,7 +7,7 @@ import { completeJob } from "@/db/queries/transcriptions"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-/** Resultat d'una feina: proposta (forma d'ImportResult) + anàlisi en format compacte. */
+/** Resultat d'una feina: proposta (forma d'ImportResult) + anàlisi en format compacte + estadístiques (opcionals). */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const worker = authenticateWorker(req)
@@ -22,7 +22,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Dades invàlides", issues }, { status: 400 })
     }
 
-    const result = completeJob(worker, id, parsed.data.proposal, parsed.data.analysis)
+    const result = completeJob(worker, id, parsed.data.proposal, parsed.data.analysis, parsed.data.stats ?? null)
     if (result.status === "lost") return jobLostResponse()
     return NextResponse.json(result)
   } catch (err) {

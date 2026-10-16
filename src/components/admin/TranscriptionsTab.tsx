@@ -1,8 +1,9 @@
 "use client"
-import { useCallback, useEffect, useState } from "react"
+import { Fragment, useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getT } from "@/lib/i18n"
 import { useToastStore } from "@/hooks/useToasts"
+import { JobStatsView, formatSeconds } from "./JobStatsView"
 
 type JobStatus = "queued" | "running" | "done" | "failed" | "cancelled"
 
@@ -21,6 +22,18 @@ interface JobRow {
   result_song_id: number | null
   result_proposal_id: number | null
   elapsed_seconds: number | null
+  stats: Record<string, unknown> | null
+}
+
+type LeaderboardKey = "songs" | "total_time" | "speed"
+
+interface LeaderboardBoard {
+  top: { rank: number; worker_id: number; name: string; value: number }[]
+}
+
+interface Leaderboards {
+  min_songs_speed: number
+  periods: Record<"all" | "month", Record<LeaderboardKey, LeaderboardBoard>>
 }
 
 interface WorkerRow {
@@ -38,6 +51,7 @@ interface QueueState {
   jobs: JobRow[]
   counts: Partial<Record<JobStatus, number>>
   workers: WorkerRow[]
+  leaderboards: Leaderboards | null
 }
 
 type EnqueueResult = { status: "queued" | "duplicate" | "error" }
@@ -91,7 +105,9 @@ export function TranscriptionsTab() {
   const tt = t.admin.transcriptionsTab
   const router = useRouter()
   const toast = useToastStore.getState().show
-  const [state, setState] = useState<QueueState>({ jobs: [], counts: {}, workers: [] })
+  const [state, setState] = useState<QueueState>({ jobs: [], counts: {}, workers: [], leaderboards: null })
+  const [openStats, setOpenStats] = useState<Set<number>>(new Set())
+  const [period, setPeriod] = useState<"all" | "month">("all")
   const [lines, setLines] = useState("")
   const [busy, setBusy] = useState(false)
   const [workerName, setWorkerName] = useState("")
@@ -195,7 +211,23 @@ export function TranscriptionsTab() {
     }
   }
 
+  function toggleStats(id: number) {
+    setOpenStats((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function formatLeaderboardValue(key: LeaderboardKey, value: number): string {
+    if (key === "songs") return tt.cancons(value)
+    if (key === "speed") return tt.perMinut(formatSeconds(value))
+    return formatSeconds(value)
+  }
+
   const statuses: JobStatus[] = ["queued", "running", "done", "failed", "cancelled"]
+  const boards = state.leaderboards?.periods[period]
 
   return (
     <div className="transcriptions-tab">
@@ -250,60 +282,108 @@ export function TranscriptionsTab() {
             </thead>
             <tbody>
               {state.jobs.map((j) => (
-                <tr key={j.id}>
-                  <td style={{ color: "var(--muted)" }}>{j.id}</td>
-                  <td>
-                    <a href={j.source_url} target="_blank" rel="noreferrer">
-                      {j.title || tt.sensTitol}
-                    </a>
-                    {j.artist && <span style={{ color: "var(--muted)" }}> — {j.artist}</span>}
-                    {j.error && (
-                      <div className="transcriptions-error" title={j.error}>
-                        {j.error}
-                      </div>
-                    )}
-                    {j.status === "queued" && j.not_before && (
-                      <div className="transcriptions-hint">{tt.reintentA(formatDate(j.not_before))}</div>
-                    )}
-                  </td>
-                  <td>{j.mode === "new" ? tt.modeNew : tt.modeAnalyze}</td>
-                  <td>
-                    <span className={`badge ${STATUS_BADGE[j.status]}`}>{tt.statusLabels[j.status]}</span>
-                  </td>
-                  <td style={{ fontSize: ".8rem" }}>{j.worker_name ?? "—"}</td>
-                  <td style={{ textAlign: "center" }}>{j.attempts}</td>
-                  <td style={{ fontSize: ".8rem" }}>{formatDuration(j.elapsed_seconds)}</td>
-                  <td className="td-actions">
-                    {j.result_proposal_id !== null && j.status === "done" && (
-                      <button
-                        className="btn-xs"
-                        onClick={() => router.push(`/app/editor?proposal=${j.result_proposal_id}`)}
-                      >
-                        {tt.revisar}
-                      </button>
-                    )}
-                    {j.mode === "analyze" && j.song_id !== null && (
-                      <button className="btn-xs" onClick={() => router.push(`/app/editor?id=${j.song_id}`)}>
-                        {tt.obrir}
-                      </button>
-                    )}
-                    {(j.status === "queued" || j.status === "running") && (
-                      <button className="btn-xs danger" onClick={() => handleJobAction(j.id, "cancel")}>
-                        {tt.cancellar}
-                      </button>
-                    )}
-                    {(j.status === "failed" || j.status === "cancelled") && (
-                      <button className="btn-xs" onClick={() => handleJobAction(j.id, "retry")}>
-                        {tt.reintentar}
-                      </button>
-                    )}
-                  </td>
-                </tr>
+                <Fragment key={j.id}>
+                  <tr>
+                    <td style={{ color: "var(--muted)" }}>{j.id}</td>
+                    <td>
+                      <a href={j.source_url} target="_blank" rel="noreferrer">
+                        {j.title || tt.sensTitol}
+                      </a>
+                      {j.artist && <span style={{ color: "var(--muted)" }}> — {j.artist}</span>}
+                      {j.error && (
+                        <div className="transcriptions-error" title={j.error}>
+                          {j.error}
+                        </div>
+                      )}
+                      {j.status === "queued" && j.not_before && (
+                        <div className="transcriptions-hint">{tt.reintentA(formatDate(j.not_before))}</div>
+                      )}
+                    </td>
+                    <td>{j.mode === "new" ? tt.modeNew : tt.modeAnalyze}</td>
+                    <td>
+                      <span className={`badge ${STATUS_BADGE[j.status]}`}>{tt.statusLabels[j.status]}</span>
+                    </td>
+                    <td style={{ fontSize: ".8rem" }}>{j.worker_name ?? "—"}</td>
+                    <td style={{ textAlign: "center" }}>{j.attempts}</td>
+                    <td style={{ fontSize: ".8rem" }}>{formatDuration(j.elapsed_seconds)}</td>
+                    <td className="td-actions">
+                      {(j.status === "done" || j.stats !== null) && (
+                        <button className="btn-xs" onClick={() => toggleStats(j.id)}>
+                          {openStats.has(j.id) ? tt.amagarDetalls : tt.detalls}
+                        </button>
+                      )}
+                      {j.result_proposal_id !== null && j.status === "done" && (
+                        <button
+                          className="btn-xs"
+                          onClick={() => router.push(`/app/editor?proposal=${j.result_proposal_id}`)}
+                        >
+                          {tt.revisar}
+                        </button>
+                      )}
+                      {j.mode === "analyze" && j.song_id !== null && (
+                        <button className="btn-xs" onClick={() => router.push(`/app/editor?id=${j.song_id}`)}>
+                          {tt.obrir}
+                        </button>
+                      )}
+                      {(j.status === "queued" || j.status === "running") && (
+                        <button className="btn-xs danger" onClick={() => handleJobAction(j.id, "cancel")}>
+                          {tt.cancellar}
+                        </button>
+                      )}
+                      {(j.status === "failed" || j.status === "cancelled") && (
+                        <button className="btn-xs" onClick={() => handleJobAction(j.id, "retry")}>
+                          {tt.reintentar}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                  {openStats.has(j.id) && (
+                    <tr>
+                      <td colSpan={8}>
+                        <JobStatsView stats={j.stats} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>
         )}
       </section>
+
+      {state.leaderboards && boards && (
+        <section className="transcriptions-section">
+          <div className="panel-toolbar">
+            <h3>{tt.classificacionsTitol}</h3>
+            {(["all", "month"] as const).map((p) => (
+              <button key={p} className={`btn-xs ${period === p ? "success" : ""}`} onClick={() => setPeriod(p)}>
+                {p === "all" ? tt.periodeSempre : tt.periodeMes}
+              </button>
+            ))}
+          </div>
+          <p className="transcriptions-hint">{tt.classificacionsHint(state.leaderboards.min_songs_speed)}</p>
+          <div className="leaderboards">
+            {(Object.keys(tt.classificacio) as LeaderboardKey[]).map((key) => (
+              <div key={key} className="leaderboard">
+                <h4>{tt.classificacio[key]}</h4>
+                {boards[key].top.length === 0 ? (
+                  <p className="transcriptions-hint">{tt.capClassificacio}</p>
+                ) : (
+                  <ol>
+                    {boards[key].top.map((e) => (
+                      <li key={e.worker_id}>
+                        <span className={`leaderboard-rank leaderboard-rank-${e.rank}`}>{e.rank}</span>
+                        <span className="leaderboard-name">{e.name}</span>
+                        <span className="leaderboard-value">{formatLeaderboardValue(key, e.value)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="transcriptions-section">
         <h3>{tt.workersTitol}</h3>

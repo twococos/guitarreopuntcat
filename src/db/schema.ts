@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm"
 import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 import type { PdfOptions } from "@/lib/schemas/canconer"
-import type { AnalysisCompact, WorkerDeviceInfo } from "@/lib/schemas/transcriber"
+import type { AnalysisCompact, JobStats, WorkerDeviceInfo } from "@/lib/schemas/transcriber"
 
 // ─── Cançons ────────────────────────────────────────────────
 export const songs = sqliteTable(
@@ -161,6 +161,9 @@ export const transcriptionJobs = sqliteTable(
     error: text("error"),
     resultSongId: integer("result_song_id").references(() => songs.id, { onDelete: "set null" }),
     elapsedSeconds: real("elapsed_seconds"),
+    // Com s'ha fet la feina (temps per etapa, dispositiu, confiances…). JSON
+    // obert: el worker hi pot afegir camps nous sense migració.
+    stats: text("stats", { mode: "json" }).$type<JobStats>(),
     createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: text("created_at").default(sql`(datetime('now'))`),
     startedAt: text("started_at"),
@@ -168,6 +171,7 @@ export const transcriptionJobs = sqliteTable(
   },
   (t) => ({
     statusIdx: index("transcription_jobs_status_idx").on(t.status, t.priority, t.id),
+    workerIdx: index("transcription_jobs_worker_idx").on(t.workerId, t.status, t.finishedAt),
   }),
 )
 

@@ -5,6 +5,7 @@ import {
   countJobsByStatus,
   enqueueAnalyzeMissing,
   enqueueJobs,
+  getLeaderboards,
   listJobs,
   listWorkers,
 } from "@/db/queries/transcriptions"
@@ -13,12 +14,17 @@ import { logEvent } from "@/lib/analytics/logEvent"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-/** Estat de la cua: feines actives + darreres acabades, comptadors i workers. */
+/** Estat de la cua: feines actives + darreres acabades, comptadors, workers i classificacions. */
 export async function GET() {
   const auth = await requireAdmin()
   if (auth instanceof NextResponse) return auth
   try {
-    return NextResponse.json({ jobs: listJobs(), counts: countJobsByStatus(), workers: listWorkers() })
+    return NextResponse.json({
+      jobs: listJobs(),
+      counts: countJobsByStatus(),
+      workers: listWorkers(),
+      leaderboards: getLeaderboards(null, Number.MAX_SAFE_INTEGER),
+    })
   } catch (err) {
     console.error("[GET /api/admin/transcriptions]", err)
     return NextResponse.json({ error: "Error intern del servidor" }, { status: 500 })

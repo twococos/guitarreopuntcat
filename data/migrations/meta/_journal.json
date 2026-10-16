@@ -15,6 +15,13 @@
       "when": 1792060320372,
       "tag": "0001_transcripcio",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792159875076,
+      "tag": "0002_estadistiques",
+      "breakpoints": true
     }
   ]
 }
