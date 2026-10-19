@@ -3,6 +3,7 @@
  * El frontend antic espera snake_case, Drizzle retorna camelCase.
  */
 import type { CanconerStyle, PdfOptions } from "@/lib/schemas/canconer"
+import { songKind } from "@/lib/songKind"
 
 export function toSnakeCase(obj: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {}
@@ -32,6 +33,8 @@ export function mapSong(song: {
   bpm?: number | null
   timeSignature?: string | null
   state: number
+  ownerId?: number | null
+  originalSongId?: number | null
   createdAt: string | null
   updatedAt: string | null
 }) {
@@ -53,6 +56,9 @@ export function mapSong(song: {
     bpm: song.bpm ?? null,
     time_signature: song.timeSignature ?? null,
     state: song.state,
+    kind: songKind(song.state, song.originalSongId),
+    owner_id: song.ownerId ?? null,
+    original_song_id: song.originalSongId ?? null,
     created_at: song.createdAt,
     updated_at: song.updatedAt,
   }
@@ -91,6 +97,24 @@ export function mapSongSummary(song: {
   }
 }
 
+/**
+ * Resum + estat, per a llistes on cal l'etiqueta del tipus (llista de /app,
+ * cerca amb sessió).
+ */
+export function mapSongListItem(song: Parameters<typeof mapSongSummary>[0] & {
+  state: number
+  ownerId: number | null
+  originalSongId: number | null
+}) {
+  return {
+    ...mapSongSummary(song),
+    state: song.state,
+    kind: songKind(song.state, song.originalSongId),
+    owner_id: song.ownerId,
+    original_song_id: song.originalSongId,
+  }
+}
+
 /** Mapeig explícit per Canconer (Drizzle camelCase → snake_case API) */
 export function mapCanconer(c: {
   id: number
@@ -100,6 +124,9 @@ export function mapCanconer(c: {
   style: string
   accentColor: string | null
   pdfOptions?: PdfOptions | null
+  visibility?: number
+  slug?: string | null
+  publishedAt?: string | null
   createdAt: string | null
   updatedAt: string | null
 }) {
@@ -111,6 +138,9 @@ export function mapCanconer(c: {
     style: c.style as CanconerStyle,
     accent_color: c.accentColor,
     pdf_options: c.pdfOptions ?? null,
+    visibility: c.visibility ?? 0,
+    slug: c.slug ?? null,
+    published_at: c.publishedAt ?? null,
     created_at: c.createdAt,
     updated_at: c.updatedAt,
   }

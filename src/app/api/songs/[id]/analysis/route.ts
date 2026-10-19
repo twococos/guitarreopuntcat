@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { getSongById } from "@/db/queries/songs"
 import { getCurrentSongAnalysis } from "@/db/queries/transcriptions"
 import { syncAnalysis } from "@/lib/transcriber/sync"
+import { getSessionUser } from "@/lib/session"
+import { canViewSong, getSongAccessRow } from "@/lib/access/songs"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -22,7 +24,8 @@ export async function GET(
       return NextResponse.json({ error: "ID invàlid" }, { status: 400 })
     }
 
-    const song = await getSongById(id)
+    const access = getSongAccessRow(id)
+    const song = access && canViewSong(access, await getSessionUser()) ? await getSongById(id) : null
     if (!song) {
       return NextResponse.json({ error: "Cançó no trobada" }, { status: 404 })
     }

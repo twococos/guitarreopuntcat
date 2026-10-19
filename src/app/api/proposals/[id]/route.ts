@@ -95,7 +95,7 @@ export async function PUT(
     }
 
     logEvent({
-      type: "proposal_approve",
+      type: "proposal_resubmit",
       request,
       userId: user.id,
       metadata: { proposal_id: id },

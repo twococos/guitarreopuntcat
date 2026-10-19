@@ -7,6 +7,11 @@ export const editor = {
       novaCancoSubtitol: "Escriu la lletra de la cançó",
       editarCancoTitol: "Editar cançó",
       editarCancoSubtitol: "Modifica i guarda els canvis",
+      editarPrivadaSubtitol: "Cançó privada: només la veus tu",
+      editarArranjamentSubtitol: (original: string) => `Arranjament de «${original}»: només el veus tu`,
+      versioPropiaTitol: "La teva versió",
+      versioPropiaSubtitol:
+        "Desa els canvis com a arranjament privat teu. La cançó pública no es modifica.",
       modificarPropostaTitol: "Modificar proposta",
       modificarPropostaSubtitol:
         "Modifica la teva proposta i torna a enviar-la perquè un admin la revisi.",
@@ -16,6 +21,8 @@ export const editor = {
     },
     backLinks: {
       lesMevesPropostes: "← Les meves propostes",
+      lesMevesCancons: "← Les meves cançons",
+      panellCancons: "← Cançons (admin)",
       panellAdmin: "← Panell admin",
       canconer: "← Cançoner",
     },
@@ -25,9 +32,16 @@ export const editor = {
       acceptar: "Acceptar",
       guardarCanco: "Guardar cançó",
       enviarProposta: "Enviar proposta",
+      publicar: "Publica",
+      desarPrivada: "Desa com a privada",
+      proposarPublica: "Proposa-la com a pública",
+      desar: "Desa",
+      modificarCanco: "Modifica la cançó",
+      desarArranjament: "Desa com a arranjament",
+      desarVersioPropia: "Desa la meva versió",
     },
     resetLabels: {
-      cancellarProposta: "Cancel·lar",
+      cancellarProposta: "Retira la proposta",
       descartarCanvis: "Descartar canvis",
       reset: "Reset",
     },
@@ -42,13 +56,29 @@ export const editor = {
   confirmToast: {
     cancellarProposta: {
       missatge:
-        "Cancel·lar la proposta sencera? Es perdrà i no apareixerà a la teva llista.",
-      accio: "Sí, cancel·lar",
+        "Retirar la proposta? La cançó quedarà com a privada teva a Les meves cançons.",
+      accio: "Sí, retira-la",
     },
     descartarCanvis: {
       missatge:
-        "Descartar els canvis i tornar al panell admin? Es perdran les modificacions no guardades.",
+        "Descartar els canvis i tornar enrere? Es perdran les modificacions no guardades.",
       accio: "Sí, descartar",
+    },
+    desarPrivada: {
+      missatge: "Desar la cançó com a privada? Només la veuràs tu (i qui vegi els cançoners on la posis).",
+      accio: "Sí, desa-la",
+    },
+    proposarPublica: {
+      missatge: "Proposar la cançó com a pública? Un admin la revisarà; mentrestant, només la veus tu.",
+      accio: "Sí, proposa-la",
+    },
+    desarArranjament: {
+      missatge: "Desar aquests canvis com a arranjament privat? La cançó pública no es modificarà.",
+      accio: "Sí, desa'l",
+    },
+    desarCanvisPrivada: {
+      missatge: "Desar els canvis?",
+      accio: "Sí, desa",
     },
     esborrarProgres: {
       missatge: "Esborrar tot el progrés? Es perdran títol, artista i contingut.",
@@ -185,13 +215,15 @@ export const editor = {
     cancoActualitzada: "Cançó actualitzada!",
     cancoGuardada: "Cançó guardada!",
     propostaEnviada: "Proposta enviada! Un admin la revisarà aviat.",
+    privadaDesada: "Cançó desada a Les meves cançons.",
+    arranjamentDesat: "Arranjament desat.",
     errorGuardar: "Error en guardar.",
     propostaAcceptada: "Proposta acceptada!",
     errorAcceptarProposta: "Error en acceptar la proposta.",
     propostaRebutjada: "Proposta rebutjada.",
     errorRebutjarProposta: "Error en rebutjar la proposta.",
-    propostaCancellada: "Proposta cancel·lada.",
-    errorCancellarProposta: "Error en cancel·lar la proposta.",
+    propostaCancellada: "Proposta retirada: la cançó és a Les meves cançons.",
+    errorCancellarProposta: "Error en retirar la proposta.",
     progresEsborrat: "Progrés esborrat.",
     calSerAdmin: "Cal ser administrador per a revisar propostes.",
     propostaNoTrobada: "Proposta no trobada.",

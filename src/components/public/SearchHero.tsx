@@ -3,7 +3,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { getT } from "@/lib/i18n"
-import { IconX, IconMusic } from "@/components/shared/Icons"
+import { IconX, IconMusic, IconBookOpen, IconLock } from "@/components/shared/Icons"
+import type { SongKind } from "@/lib/songKind"
 
 interface ArtistResult {
   name: string
@@ -20,14 +21,35 @@ interface SongResult {
   key: string
 }
 
+interface OwnSongResult extends SongResult {
+  kind: SongKind
+}
+
+interface SongbookResult {
+  id: number
+  title: string
+  slug: string
+  owner_name: string
+  song_count: number
+  top_artists: string[]
+  artist_count: number
+}
+
 interface SearchResponse {
   artists: ArtistResult[]
   songs: SongResult[]
+  /** Privades, arranjaments i propostes de qui cerca (buit sense sessió). */
+  own_songs?: OwnSongResult[]
+  songbooks?: SongbookResult[]
 }
 
 type Item =
   | { kind: "artist"; data: ArtistResult; href: string }
   | { kind: "song"; data: SongResult; href: string }
+  | { kind: "own"; data: OwnSongResult; href: string }
+  | { kind: "songbook"; data: SongbookResult; href: string }
+
+const SECTION_ORDER: Item["kind"][] = ["artist", "song", "own", "songbook"]
 
 interface SearchHeroProps {
   /** Variant compacta — fa el control més petit (per a la pàgina /songs). */
@@ -83,6 +105,12 @@ export function SearchHero({
           href: `/songs/${s.artist_slug}/${s.song_slug}`,
         })
       }
+    }
+    for (const s of results.own_songs ?? []) {
+      out.push({ kind: "own", data: s, href: `/songs/private/${s.id}` })
+    }
+    for (const b of results.songbooks ?? []) {
+      out.push({ kind: "songbook", data: b, href: `/songbooks/${b.id}/${b.slug}` })
     }
     return out
   }, [results])
@@ -162,6 +190,13 @@ export function SearchHero({
     },
     [items, focusedIdx, router],
   )
+
+  function sectionLabel(kind: Item["kind"]): string {
+    if (kind === "artist") return t.public.searchHero.artistes
+    if (kind === "song") return t.public.searchHero.cancons
+    if (kind === "own") return t.public.searchHero.lesTevesCancons
+    return t.public.searchHero.canconers
+  }
 
   const showDropdown =
     open && (loading || (results !== null && items.length === 0) || items.length > 0)
@@ -245,68 +280,97 @@ export function SearchHero({
             <div className="search-hero-empty">{t.public.searchHero.sensResultats(q)}</div>
           )}
 
-          {results && results.artists.length > 0 && (
-            <div className="search-hero-section">
-              <div className="search-hero-section-label">{t.public.searchHero.artistes}</div>
-              {results.artists.map((a, i) => {
-                const idx = i
-                const focused = idx === focusedIdx
-                return (
-                  <Link
-                    key={a.slug}
-                    href={`/songs/${a.slug}`}
-                    className={`search-hero-result search-hero-result--artist ${focused ? "is-focused" : ""}`}
-                    style={{ "--i": idx } as React.CSSProperties}
-                    onMouseEnter={() => setFocusedIdx(idx)}
-                    onClick={() => setOpen(false)}
-                    role="option"
-                    aria-selected={focused}
-                  >
-                    <span className="search-hero-result-icon" aria-hidden="true">
-                      <IconMusic />
-                    </span>
-                    <span className="search-hero-result-main">
-                      <span className="search-hero-result-title">{a.name}</span>
-                      <span className="search-hero-result-sub">
-                        {t.public.searchHero.songCount(a.song_count)}
-                      </span>
-                    </span>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
-
-          {results && results.songs.length > 0 && (
-            <div className="search-hero-section">
-              <div className="search-hero-section-label">{t.public.searchHero.cancons}</div>
-              {results.songs.map((s, i) => {
-                if (!s.artist_slug || !s.song_slug) return null
-                const idx = (results.artists?.length ?? 0) + i
-                const focused = idx === focusedIdx
-                return (
-                  <Link
-                    key={s.id}
-                    href={`/songs/${s.artist_slug}/${s.song_slug}`}
-                    className={`search-hero-result ${focused ? "is-focused" : ""}`}
-                    style={{ "--i": idx } as React.CSSProperties}
-                    onMouseEnter={() => setFocusedIdx(idx)}
-                    onClick={() => setOpen(false)}
-                    role="option"
-                    aria-selected={focused}
-                  >
-                    <span className="search-hero-result-main">
-                      <span className="search-hero-result-title">{s.title}</span>
-                      <span className="search-hero-result-sub">{s.artist}</span>
-                    </span>
-                    <span className="search-hero-result-key">{s.key}</span>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
+          {SECTION_ORDER.map((sectionKind) => {
+            const entries = items
+              .map((item, idx) => ({ item, idx }))
+              .filter(({ item }) => item.kind === sectionKind)
+            if (entries.length === 0) return null
+            return (
+              <div className="search-hero-section" key={sectionKind}>
+                <div className="search-hero-section-label">{sectionLabel(sectionKind)}</div>
+                {entries.map(({ item, idx }) => {
+                  const isFocused = idx === focusedIdx
+                  return (
+                    <Link
+                      key={`${item.kind}-${item.kind === "artist" ? item.data.slug : item.data.id}`}
+                      href={item.href}
+                      className={`search-hero-result ${item.kind === "artist" ? "search-hero-result--artist" : ""} ${isFocused ? "is-focused" : ""}`}
+                      style={{ "--i": idx } as React.CSSProperties}
+                      onMouseEnter={() => setFocusedIdx(idx)}
+                      onClick={() => setOpen(false)}
+                      role="option"
+                      aria-selected={isFocused}
+                    >
+                      <ResultBody item={item} />
+                    </Link>
+                  )
+                })}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
   )
+}
+
+/** Contingut d'un resultat segons el tipus. */
+function ResultBody({ item }: { item: Item }) {
+  const t = getT()
+  switch (item.kind) {
+    case "artist":
+      return (
+        <>
+          <span className="search-hero-result-icon" aria-hidden="true">
+            <IconMusic />
+          </span>
+          <span className="search-hero-result-main">
+            <span className="search-hero-result-title">{item.data.name}</span>
+            <span className="search-hero-result-sub">{t.public.searchHero.songCount(item.data.song_count)}</span>
+          </span>
+        </>
+      )
+    case "song":
+      return (
+        <>
+          <span className="search-hero-result-main">
+            <span className="search-hero-result-title">{item.data.title}</span>
+            <span className="search-hero-result-sub">{item.data.artist}</span>
+          </span>
+          <span className="search-hero-result-key">{item.data.key}</span>
+        </>
+      )
+    case "own":
+      return (
+        <>
+          <span className="search-hero-result-icon" aria-hidden="true">
+            <IconLock />
+          </span>
+          <span className="search-hero-result-main">
+            <span className="search-hero-result-title">{item.data.title}</span>
+            <span className="search-hero-result-sub">
+              {item.data.artist} · {t.public.searchHero.tipus[item.data.kind]}
+            </span>
+          </span>
+          <span className="search-hero-result-key">{item.data.key}</span>
+        </>
+      )
+    case "songbook":
+      return (
+        <>
+          <span className="search-hero-result-icon" aria-hidden="true">
+            <IconBookOpen />
+          </span>
+          <span className="search-hero-result-main">
+            <span className="search-hero-result-title">{item.data.title}</span>
+            <span className="search-hero-result-sub">
+              {t.public.searchHero.canconerDe(
+                t.public.songbooksHome.artistes(item.data.top_artists, item.data.artist_count),
+                item.data.song_count,
+              )}
+            </span>
+          </span>
+        </>
+      )
+  }
 }

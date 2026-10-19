@@ -29,8 +29,8 @@ export interface SongMetadata {
 interface SongHeaderProps {
   value: SongMetadata
   onChange: (next: SongMetadata) => void
-  /** Si false, els links són obligatoris i es marquen amb `*`. */
-  isAdmin: boolean
+  /** Els links són obligatoris (per proposar) i es marquen amb `*`. */
+  linksRequired: boolean
 }
 
 // Quin camp inline-editable és en mode edició.
@@ -42,7 +42,7 @@ interface KeyPickerPos {
   y: number
 }
 
-export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): ReactNode {
+export function SongHeader({ value, onChange, linksRequired }: SongHeaderProps): ReactNode {
   const t = getT()
   // Camp en edició inline
   const [editing, setEditing] = useState<EditingField>(null)
@@ -146,7 +146,7 @@ export function SongHeader({ value, onChange, isAdmin }: SongHeaderProps): React
   const ytInvalid = ytTrimmed !== "" && !YOUTUBE_URL_REGEX.test(ytTrimmed)
   const spInvalid = spTrimmed !== "" && !SPOTIFY_URL_REGEX.test(spTrimmed)
 
-  const required = !isAdmin
+  const required = linksRequired
   const ytLabel = required ? "YouTube *" : "YouTube"
   const spLabel = required ? "Spotify *" : "Spotify"
 

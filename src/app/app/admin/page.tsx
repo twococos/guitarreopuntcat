@@ -1,7 +1,7 @@
 "use client"
 import { useCallback, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { getT } from "@/lib/i18n"
 import { UserWidget } from "@/components/UserWidget"
 import { StatsCards } from "@/components/admin/StatsCards"
@@ -41,7 +41,17 @@ export default function AdminPage() {
     const t = searchParams.get("tab")
     return t && (VALID_TABS as string[]).includes(t) ? (t as Tab) : "stats"
   })()
-  const [tab, setTab] = useState<Tab>(initialTab)
+  const [tab, setTabState] = useState<Tab>(initialTab)
+  const router = useRouter()
+  // Cançó a ressaltar a la pestanya Cançons (?tab=songs&focus=ID)
+  const focusRaw = Number(searchParams.get("focus"))
+  const focusId = Number.isInteger(focusRaw) && focusRaw > 0 ? focusRaw : null
+
+  // La pestanya activa queda a la URL (enllaçable i amb el botó enrere)
+  function setTab(next: Tab) {
+    setTabState(next)
+    router.replace(`/app/admin?tab=${next}`, { scroll: false })
+  }
   const [pendingCount, setPendingCount] = useState(0)
 
   const loadStats = useCallback(async () => {
@@ -121,7 +131,7 @@ export default function AdminPage() {
       <div id="admin-content">
         {tab === "stats" && <StatsCards />}
         {tab === "proposals" && <ProposalsTab onChange={loadStats} />}
-        {tab === "songs" && <SongsTab />}
+        {tab === "songs" && <SongsTab focusId={focusId} />}
         {tab === "users" && <UsersTab />}
         {tab === "canconers" && <CanconersTab />}
         {tab === "transcriptions" && <TranscriptionsTab />}

@@ -4,15 +4,16 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { UserWidget } from "@/components/UserWidget"
 import { ToastHost } from "@/components/Toast"
-import { IconLibrary, IconProposal } from "@/components/shared/Icons"
+import { IconLibrary, IconLock, IconProposal } from "@/components/shared/Icons"
 import { AppHeader } from "@/components/songbook/AppHeader"
 import { CanconersTab } from "./CanconersTab"
+import { MySongsTab } from "./MySongsTab"
 import { ProposalsTab } from "./ProposalsTab"
 import { getT } from "@/lib/i18n"
 
-type Tab = "canconers" | "proposals"
+type Tab = "canconers" | "songs" | "proposals"
 
-const VALID_TABS: Tab[] = ["canconers", "proposals"]
+const VALID_TABS: Tab[] = ["canconers", "songs", "proposals"]
 
 // Vegeu la nota a /app/editor: `useSearchParams` requereix un <Suspense> que
 // delimiti la part de l'arbre que Next no pot prerenderitzar.
@@ -86,6 +87,12 @@ function LibraryPageContent() {
         >
           <IconLibrary /> {t.app.library.tabs.canconers}
         </button>
+        <button
+          className={`tab ${tab === "songs" ? "active" : ""}`}
+          onClick={() => changeTab("songs")}
+        >
+          <IconLock /> {t.app.library.tabs.cancons}
+        </button>
         {!isAdmin && (
           <button
             className={`tab ${tab === "proposals" ? "active" : ""}`}
@@ -98,6 +105,7 @@ function LibraryPageContent() {
 
       <main id="library-main">
         {tab === "canconers" && <CanconersTab />}
+        {tab === "songs" && <MySongsTab />}
         {tab === "proposals" && !isAdmin && <ProposalsTab />}
       </main>
 

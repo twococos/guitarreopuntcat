@@ -409,3 +409,50 @@ export const IconChevronUp = (p: IconProps) => svg(<polyline points="18 15 12 9 
 
 export const IconChevronDown = (p: IconProps) =>
   svg(<polyline points="6 9 12 15 18 9" />, p)
+
+export const IconChevronLeft = (p: IconProps) => svg(<polyline points="15 18 9 12 15 6" />, p)
+
+export const IconChevronRight = (p: IconProps) => svg(<polyline points="9 18 15 12 9 6" />, p)
+
+export const IconSend = (p: IconProps) =>
+  svg(
+    <>
+      <line x1="22" y1="2" x2="11" y2="13" />
+      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </>,
+    p,
+  )
+
+export const IconGlobe = (p: IconProps) =>
+  svg(
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </>,
+    p,
+  )
+
+export const IconGitBranch = (p: IconProps) =>
+  svg(
+    <>
+      <line x1="6" y1="3" x2="6" y2="15" />
+      <circle cx="18" cy="6" r="3" />
+      <circle cx="6" cy="18" r="3" />
+      <path d="M18 9a9 9 0 0 1-9 9" />
+    </>,
+    p,
+  )
+
+export const IconList = (p: IconProps) =>
+  svg(
+    <>
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </>,
+    p,
+  )

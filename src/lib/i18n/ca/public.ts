@@ -14,13 +14,22 @@ export const public_ = {
   },
 
   searchHero: {
-    ariaLabel: "Cerca de cançons i artistes",
+    ariaLabel: "Cerca de cançons, artistes i cançoners",
     esborraAriaLabel: "Esborra la cerca",
     cercant: "Cercant…",
     artistes: "Artistes",
     cancons: "Cançons",
     sensResultats: (q: string) => `No hi ha resultats per a "${q}".`,
     songCount: (n: number) => (n === 1 ? "1 cançó" : `${n} cançons`),
+    lesTevesCancons: "Les teves cançons",
+    canconers: "Cançoners",
+    canconerDe: (artistes: string, n: number) => `${artistes} · ${n === 1 ? "1 cançó" : `${n} cançons`}`,
+    tipus: {
+      public: "Pública",
+      private: "Privada",
+      arrangement: "Arranjament",
+      proposal: "Proposta pendent",
+    },
   },
 
   inspirat: {
@@ -62,6 +71,13 @@ export const public_ = {
 
   publicSong: {
     separadorI: "i",
+    fesLaTevaVersio: "Fes-ne la teva versió",
+    fesLaTevaVersioHint: "Canvia acords o lletra i desa-la com a arranjament privat teu.",
+    editar: "Edita",
+    arranjamentDe: "Arranjament de",
+    nomesTu: "només el veus tu",
+    cancoPrivada: "Cançó privada: només la veus tu",
+    propostaPendent: "Proposta pendent de revisió: només la veus tu",
     controls: {
       ariaLabel: "Controls de la cançó",
       transposicio: "Transposició",
@@ -122,6 +138,36 @@ export const public_ = {
     creaCanconerCta: "Crea un cançoner",
     noDisponibleMobil:
       "Per ara l'editor de cançoners no està disponible per a dispositius mòbils.",
+  },
+
+  songbookViewer: {
+    canconer: "Cançoner",
+    perAutor: (autor: string) => `per ${autor}`,
+    copiar: "Fes-ne una còpia",
+    copiarHint: "Obre'l a l'editor com a cançoner teu per canviar-lo o afegir-hi cançons",
+    copiaSensePrivades: "Les cançons privades de l'autor no es copien: només es poden veure dins d'aquest cançoner.",
+    editar: "Edita'l",
+    buit: "Aquest cançoner encara no té cançons.",
+    cancoNdeM: (n: number, m: number) => `${n} de ${m}`,
+    anterior: "Anterior",
+    seguent: "Següent",
+    navegacio: "Navegació del cançoner",
+    privadaTitle: "Cançó privada: només es veu dins d'aquest cançoner",
+  },
+
+  songbooksHome: {
+    titol: "Descobreix cançoners",
+    subtitol: "— Fets per la comunitat",
+    tiraDauAriaLabel: "Tira el dau per veure altres cançoners",
+    tiraDauTitle: "Tira el dau",
+    numCancons: (n: number) => (n === 1 ? "1 cançó" : `${n} cançons`),
+    per: (autor: string) => `per ${autor}`,
+    /** "Els Pets, Auxili i 3 més" (els dos amb més cançons i quants més n'hi ha). */
+    artistes: (top: string[], total: number) => {
+      const rest = total - top.length
+      if (rest > 0) return `${top.join(", ")} i ${rest} més`
+      return top.length === 2 ? `${top[0]} i ${top[1]}` : (top[0] ?? "")
+    },
   },
 
   sharedView: {

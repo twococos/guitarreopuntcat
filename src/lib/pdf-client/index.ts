@@ -34,7 +34,7 @@ async function fetchSongs(input: PdfClientInput): Promise<PdfSong[]> {
   const res = await fetch("/api/pdf/songs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ style: input.style, songs: input.songs }),
+    body: JSON.stringify({ style: input.style, songs: input.songs, context: input.context }),
   })
   if (!res.ok) throw new Error(`/api/pdf/songs ${res.status}`)
   const data = (await res.json()) as SongsResponse

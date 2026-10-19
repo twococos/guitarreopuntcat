@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Dades invàlides" }, { status: 400 })
     }
 
-    const result = await saveOrUpdateCanconer(user.id, parsed.data)
+    const result = await saveOrUpdateCanconer(user, parsed.data)
     logEvent({
       type: "canconer_create",
       request,
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: result.id }, { status: result.created ? 201 : 200 })
   } catch (err) {
     if (err instanceof Error) {
-      if (err.message === "Alguna cançó no existeix o no és pública") {
+      if (err.message === "Alguna cançó no existeix o no és accessible") {
         return NextResponse.json({ error: err.message }, { status: 400 })
       }
       const statusErr = err as Error & { status?: number }

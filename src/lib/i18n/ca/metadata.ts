@@ -44,5 +44,12 @@ export const metadata = {
     ogTitle: (titol: string, artista: string) => `${titol} — ${artista}`,
     ogDescription: "Acords i lletra a guitarreo.cat",
     noTrobada: "Cançó no trobada — guitarreo.cat",
+    privada: (titol: string, artista: string) => `${titol} — ${artista} (privada) | guitarreo.cat`,
+  },
+  songbook: {
+    title: (titol: string, autor: string) => `${titol} — cançoner de ${autor} | guitarreo.cat`,
+    description: (titol: string, n: number, mostra: string) =>
+      `Cançoner "${titol}" amb ${n} ${n === 1 ? "cançó" : "cançons"}${mostra ? `: ${mostra}…` : ""}. Acords i lletra a guitarreo.cat.`,
+    noTrobat: "Cançoner no trobat — guitarreo.cat",
   },
 } as const

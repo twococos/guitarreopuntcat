@@ -1,7 +1,9 @@
 "use client"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { getT } from "@/lib/i18n"
-import { IconLink } from "@/components/shared/Icons"
+import { useToastStore } from "@/hooks/useToasts"
+import { IconGlobe, IconLink } from "@/components/shared/Icons"
+import { BadgeMenu } from "./BadgeMenu"
 
 interface CanconerRow {
   id: number
@@ -9,6 +11,8 @@ interface CanconerRow {
   owner_name: string
   song_count: number
   share_token: string | null
+  visibility: number
+  slug: string | null
   updated_at: string | null
 }
 
@@ -51,6 +55,34 @@ export function CanconersTab() {
       )
     : canconers
 
+  async function handleUnpublish(c: CanconerRow) {
+    if (!confirm(t.admin.canconersTab.confirmRetirar(c.title))) return
+    const res = await fetch(`/api/canconers/${c.id}/visibility`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visibility: 0 }),
+    })
+    if (!res.ok) return
+    await load()
+  }
+
+  async function handleCopyPublic(c: CanconerRow) {
+    if (!confirm(t.admin.canconersTab.confirmCopiaPublica(c.title, c.owner_name))) return
+    const res = await fetch(`/api/admin/canconers/${c.id}/copy`, { method: "POST" })
+    if (!res.ok) {
+      useToastStore.getState().show(t.admin.canconersTab.toastError, { type: "error" })
+      return
+    }
+    useToastStore.getState().show(t.admin.canconersTab.toastCopiaCreada, { type: "success" })
+    await load()
+  }
+
+  function handleVisibilityMenu(c: CanconerRow, action: string) {
+    if (action === "open") window.open(`/songbooks/${c.id}/${c.slug ?? ""}`, "_blank", "noreferrer")
+    else if (action === "unpublish") void handleUnpublish(c)
+    else if (action === "copy") void handleCopyPublic(c)
+  }
+
   async function handleDelete(id: number, title: string, ownerName: string) {
     if (!confirm(t.admin.canconersTab.confirmEliminar(title, ownerName))) return
     const res = await fetch(`/api/admin/canconers/${id}`, { method: "DELETE" })
@@ -75,6 +107,7 @@ export function CanconersTab() {
             <th>{t.admin.canconersTab.colTitol}</th>
             <th>{t.admin.canconersTab.colUsuari}</th>
             <th>{t.admin.canconersTab.colCancons}</th>
+            <th>{t.admin.canconersTab.colVisibilitat}</th>
             <th>{t.admin.canconersTab.colCompartit}</th>
             <th>{t.admin.canconersTab.colActualitzat}</th>
             <th>{t.admin.canconersTab.colAccions}</th>
@@ -84,7 +117,7 @@ export function CanconersTab() {
           {filtered.length === 0 ? (
             <tr>
               <td
-                colSpan={6}
+                colSpan={7}
                 style={{ textAlign: "center", color: "var(--muted)", padding: "1.5rem" }}
               >
                 {t.admin.canconersTab.capCanconerTrobat}
@@ -94,10 +127,46 @@ export function CanconersTab() {
             filtered.map((c) => (
               <tr key={c.id}>
                 <td>
-                  <strong>{c.title}</strong>
+                  <a
+                    href={`/app/library/canconers/${c.id}/preview?from=admin`}
+                    className="admin-song-title"
+                    title={t.admin.canconersTab.previsualitzar}
+                  >
+                    {c.title}
+                  </a>
                 </td>
                 <td style={{ fontSize: ".82rem" }}>{c.owner_name}</td>
                 <td style={{ textAlign: "center" }}>{c.song_count}</td>
+                <td style={{ textAlign: "center" }}>
+                  <BadgeMenu
+                    label={
+                      c.visibility === 1 ? (
+                        <>
+                          <IconGlobe /> {t.admin.canconersTab.public}
+                        </>
+                      ) : (
+                        t.admin.canconersTab.privat
+                      )
+                    }
+                    badgeClass={`badge ${c.visibility === 1 ? "badge-public" : "badge-user"}`}
+                    title={t.admin.canconersTab.canviarVisibilitatTitle}
+                    options={
+                      c.visibility === 1
+                        ? [
+                            { value: "open", label: t.admin.canconersTab.veureALaWeb },
+                            { value: "unpublish", label: t.admin.canconersTab.retirarDeLaWeb },
+                          ]
+                        : [
+                            {
+                              value: "copy",
+                              label: t.admin.canconersTab.ferCopiaPublica,
+                              hint: t.admin.canconersTab.hintCopiaPublica,
+                            },
+                          ]
+                    }
+                    onSelect={(v) => handleVisibilityMenu(c, v)}
+                  />
+                </td>
                 <td style={{ textAlign: "center" }}>
                   {c.share_token ? (
                     <a

@@ -4,7 +4,9 @@ import {
   searchPublicSongs,
   searchPublicArtists,
   listRecentPublicSongs,
+  searchOwnSongs,
 } from "@/db/queries/songs"
+import { searchPublicSongbooks } from "@/db/queries/canconers"
 import { logEvent } from "@/lib/analytics/logEvent"
 import { getSessionUser } from "@/lib/session"
 
@@ -23,9 +25,12 @@ const querySchema = z.object({
  *   ?q=                → retorna cançons recents (artistes buit).
  *
  * Resposta:
- *   { artists: Array<{ name, slug, song_count }>, songs: SongSummary[] }
+ *   { artists: Array<{ name, slug, song_count }>, songs: SongSummary[],
+ *     own_songs: SongListItem[], songbooks: PublicSongbookSummary[] }
  *
- * Públic. Només cançons amb `state = 0`.
+ * Públic. `songs` i `artists` només de cançons públiques; `own_songs` són
+ * les privades, arranjaments i propostes de qui cerca (buit sense sessió);
+ * `songbooks`, cançoners públics.
  */
 export async function GET(request: Request) {
   const sessionUser = await getSessionUser()
@@ -46,6 +51,7 @@ export async function GET(request: Request) {
 
     if (!q) {
       const songs = await listRecentPublicSongs(limit)
+      const ownSongs = userId ? await searchOwnSongs("", userId, 5) : []
       logEvent({
         type: "song_search",
         request,
@@ -53,13 +59,15 @@ export async function GET(request: Request) {
         metadata: { q, results: songs.length },
         status: 200,
       })
-      return NextResponse.json({ artists: [], songs })
+      return NextResponse.json({ artists: [], songs, own_songs: ownSongs, songbooks: [] })
     }
 
-    const [artists, songs] = await Promise.all([
+    const [artists, songs, ownSongs] = await Promise.all([
       searchPublicArtists(q, limit),
       searchPublicSongs(q, limit),
+      userId ? searchOwnSongs(q, userId, limit) : Promise.resolve([]),
     ])
+    const songbooks = searchPublicSongbooks(q, 4)
     logEvent({
       type: "song_search",
       request,
@@ -67,7 +75,7 @@ export async function GET(request: Request) {
       metadata: { q, results: songs.length },
       status: 200,
     })
-    return NextResponse.json({ artists, songs })
+    return NextResponse.json({ artists, songs, own_songs: ownSongs, songbooks })
   } catch (err) {
     console.error("[GET /api/songs/search]", err)
     return NextResponse.json({ error: "Error intern del servidor" }, { status: 500 })

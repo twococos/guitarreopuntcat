@@ -1,7 +1,8 @@
 import { sql } from "drizzle-orm"
-import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { index, integer, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core"
 import type { PdfOptions } from "@/lib/schemas/canconer"
 import type { AnalysisCompact, JobStats, WorkerDeviceInfo } from "@/lib/schemas/transcriber"
+import type { SyncQuality } from "@/lib/transcriber/sync"
 
 // ─── Cançons ────────────────────────────────────────────────
 export const songs = sqliteTable(
@@ -30,12 +31,22 @@ export const songs = sqliteTable(
     bpm: integer("bpm"),
     timeSignature: text("time_signature"), // "4/4", "3/4", "6/8"
     state: integer("state").notNull().default(0),
-    // 0 pública, 1 privada, 2 pendent, 3 rebutjada, 4 cancel·lada
+    // 0 pública, 1 privada, 2 proposta pendent. Qui la pot veure: src/lib/access/songs.ts
+    // Propietari de les privades i de les propostes. Null a les públiques (són de tothom).
+    ownerId: integer("owner_id").references(() => users.id, { onDelete: "set null" }),
+    // Privada + original = arranjament d'una cançó pública. Si s'esborra
+    // l'original, l'arranjament queda com a privada normal.
+    originalSongId: integer("original_song_id").references((): AnySQLiteColumn => songs.id, {
+      onDelete: "set null",
+    }),
     createdAt: text("created_at").default(sql`(datetime('now'))`),
     updatedAt: text("updated_at").default(sql`(datetime('now'))`),
   },
   (t) => ({
     slugUnique: uniqueIndex("songs_artist_song_slug_unique").on(t.artistSlug, t.songSlug),
+    stateIdx: index("songs_state_idx").on(t.state),
+    ownerIdx: index("songs_owner_idx").on(t.ownerId, t.state),
+    originalIdx: index("songs_original_idx").on(t.originalSongId),
   }),
 )
 
@@ -74,11 +85,18 @@ export const canconers = sqliteTable(
     style: text("style").notNull().default("classic"),
     accentColor: text("accent_color"),
     pdfOptions: text("pdf_options", { mode: "json" }).$type<PdfOptions>(),
+    // 0 privat, 1 públic (cercable i a /songbooks/[id]/[slug]). El share_token
+    // és independent: dona accés per enllaç encara que sigui privat.
+    visibility: integer("visibility").notNull().default(0),
+    // Derivat del títol en publicar. No és únic: la URL porta l'id.
+    slug: text("slug"),
+    publishedAt: text("published_at"),
     createdAt: text("created_at").default(sql`(datetime('now'))`),
     updatedAt: text("updated_at").default(sql`(datetime('now'))`),
   },
   (t) => ({
     shareTokenUnique: uniqueIndex("canconers_share_token_unique").on(t.shareToken),
+    visibilityIdx: index("canconers_visibility_idx").on(t.visibility, t.publishedAt),
   }),
 )
 
@@ -191,6 +209,11 @@ export const songAnalyses = sqliteTable("song_analyses", {
   device: text("device"),
   lyricsSource: text("lyrics_source"),
   analysis: text("analysis", { mode: "json" }).$type<AnalysisCompact>().notNull(),
+  // Memòria cau de la qualitat de la sincronització amb el content (per a
+  // llistes). `syncHash` és el hash del content + capo amb què es va calcular:
+  // si no coincideix, cal recalcular-la (src/db/queries/transcriptions.ts).
+  syncQuality: text("sync_quality", { mode: "json" }).$type<SyncQuality>(),
+  syncHash: text("sync_hash"),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
 })
 

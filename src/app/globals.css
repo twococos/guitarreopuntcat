@@ -9,7 +9,7 @@
      3. editor.css     → pàgina /app/editor
      4. admin.css      → pàgina /app/admin
      5. library.css    → pàgina /app/library
-     6. shared.css     → pàgina /c/[token]
+     6. shared.css     → visor de cançoners (/songbooks, /c/[token])
      7. public-song    → pàgina /songs/[artist]/[song]
      8. public-artist  → pàgina /songs/[artist]
      9. public-home    → portada /
@@ -17,6 +17,7 @@
      B. search-hero    → input de cerca de la portada
      C. public-static  → pàgines /projecte i /contacte
      D. songs-index    → índex /songs (per cançó o per artista)
+     E. visibilitat    → tipus de cançó, cançoners públics, diàlegs d'admin
    ════════════════════════════════════════════════════════════ */
 
 @import "../styles/song.css";
@@ -2084,7 +2085,6 @@ body:has(.editor-page),
 body:has(#admin-tabs),
 body:has(.bulk-import-page),
 body:has(#mc-main),
-body:has(#shared-layout),
 body:has(.account-page),
 body:has(.public-nav) {
   overflow: auto;
@@ -2702,10 +2702,12 @@ tbody tr:hover {
   background: var(--bg);
 }
 
+/* Sense display:flex al td: deixaria de ser una cel·la i desquadraria la fila */
 .td-actions {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
+  white-space: nowrap;
+}
+.td-actions > * + * {
+  margin-left: 0.4rem;
 }
 .btn-xs {
   padding: 0.22rem 0.6rem;
@@ -2964,7 +2966,8 @@ tbody tr:hover {
 
 /* Layout 2 columnes (esquerra més estreta, dreta més ampla) */
 #library-canconers,
-#library-proposals {
+#library-proposals,
+#library-my-songs {
   display: grid;
   grid-template-columns: minmax(320px, 0.9fr) 1.4fr;
   gap: 1.5rem;
@@ -2973,7 +2976,8 @@ tbody tr:hover {
 
 @media (max-width: 1024px) {
   #library-canconers,
-  #library-proposals {
+  #library-proposals,
+  #library-my-songs {
     grid-template-columns: 1fr;
   }
 }
@@ -3210,12 +3214,22 @@ tbody tr:hover {
 /* Accions principals: una fila amb els botons distribuïts equitativament. */
 .library-actions-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
   margin-bottom: 0.55rem;
 }
 .library-actions-row .library-action {
-  flex: 1;
+  flex: 1 1 auto;
   margin-bottom: 0;
+}
+a.library-action {
+  text-decoration: none;
+}
+.library-card-infos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
 }
 
 .library-action {
@@ -3540,85 +3554,422 @@ tbody tr:hover {
 }
 
 /* ════════════════════════════════════════════════════════════
-   5. SHARED.CSS — pàgina /c/[token]
-   ════════════════════════════════════════════════════════════ */
+   5. SONGBOOK-VIEWER — visor de cançoners (/songbooks/[id]/[slug],
+      /c/[token] i previsualització de la biblioteca)
+   ════════════════════════════════════════════════════════════
+   Mateix llenguatge que la pàgina pública de cançó (secció 7): fons
+   --bg, targeta blanca sense radius, títols Georgia, accent vermell.
+   La targeta i la barra flotant són les de la secció 7. */
 
-#shared-layout {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  min-height: calc(100vh - var(--header-h));
+.songbook-viewer {
+  --song-font-size: 14px;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  /* Espai per a la barra flotant inferior */
+  padding-bottom: 7rem;
 }
 
-#shared-nav {
-  border-right: 1px solid var(--border);
-  padding: 1.25rem;
-  background: var(--surface);
-  position: sticky;
-  top: 0;
-  height: calc(100vh - var(--header-h));
-  overflow-y: auto;
+.songbook-viewer .song-body {
+  font-size: var(--song-font-size);
 }
-#shared-nav h2 {
-  font-family: var(--song-title-font, "Georgia", serif);
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+
+/* ── Capçalera del cançoner ──────────────────────────────── */
+.songbook-viewer-header {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 2.25rem 1.25rem 1.5rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.songbook-viewer-header-main {
+  min-width: 0;
+}
+
+.songbook-viewer-back {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+.songbook-viewer-back:hover {
   color: var(--accent);
-  margin-bottom: 0.85rem;
 }
 
-#shared-index a {
-  font-family: var(--song-title-font, inherit);
+.songbook-viewer-eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--songbook-accent, var(--accent));
 }
-#shared-index {
+
+.songbook-viewer-title {
+  margin: 0;
+  font-family: "Georgia", serif;
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: #1a1a1a;
+  overflow-wrap: anywhere;
+}
+
+.songbook-viewer-meta {
+  margin: 0.45rem 0 0;
+  font-family: "Georgia", serif;
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+
+.songbook-viewer-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.songbook-viewer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.05rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 0.12s,
+    color 0.12s,
+    filter 0.12s,
+    transform 0.06s;
+}
+.songbook-viewer-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.songbook-viewer-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.songbook-viewer-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.songbook-viewer-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.songbook-viewer-btn--primary:hover:not(:disabled) {
+  color: #fff;
+  filter: brightness(0.95);
+}
+
+.songbook-viewer-empty {
+  max-width: 1140px;
+  margin: 2rem auto;
+  padding: 3rem 1.25rem;
+  text-align: center;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+/* ── Índex + cançó ───────────────────────────────────────── */
+.songbook-viewer-layout {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+  display: grid;
+  grid-template-columns: 270px minmax(0, 820px);
+  justify-content: center;
+  gap: 1.75rem;
+  align-items: start;
+}
+
+.songbook-viewer-index {
+  position: sticky;
+  top: 4.75rem;
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--songbook-accent, var(--accent));
+}
+
+/* El botó només fa de capçalera plegable en mòbil */
+.songbook-viewer-index-toggle {
+  display: none;
+}
+
+.songbook-viewer-index-list {
   list-style: none;
+  margin: 0;
+  padding: 0.4rem 0;
+}
+
+.songbook-viewer-index-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background 0.1s,
+    border-color 0.1s;
+}
+.songbook-viewer-index-item:hover {
+  background: var(--bg);
+}
+.songbook-viewer-index-item.is-active {
+  background: color-mix(in srgb, var(--songbook-accent, var(--accent)) 7%, transparent);
+  border-left-color: var(--songbook-accent, var(--accent));
+}
+
+.songbook-viewer-index-num {
+  font-family: "Georgia", serif;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: right;
+}
+.songbook-viewer-index-item.is-active .songbook-viewer-index-num {
+  color: var(--songbook-accent, var(--accent));
+  font-weight: 700;
+}
+
+.songbook-viewer-index-text {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  counter-reset: idx;
-  padding: 0;
+  min-width: 0;
 }
-#shared-index li {
-  counter-increment: idx;
+
+.songbook-viewer-index-title {
+  font-family: "Georgia", serif;
+  font-size: 0.92rem;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-#shared-index a {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  font-size: 0.82rem;
+.songbook-viewer-index-item.is-active .songbook-viewer-index-title {
+  font-weight: 700;
+}
+
+.songbook-viewer-index-artist {
+  font-size: 0.76rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.songbook-viewer-index-key {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+}
+
+.songbook-viewer-private {
+  display: inline-flex;
+  margin-left: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  vertical-align: -1px;
+}
+
+.songbook-viewer-main {
+  min-width: 0;
+}
+
+/* La targeta de la secció 7 arrenca pegada a la nav; aquí té marc sencer */
+.songbook-viewer-main .public-song-card {
+  border-top: 1px solid var(--border);
+  padding: 3rem 3.5rem;
+}
+
+.songbook-viewer-song-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.4rem;
+  padding: 0 0.5rem;
+  font-family: "Georgia", serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--songbook-accent, var(--accent));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.public-song-title-link {
+  color: inherit;
   text-decoration: none;
+}
+.public-song-title-link:hover {
+  color: var(--accent);
+}
+
+/* ── Anterior / següent ──────────────────────────────────── */
+.songbook-viewer-pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.songbook-viewer-pager-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 48%;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
   color: var(--text);
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
+  font-family: "Georgia", serif;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
   transition:
-    background 0.12s,
+    border-color 0.12s,
     color 0.12s;
 }
-#shared-index a::before {
-  content: counter(idx) ".";
-  color: var(--muted);
-  font-size: 0.72rem;
-  min-width: 1.2rem;
-}
-#shared-index a:hover {
-  background: var(--bg);
-  color: var(--accent);
-}
-#shared-index a.active {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-#shared-songs {
-  padding: 2rem 2.5rem;
+.songbook-viewer-pager-btn span {
   display: flex;
   flex-direction: column;
-  gap: 3.5rem;
-  max-width: 720px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.songbook-viewer-pager-btn small {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.songbook-viewer-pager-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.songbook-viewer-pager-btn--next {
+  margin-left: auto;
+  text-align: right;
+}
+.songbook-viewer-pager-btn--next span {
+  align-items: flex-end;
 }
 
-/* Els estils de cada cançó al cançoner compartit els proporciona
-   <SongView /> via src/styles/song.css. */
+.songbook-viewer-bar-pos {
+  min-width: 2.6rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* ── Mòbil: índex plegable a sobre ───────────────────────── */
+@media (max-width: 900px) {
+  .songbook-viewer-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0;
+  }
+  .songbook-viewer-header {
+    padding: 1.5rem 1rem 1rem;
+  }
+  .songbook-viewer-title {
+    font-size: 1.75rem;
+  }
+  .songbook-viewer-index {
+    top: 3.6rem;
+    z-index: 30;
+    max-height: none;
+    overflow: visible;
+    border-left: none;
+    border-right: none;
+  }
+  .songbook-viewer-index-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1rem;
+    background: var(--surface);
+    border: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .songbook-viewer-index-toggle > span:first-of-type {
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .songbook-viewer-index-current {
+    font-family: "Georgia", serif;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .songbook-viewer-index-list {
+    display: none;
+    max-height: 60vh;
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+  }
+  .songbook-viewer-index.is-open .songbook-viewer-index-list {
+    display: block;
+  }
+  .songbook-viewer-main .public-song-card {
+    padding: 1.8rem 1.2rem;
+    border-left: none;
+    border-right: none;
+  }
+  .songbook-viewer-pager {
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .songbook-viewer-actions {
+    width: 100%;
+  }
+  .songbook-viewer-btn {
+    flex: 1;
+    justify-content: center;
+  }
+  /* A la barra flotant, la posició no hi cap: només les fletxes */
+  .songbook-viewer-bar-pos {
+    display: none;
+  }
+}
 
 /* ════════════════════════════════════════════════════════════
    6. NEW-SONG-START POPUP — modal d'inici de cançó nova
@@ -5714,6 +6065,27 @@ header.public-home-section-head {
   padding: 0.1rem 0.5rem;
 }
 
+/* Targetes de "Descobreix cançoners": títol, autor i artistes en columna */
+.public-home-card-link--songbook {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+/* .public-home-card-artist porta align-self: center (per a la graella de les
+   cançons); en columna el centraria horitzontalment */
+.public-home-card-link--songbook > * {
+  align-self: flex-start;
+  max-width: 100%;
+}
+.public-home-card-artists {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 640px) {
   .public-home-hero {
     padding: 2.5rem 0 1.5rem;
@@ -7266,3 +7638,475 @@ body:has(.account-page) > header {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* ════════════════════════════════════════════════════════════
+   E. VISIBILITAT — tipus de cançó i cançoners públics
+      (editor, biblioteca, admin, llista de /app, portada)
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Editor: acció de desat secundària ───────────────────── */
+.toolbar-btn-secondary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.toolbar-btn-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* ── Pàgina pública de cançó: CTA secundària ─────────────── */
+.public-song-secondary-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1.25rem;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    border-color 0.12s,
+    color 0.12s;
+}
+.public-song-secondary-cta:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.public-song-extra-line {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.55rem 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.public-song-extra-line a {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ── Llista de cançons de /app ───────────────────────────── */
+.song-kind-tag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+  border-radius: 3px;
+  background: #ece8f7;
+  color: #5b4a9b;
+}
+.song-kind-tag.song-kind-arrangement {
+  background: #e3f0fb;
+  color: #2a6496;
+}
+.song-kind-tag.song-kind-proposal {
+  background: #fef3cd;
+  color: #856404;
+}
+
+/* ── Biblioteca ──────────────────────────────────────────── */
+.library-status.status-private {
+  background: #ece8f7;
+  color: #5b4a9b;
+}
+.library-status.status-arrangement {
+  background: #e3f0fb;
+  color: #2a6496;
+}
+.library-status.status-public {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #d1f0e0;
+  color: #1a6b3c;
+}
+.library-status + .library-status {
+  margin-left: 0.35rem;
+}
+.library-card-info--muted {
+  color: var(--muted);
+}
+.library-card-info--muted svg {
+  color: var(--muted);
+}
+.library-card-info a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.library-chips,
+.admin-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.library-chips {
+  width: 100%;
+}
+.library-chip,
+.admin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.library-chip.active,
+.admin-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.library-chip-count,
+.admin-chip-count {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+.library-song-private {
+  display: inline-flex;
+  margin-left: 0.35rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  vertical-align: -1px;
+}
+
+/* ── Editor de cançoners: botó de publicar ───────────────── */
+#btn-publish-canconer.is-active {
+  color: #1a6b3c;
+  border-color: #1a6b3c;
+}
+
+/* ── Admin: cançons ──────────────────────────────────────── */
+.admin-songs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.badge-kind-public {
+  background: #d1f0e0;
+  color: #1a6b3c;
+}
+.badge-kind-private {
+  background: #ece8f7;
+  color: #5b4a9b;
+}
+.badge-kind-arrangement {
+  background: #e3f0fb;
+  color: #2a6496;
+}
+.badge-kind-proposal {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.admin-songs-table tr.is-focused td {
+  animation: admin-row-focus 2.4s ease-out;
+}
+@keyframes admin-row-focus {
+  0%,
+  40% {
+    background: #fff3cd;
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.admin-song-id {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.admin-song-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.admin-muted {
+  color: var(--muted);
+}
+
+.admin-owner-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.4rem;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--text);
+  background: transparent;
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.admin-owner-btn:hover {
+  border-color: var(--border);
+  color: var(--accent);
+}
+.admin-owner-btn .user-row-avatar {
+  width: 20px;
+  height: 20px;
+}
+
+.admin-original-link {
+  font-size: 0.82rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+.admin-original-link:hover {
+  color: var(--accent);
+}
+
+/* Títols clicables (cançó, cançoner): sense aspecte d'enllaç, vermell en hover */
+.admin-song-title {
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.admin-song-title:hover {
+  color: var(--accent);
+}
+
+/* Original buit: el botó d'arranjament només surt en passar per la fila */
+.admin-original-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.admin-make-arrangement {
+  display: none;
+}
+.admin-songs-table tbody tr:hover .admin-make-arrangement,
+.admin-make-arrangement:focus-visible {
+  display: inline-flex;
+}
+.admin-songs-table tbody tr:hover .admin-original-empty > .admin-muted {
+  display: none;
+}
+
+/* ── Admin: etiqueta amb desplegable (BadgeMenu) ─────────── */
+.badge-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: inherit;
+  line-height: inherit;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    box-shadow 0.12s,
+    border-color 0.12s;
+}
+.badge-menu-trigger.badge-user {
+  border-color: var(--border);
+}
+.badge-menu-trigger:hover,
+.badge-menu-trigger.is-open {
+  border-color: currentColor;
+}
+.badge-menu-trigger svg {
+  width: 0.85em;
+  height: 0.85em;
+}
+.badge-menu-caret {
+  opacity: 0.6;
+}
+.badge-menu {
+  position: fixed;
+  z-index: 1100;
+  min-width: 200px;
+  max-width: 240px;
+  padding: 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.12s ease;
+}
+.badge-menu-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.badge-menu-option:hover:not(:disabled) {
+  background: var(--bg);
+}
+.badge-menu-option:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.badge-menu-option small {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.admin-analysis {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.admin-analysis-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.admin-analysis.is-good {
+  color: #1a8a4c;
+}
+.admin-analysis.is-fair {
+  color: #b7791f;
+}
+.admin-analysis.is-bad {
+  color: var(--accent);
+}
+.admin-analysis.is-stale {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Admin: diàlegs (propietari, original) ───────────────── */
+.admin-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  animation: fadeIn 0.18s ease;
+}
+.admin-dialog {
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  padding: 1.25rem;
+}
+.admin-dialog-title {
+  font-size: 1.05rem;
+  margin-bottom: 0.4rem;
+}
+.admin-dialog-desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+.admin-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+}
+.admin-dialog-search {
+  width: 100%;
+}
+.admin-dialog-list {
+  list-style: none;
+  overflow-y: auto;
+  max-height: 50vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.admin-dialog-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.admin-dialog-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font: inherit;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.admin-dialog-list li:last-child .admin-dialog-option {
+  border-bottom: none;
+}
+.admin-dialog-option:hover:not(:disabled) {
+  background: var(--bg);
+}
+.admin-dialog-option.is-selected {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.admin-dialog-option.is-current,
+.admin-dialog-option:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.admin-dialog-option-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.admin-dialog-option-main small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.admin-dialog-option-id,
+.admin-dialog-option-key {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.admin-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+.admin-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+

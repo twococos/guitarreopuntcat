@@ -10,6 +10,7 @@ import {
   IconCheck,
   IconRotateCcw,
   IconSave,
+  IconSend,
 } from "@/components/shared/Icons"
 
 interface EditorToolbarProps {
@@ -49,6 +50,13 @@ interface EditorToolbarProps {
    * en lloc de `saveLabel`. Si està set, també força disabled del botó.
    */
   saveDisabledHint?: string
+  /**
+   * Acció de desat alternativa, a l'esquerra del botó principal (p. ex.
+   * "Proposa-la com a pública" al costat de "Desa com a privada", o "Desa com
+   * a arranjament" al costat de "Modifica la cançó").
+   */
+  secondaryLabel?: string
+  onSecondary?: () => void
 }
 
 export function EditorToolbar({
@@ -68,6 +76,8 @@ export function EditorToolbar({
   onAccept,
   onReject,
   saveDisabledHint,
+  secondaryLabel,
+  onSecondary,
 }: EditorToolbarProps): ReactNode {
   const t = getT()
   const blocked = !!disabledReason
@@ -153,6 +163,17 @@ export function EditorToolbar({
             >
               <IconRotateCcw /> {resetLabel}
             </button>
+            {secondaryLabel && onSecondary && (
+              <button
+                type="button"
+                className="toolbar-btn toolbar-btn-secondary"
+                title={secondaryLabel}
+                onClick={onSecondary}
+                disabled={blocked || saving}
+              >
+                <IconSend /> {secondaryLabel}
+              </button>
+            )}
             <button
               type="button"
               className="toolbar-btn toolbar-btn-primary"

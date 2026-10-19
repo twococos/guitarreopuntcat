@@ -2,7 +2,8 @@ import { and, eq, ne, sql } from "drizzle-orm"
 import { db, schema } from "@/db/client"
 import type { ProposalInput } from "@/lib/schemas/proposal"
 import { cleanupContent } from "@/lib/importers/cleanupContent"
-import { generateSlugsForNewSong } from "./songs"
+import { slugsForPublishing } from "./songs"
+import { SONG_STATE } from "@/lib/songKind"
 
 // ─── GET /api/proposals ──────────────────────────────────────
 
@@ -81,11 +82,10 @@ export async function listProposals(isAdmin: boolean, userId: number) {
 
 // ─── POST /api/proposals ─────────────────────────────────────
 
+// Les propostes es creen sense slug: el reben en aprovar-se (slugsForPublishing).
 export async function createProposal(userId: number, data: ProposalInput) {
   let songId!: number
   let proposalId!: number
-
-  const { artistSlug, songSlug } = generateSlugsForNewSong(data.artist, data.title)
 
   db.transaction((tx) => {
     const songResult = tx
@@ -93,8 +93,6 @@ export async function createProposal(userId: number, data: ProposalInput) {
       .values({
         title: data.title,
         artist: data.artist,
-        artistSlug,
-        songSlug,
         key: data.key,
         capo: data.capo,
         content: data.content,
@@ -104,7 +102,8 @@ export async function createProposal(userId: number, data: ProposalInput) {
         year: data.year ?? null,
         youtubeUrl: data.youtubeUrl,
         spotifyUrl: data.spotifyUrl,
-        state: 2, // pendent de revisió
+        state: SONG_STATE.PENDING,
+        ownerId: userId,
       })
       .run()
 
@@ -123,8 +122,8 @@ export async function createProposal(userId: number, data: ProposalInput) {
 
 // ─── Bulk import (admin: /app/admin/import) ──────────────────
 // Variant de createProposal sense schema Zod estricte: accepta YouTube/Spotify
-// buits (null) i el revisor els podrà afegir manualment. Reutilitza
-// generateSlugsForNewSong i el mateix flux d'inserció.
+// buits (null) i el revisor els podrà afegir manualment. Mateix flux
+// d'inserció (sense slugs fins que s'aprova).
 
 export interface BulkProposalInput {
   title: string
@@ -147,16 +146,12 @@ export function createBulkProposal(
   let songId!: number
   let proposalId!: number
 
-  const { artistSlug, songSlug } = generateSlugsForNewSong(data.artist, data.title)
-
   db.transaction((tx) => {
     const songResult = tx
       .insert(schema.songs)
       .values({
         title: data.title,
         artist: data.artist,
-        artistSlug,
-        songSlug,
         key: data.key,
         capo: data.capo,
         content: data.content,
@@ -166,7 +161,8 @@ export function createBulkProposal(
         year: data.year,
         youtubeUrl: data.youtubeUrl,
         spotifyUrl: data.spotifyUrl,
-        state: 2,
+        state: SONG_STATE.PENDING,
+        ownerId: userId,
       })
       .run()
 
@@ -184,10 +180,11 @@ export function createBulkProposal(
 }
 
 /**
- * Comprova si ja existeix una cançó amb el mateix artista+títol (ignorant
- * majúscules/espais) que NO estigui en estat rebutjat/cancel·lat. Útil per
- * a la importació massiva: si en trobem una pública, privada o pendent,
- * saltem la fila i marquem com a duplicat.
+ * Comprova si ja existeix una cançó pública o pendent amb el mateix
+ * artista+títol (ignorant majúscules/espais). Útil per a la importació
+ * massiva: si en trobem una, saltem la fila i la marquem com a duplicat.
+ * Les privades (incloses les propostes rebutjades) no compten: són d'un
+ * usuari i no impedeixen que la cançó entri al catàleg.
  */
 export function findExistingSongByArtistTitle(
   artist: string,
@@ -200,7 +197,7 @@ export function findExistingSongByArtistTitle(
     .select({ id: schema.songs.id, artist: schema.songs.artist, title: schema.songs.title, state: schema.songs.state })
     .from(schema.songs)
     .all()
-    .find((r) => norm(r.artist) === a && norm(r.title) === t && r.state !== 3 && r.state !== 4)
+    .find((r) => norm(r.artist) === a && norm(r.title) === t && r.state !== SONG_STATE.PRIVATE)
   return row ? { id: row.id, state: row.state } : null
 }
 
@@ -221,6 +218,14 @@ export async function reviewProposal(
 
   if (!proposal) return { error: "Proposta no trobada", status: 404 }
   if (proposal.status !== "pending") return { error: "La proposta ja ha estat revisada", status: 400 }
+
+  // En publicar-se, la cançó deixa de tenir propietari i rep els slugs.
+  const published = {
+    state: SONG_STATE.PUBLIC,
+    ownerId: null,
+    originalSongId: null,
+    ...(status === "approved" ? (slugsForPublishing(proposal.songId) ?? {}) : {}),
+  }
 
   db.transaction((tx) => {
     tx
@@ -250,7 +255,7 @@ export async function reviewProposal(
             year: songUpdate.year ?? null,
             youtubeUrl: songUpdate.youtubeUrl,
             spotifyUrl: songUpdate.spotifyUrl,
-            state: 0, // pública
+            ...published,
             updatedAt: sql`(datetime('now'))`,
           })
           .where(eq(schema.songs.id, proposal.songId))
@@ -258,16 +263,16 @@ export async function reviewProposal(
       } else {
         tx
           .update(schema.songs)
-          .set({ state: 0, updatedAt: sql`(datetime('now'))` }) // pública
+          .set({ ...published, updatedAt: sql`(datetime('now'))` })
           .where(eq(schema.songs.id, proposal.songId))
           .run()
       }
     } else {
-      // Rebutjada: la cançó es conserva amb state=3 perquè el propietari
-      // pugui modificar-la i re-enviar la proposta.
+      // Rebutjada: la cançó queda com a privada del propietari, que la pot
+      // modificar i tornar a proposar.
       tx
         .update(schema.songs)
-        .set({ state: 3, updatedAt: sql`(datetime('now'))` })
+        .set({ state: SONG_STATE.PRIVATE, updatedAt: sql`(datetime('now'))` })
         .where(eq(schema.songs.id, proposal.songId))
         .run()
     }
@@ -277,9 +282,9 @@ export async function reviewProposal(
 }
 
 // ─── POST /api/proposals/[id]/cancel ─────────────────────────
-// L'usuari propietari descarta la seva proposta. La cançó passa a
-// state=4 (cancel·lada) i la proposta a status="cancelled". La proposta
-// queda visible al panell admin però desapareix de la llista de l'usuari.
+// L'usuari propietari retira la seva proposta. La cançó queda com a privada
+// seva i la proposta passa a status="cancelled" (visible a l'admin per
+// traçabilitat, però no a la llista de l'usuari).
 
 export async function cancelProposal(proposalId: number, userId: number) {
   const [proposal] = await db
@@ -303,7 +308,7 @@ export async function cancelProposal(proposalId: number, userId: number) {
 
     tx
       .update(schema.songs)
-      .set({ state: 4, updatedAt: sql`(datetime('now'))` })
+      .set({ state: SONG_STATE.PRIVATE, updatedAt: sql`(datetime('now'))` })
       .where(eq(schema.songs.id, proposal.songId))
       .run()
   })
@@ -352,7 +357,7 @@ export async function resubmitProposal(
         year: data.year ?? null,
         youtubeUrl: data.youtubeUrl,
         spotifyUrl: data.spotifyUrl,
-        state: 2, // pendent
+        state: SONG_STATE.PENDING,
         updatedAt: sql`(datetime('now'))`,
       })
       .where(eq(schema.songs.id, proposal.songId))
@@ -374,7 +379,120 @@ export async function resubmitProposal(
   return { ok: true as const }
 }
 
-// ─── GET /api/proposals/pending-count ────────────────────────
+// ─── POST /api/songs/[id]/propose ────────────────────────────
+// L'usuari proposa com a pública una privada seva (no un arranjament). Si
+// la darrera proposta d'aquesta cançó va ser rebutjada o retirada, la
+// reaprofita i la marca com a re-enviada; si no, en crea una de nova.
+
+export function proposeOwnSong(songId: number, userId: number, data: ProposalInput) {
+  const song = db
+    .select({ state: schema.songs.state, ownerId: schema.songs.ownerId, originalSongId: schema.songs.originalSongId })
+    .from(schema.songs)
+    .where(eq(schema.songs.id, songId))
+    .get()
+
+  if (!song || song.ownerId !== userId) return { error: "Cançó no trobada", status: 404 as const }
+  if (song.state !== SONG_STATE.PRIVATE) {
+    return { error: "Només es poden proposar cançons privades", status: 400 as const }
+  }
+  if (song.originalSongId !== null) {
+    return { error: "Un arranjament no es pot proposar com a cançó pública", status: 400 as const }
+  }
+
+  const [last] = db
+    .select({ id: schema.songProposals.id, status: schema.songProposals.status })
+    .from(schema.songProposals)
+    .where(eq(schema.songProposals.songId, songId))
+    .orderBy(sql`${schema.songProposals.id} DESC`)
+    .limit(1)
+    .all()
+
+  const now = new Date().toISOString().replace("T", " ").slice(0, 19)
+  let proposalId!: number
+
+  db.transaction((tx) => {
+    tx
+      .update(schema.songs)
+      .set({
+        title: data.title,
+        artist: data.artist,
+        key: data.key,
+        capo: data.capo,
+        content: cleanupContent(data.content),
+        language: data.language,
+        tags: data.tags,
+        album: data.album ?? null,
+        year: data.year ?? null,
+        youtubeUrl: data.youtubeUrl,
+        spotifyUrl: data.spotifyUrl,
+        state: SONG_STATE.PENDING,
+        updatedAt: sql`(datetime('now'))`,
+      })
+      .where(eq(schema.songs.id, songId))
+      .run()
+
+    if (last && (last.status === "rejected" || last.status === "cancelled")) {
+      tx
+        .update(schema.songProposals)
+        .set({ status: "pending", resubmittedAt: now, reviewerId: null, reviewedAt: null })
+        .where(eq(schema.songProposals.id, last.id))
+        .run()
+      proposalId = last.id
+    } else {
+      const r = tx.insert(schema.songProposals).values({ userId, songId }).run()
+      proposalId = Number(r.lastInsertRowid)
+    }
+  })
+
+  return { ok: true as const, proposalId }
+}
+
+
+/**
+ * Admin: torna una cançó (pública, privada o arranjament) a la cua de
+ * propostes, a nom del seu propietari (o de l'admin si no en té). Perd
+ * l'original, com qualsevol proposta. Reaprofita la darrera proposta tancada
+ * de la cançó si n'hi ha.
+ */
+export function moveSongToProposals(songId: number, fallbackOwnerId: number) {
+  const song = db
+    .select({ state: schema.songs.state, ownerId: schema.songs.ownerId })
+    .from(schema.songs)
+    .where(eq(schema.songs.id, songId))
+    .get()
+  if (!song) return { error: "Cançó no trobada", status: 404 as const }
+  if (song.state === SONG_STATE.PENDING) return { error: "Ja és una proposta", status: 400 as const }
+
+  const ownerId = song.ownerId ?? fallbackOwnerId
+  const [last] = db
+    .select({ id: schema.songProposals.id })
+    .from(schema.songProposals)
+    .where(eq(schema.songProposals.songId, songId))
+    .orderBy(sql`${schema.songProposals.id} DESC`)
+    .limit(1)
+    .all()
+  const now = new Date().toISOString().replace("T", " ").slice(0, 19)
+  let proposalId!: number
+
+  db.transaction((tx) => {
+    tx
+      .update(schema.songs)
+      .set({ state: SONG_STATE.PENDING, ownerId, originalSongId: null })
+      .where(eq(schema.songs.id, songId))
+      .run()
+    if (last) {
+      tx
+        .update(schema.songProposals)
+        .set({ status: "pending", userId: ownerId, resubmittedAt: now, reviewerId: null, reviewedAt: null })
+        .where(eq(schema.songProposals.id, last.id))
+        .run()
+      proposalId = last.id
+    } else {
+      proposalId = Number(tx.insert(schema.songProposals).values({ userId: ownerId, songId }).run().lastInsertRowid)
+    }
+  })
+  return { ok: true as const, proposalId }
+}
 
 export async function getPendingCount() {
   const [row] = await db

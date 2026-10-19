@@ -13,6 +13,8 @@ export const EVENT_TYPES = [
   "proposal_approve",
   "proposal_reject",
   "proposal_cancel",
+  "proposal_resubmit",
+  "canconer_publish",
   "signin_success",
   "signin_failure",
   "signout",
@@ -48,6 +50,8 @@ export type EventMetadataMap = {
   proposal_approve: { proposal_id: number }
   proposal_reject: { proposal_id: number }
   proposal_cancel: { proposal_id: number }
+  proposal_resubmit: { proposal_id: number }
+  canconer_publish: { canconer_id: number; visibility: number }
   signin_success: { provider?: string }
   signin_failure: { reason: string }
   signout: Record<string, never>

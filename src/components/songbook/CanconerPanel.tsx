@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useSongbookStore, isDefaultCanconerTitle } from "@/hooks/useSongbook"
 import { useToastStore } from "@/hooks/useToasts"
@@ -12,7 +12,7 @@ import { CanconerGrid } from "./CanconerGrid"
 import { ConfirmToast } from "@/components/editor/ConfirmToast"
 import { PdfProgressOverlay } from "@/components/shared/PdfProgressOverlay"
 import { getT } from "@/lib/i18n"
-import { IconX, IconSave, IconClock, IconFileText, IconMusic } from "@/components/shared/Icons"
+import { IconX, IconSave, IconClock, IconFileText, IconMusic, IconGlobe } from "@/components/shared/Icons"
 import type { CanconerListItem } from "@/types/song"
 
 export function CanconerPanel() {
@@ -40,6 +40,43 @@ export function CanconerPanel() {
   // ha escrit res, restaurem el provisional perquè mai s'arribi a guardar
   // sense nom.
   const [titleFocused, setTitleFocused] = useState(false)
+  // Visibilitat del cançoner desat (null: no desat o encara no se sap)
+  const [visibility, setVisibility] = useState<number | null>(null)
+
+  useEffect(() => {
+    setVisibility(null)
+    if (savedCanconerId === null || savedCanconerId < 0) return
+    let cancelled = false
+    void fetch(`/api/canconers/${savedCanconerId}`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ visibility: number }>) : null))
+      .then((d) => {
+        if (!cancelled && d) setVisibility(d.visibility)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [savedCanconerId])
+
+  async function onToggleVisibility() {
+    if (savedCanconerId === null || visibility === null) return
+    const next = visibility === 1 ? 0 : 1
+    const privades = canconer.filter((e) => e.song.state !== 0).length
+    const msg = next === 1
+      ? t.app.library.canconersTab.confirmPublicar(privades)
+      : t.app.library.canconersTab.confirmRetirar
+    if (!confirm(msg)) return
+    const res = await fetch(`/api/canconers/${savedCanconerId}/visibility`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visibility: next }),
+    })
+    if (!res.ok) {
+      showToast(t.app.library.canconersTab.toastErrorVisibilitat, { type: "error" })
+      return
+    }
+    setVisibility(next)
+    showToast(next === 1 ? t.app.library.canconersTab.toastPublicat : t.app.library.canconersTab.toastRetirat)
+  }
 
   const hasItems = canconer.length > 0
   const isLoggedIn = !!(session?.user?.active)
@@ -178,6 +215,22 @@ export function CanconerPanel() {
           >
             <IconSave /> {t.app.songbook.canconerPanel.guardarLabel}
           </button>
+          {isLoggedIn && visibility !== null && (
+            <button
+              id="btn-publish-canconer"
+              className={`btn-icon-action${visibility === 1 ? " is-active" : ""}`}
+              title={
+                visibility === 1
+                  ? t.app.library.canconersTab.retirar
+                  : `${t.app.library.canconersTab.publicar}. ${t.app.songbook.canconerPanel.publicarDesatHint}`
+              }
+              aria-pressed={visibility === 1}
+              onClick={() => void onToggleVisibility()}
+            >
+              <IconGlobe />{" "}
+              {visibility === 1 ? t.app.library.canconersTab.public : t.app.songbook.canconerPanel.publicarLabel}
+            </button>
+          )}
           <button
             id="btn-generate"
             className="btn-icon-action"

@@ -1,4 +1,5 @@
 import "server-only"
+import { createHash } from "node:crypto"
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, ne, notInArray, or, sql } from "drizzle-orm"
 import { db, schema } from "@/db/client"
 import type { TranscriptionJob, TranscriptionWorker } from "@/db/schema"
@@ -11,7 +12,8 @@ import { youtubeVideoId } from "@/lib/youtube"
 import { getOrCreateTranscriberUser } from "@/lib/transcriber/transcriberUser"
 import { generateWorkerToken, hashWorkerToken } from "@/lib/transcriber/auth.server"
 import { findExistingSongByArtistTitle } from "./proposals"
-import { generateSlugsForNewSong } from "./songs"
+import { SONG_STATE } from "@/lib/songKind"
+import { syncAnalysis, type SyncQuality } from "@/lib/transcriber/sync"
 
 /**
  * Cua de transcripcions (vegeu docs/api_worker.md del repo transcriptor).
@@ -187,6 +189,9 @@ function analysisRow(songId: number, jobId: number, analysis: AnalysisCompact, w
     device: analysis.models.device ?? worker.deviceInfo?.type ?? null,
     lyricsSource: analysis.lyrics_source,
     analysis,
+    // Anàlisi nova: la qualitat es tornarà a calcular quan es demani
+    syncQuality: null,
+    syncHash: null,
     createdAt: NOW,
   }
 }
@@ -264,8 +269,7 @@ export function completeJob(
       return { status: "duplicate", songId: dup.id }
     }
 
-    // Fora de la transacció, com a createBulkProposal (vegeu PROJECT_CONTEXT §14)
-    const { artistSlug, songSlug } = generateSlugsForNewSong(artist, title)
+    // Sense slugs: els rep en aprovar-se la proposta (slugsForPublishing)
     const transcriberUserId = getOrCreateTranscriberUser()
     const content = cleanupContent(normalizeSectionTitles(proposal.content))
 
@@ -276,8 +280,6 @@ export function completeJob(
         .values({
           title,
           artist,
-          artistSlug,
-          songSlug,
           key: proposal.key,
           capo: proposal.capo,
           content,
@@ -286,7 +288,8 @@ export function completeJob(
           youtubeUrl: job.sourceUrl,
           bpm: metrics.bpm,
           timeSignature: metrics.timeSignature,
-          state: 2, // pendent
+          state: SONG_STATE.PENDING,
+          ownerId: transcriberUserId,
         })
         .run()
       newSongId = Number(songResult.lastInsertRowid)
@@ -474,7 +477,7 @@ export function enqueueAnalyzeMissing(priority: number, userId: number): number 
     .from(schema.songs)
     .where(
       and(
-        eq(schema.songs.state, 0),
+        eq(schema.songs.state, SONG_STATE.PUBLIC),
         isNotNull(schema.songs.youtubeUrl),
         ne(schema.songs.youtubeUrl, ""),
         notInArray(schema.songs.id, analysed),
@@ -798,4 +801,72 @@ export function getCurrentSongAnalysis(songId: number) {
   const current = row.youtubeUrl ? youtubeVideoId(row.youtubeUrl) : null
   if (row.analysis.youtubeId && current !== row.analysis.youtubeId) return null
   return row.analysis
+}
+
+// ─── Qualitat de la sincronització (llistes) ────────────────
+
+export interface SongAnalysisSummary {
+  /** L'anàlisi és del vídeo actual de la cançó. */
+  current: boolean
+  quality: SyncQuality | null
+}
+
+function syncHashOf(content: string, capo: number | null): string {
+  return createHash("sha1").update(`${capo ?? 0}\n${content}`).digest("hex")
+}
+
+/**
+ * Resum de l'anàlisi de cada cançó (les que no en tenen no hi surten). La
+ * qualitat es desa a song_analyses i només es recalcula (amb syncAnalysis)
+ * quan el content o el capo han canviat des de l'últim càlcul, o quan
+ * l'anàlisi és nova.
+ */
+export function getAnalysisSummaries(songIds: number[]): Map<number, SongAnalysisSummary> {
+  const out = new Map<number, SongAnalysisSummary>()
+  if (songIds.length === 0) return out
+  const rows = db
+    .select({
+      songId: schema.songAnalyses.songId,
+      youtubeId: schema.songAnalyses.youtubeId,
+      syncQuality: schema.songAnalyses.syncQuality,
+      syncHash: schema.songAnalyses.syncHash,
+      youtubeUrl: schema.songs.youtubeUrl,
+      content: schema.songs.content,
+      capo: schema.songs.capo,
+    })
+    .from(schema.songAnalyses)
+    .innerJoin(schema.songs, eq(schema.songs.id, schema.songAnalyses.songId))
+    .where(inArray(schema.songAnalyses.songId, songIds))
+    .all()
+
+  for (const r of rows) {
+    const videoId = r.youtubeUrl ? youtubeVideoId(r.youtubeUrl) : null
+    const current = !r.youtubeId || videoId === r.youtubeId
+    if (!current) {
+      out.set(r.songId, { current: false, quality: null })
+      continue
+    }
+    const hash = syncHashOf(r.content, r.capo)
+    let quality = r.syncQuality ?? null
+    if (r.syncHash !== hash || !quality) {
+      const full = db
+        .select({ analysis: schema.songAnalyses.analysis })
+        .from(schema.songAnalyses)
+        .where(eq(schema.songAnalyses.songId, r.songId))
+        .get()
+      if (!full) continue
+      try {
+        quality = syncAnalysis(full.analysis, r.content, r.capo ?? 0).quality
+      } catch (err) {
+        console.error(`[getAnalysisSummaries] cançó ${r.songId}`, err)
+        quality = null
+      }
+      db.update(schema.songAnalyses)
+        .set({ syncQuality: quality, syncHash: hash })
+        .where(eq(schema.songAnalyses.songId, r.songId))
+        .run()
+    }
+    out.set(r.songId, { current: true, quality })
+  }
+  return out
 }

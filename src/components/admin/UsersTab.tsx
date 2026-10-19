@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { getT } from "@/lib/i18n"
+import { BadgeMenu } from "./BadgeMenu"
 
 interface UserRow {
   id: number
@@ -30,8 +31,8 @@ export function UsersTab() {
     load()
   }, [load])
 
-  async function handleToggleRole(u: UserRow) {
-    const newRole = u.role === "admin" ? "user" : "admin"
+  async function handleRoleChange(u: UserRow, newRole: UserRow["role"]) {
+    if (newRole === u.role) return
     const label = newRole === "admin" ? t.admin.usersTab.ferAdminLabel : t.admin.usersTab.ferUsuariLabel
     if (!confirm(t.admin.usersTab.confirmToggleRol(label, u.name))) return
     const res = await fetch(`/api/admin/users/${u.id}`, {
@@ -82,7 +83,18 @@ export function UsersTab() {
               </td>
               <td style={{ fontSize: ".8rem", color: "var(--muted)" }}>{u.email}</td>
               <td>
-                <span className={`badge badge-${u.role}`}>{u.role}</span>
+                <BadgeMenu
+                  label={u.role === "admin" ? t.admin.usersTab.rolAdmin : t.admin.usersTab.rolUser}
+                  badgeClass={`badge badge-${u.role}`}
+                  current={u.role}
+                  disabled={isMe}
+                  title={t.admin.usersTab.canviarRolTitle}
+                  options={[
+                    { value: "user", label: t.admin.usersTab.rolUser, badgeClass: "badge badge-user" },
+                    { value: "admin", label: t.admin.usersTab.rolAdmin, badgeClass: "badge badge-admin" },
+                  ]}
+                  onSelect={(v) => void handleRoleChange(u, v as UserRow["role"])}
+                />
               </td>
               <td style={{ textAlign: "center" }}>{u.canconer_count}</td>
               <td style={{ fontSize: ".75rem", color: "var(--muted)" }}>
@@ -92,20 +104,12 @@ export function UsersTab() {
                 {isMe ? (
                   "—"
                 ) : (
-                  <>
-                    <button
-                      className={`btn-xs ${u.role !== "admin" ? "success" : ""}`}
-                      onClick={() => handleToggleRole(u)}
-                    >
-                      {u.role === "admin" ? t.admin.usersTab.ferUsuari : t.admin.usersTab.ferAdmin}
-                    </button>
-                    <button
-                      className={`btn-xs ${u.active ? "danger" : ""}`}
-                      onClick={() => handleToggleActive(u)}
-                    >
-                      {u.active ? t.admin.usersTab.desactivar : t.admin.usersTab.activar}
-                    </button>
-                  </>
+                  <button
+                    className={`btn-xs ${u.active ? "danger" : ""}`}
+                    onClick={() => handleToggleActive(u)}
+                  >
+                    {u.active ? t.admin.usersTab.desactivar : t.admin.usersTab.activar}
+                  </button>
                 )}
               </td>
             </tr>

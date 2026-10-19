@@ -3,10 +3,13 @@ import { listRecentPublicSongs, getRandomPublicSongs } from "@/db/queries/songs"
 import { PublicNav } from "@/components/public/PublicNav"
 import { SearchHero } from "@/components/public/SearchHero"
 import { InspiratSection } from "@/components/public/InspiratSection"
+import { SongbooksSection } from "@/components/public/SongbooksSection"
+import { getRandomPublicSongbooks } from "@/db/queries/canconers"
 import { MobileGateLink } from "@/components/public/MobileGateLink"
 import { getT } from "@/lib/i18n"
 
 const INSPIRAT_COUNT = 3
+const SONGBOOKS_COUNT = 3
 
 export const dynamic = "force-dynamic"
 
@@ -18,7 +21,8 @@ export const dynamic = "force-dynamic"
  *   2. Hero: logo gros + wordmark + claim + buscador prominent.
  *   3. CTA secundari per anar a l'editor de cançoners (/app).
  *   4. Inspira't: cançó aleatòria amb botó "tira el dau".
- *   5. Llista de cançons recents.
+ *   5. Cançoners per descobrir: cançoners públics a l'atzar (si n'hi ha).
+ *   6. Llista de cançons recents.
  *
  * `force-dynamic` perquè la tirada inicial del dau sigui diferent cada visita
  * (sense aquesta directiva, Next podria cache-jar la portada estàticament).
@@ -29,6 +33,7 @@ export default async function HomePage() {
     listRecentPublicSongs(6),
     getRandomPublicSongs(INSPIRAT_COUNT),
   ])
+  const randomSongbooks = getRandomPublicSongbooks(SONGBOOKS_COUNT)
 
   return (
     <>
@@ -93,6 +98,8 @@ export default async function HomePage() {
             </ul>
           </section>
         )}
+
+        <SongbooksSection initial={randomSongbooks} />
       </main>
     </>
   )

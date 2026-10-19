@@ -64,7 +64,8 @@ export function SongbookEditor() {
 
     // Prioritats de càrrega:
     // 1) "load_canconer" (one-shot des de /library) — màxima prioritat.
-    // 2) "start_with_song" (one-shot des de /songs/[artist]/[song]).
+    // 2) "start_with_song" (one-shot des de /songs/[artist]/[song] o de la
+    //    Biblioteca). Amb `append: true`, s'afegeix al cançoner en curs.
     // 3) "canconer_in_progress" (autoguardat de sessió anterior).
     // 4) Estat per defecte, amb títol generat segons cançoners existents.
     const loadRaw = sessionStorage.getItem("load_canconer")
@@ -82,8 +83,13 @@ export function SongbookEditor() {
     const startRaw = sessionStorage.getItem("start_with_song")
     if (startRaw) {
       sessionStorage.removeItem("start_with_song")
-      sessionStorage.removeItem(IN_PROGRESS_STORAGE_KEY)
-      void startWithSong(startRaw).finally(() => {
+      const inProgress = sessionStorage.getItem(IN_PROGRESS_STORAGE_KEY)
+      const append = isAppend(startRaw) && inProgress !== null
+      if (!append) sessionStorage.removeItem(IN_PROGRESS_STORAGE_KEY)
+      void (async () => {
+        if (append) await hydrateInProgress(inProgress)
+        await startWithSong(startRaw, append)
+      })().finally(() => {
         hydratedRef.current = true
       })
       return
@@ -212,13 +218,27 @@ export function SongbookEditor() {
     }
   }
 
-  async function startWithSong(raw: string) {
+  function isAppend(raw: string): boolean {
+    try {
+      return (JSON.parse(raw) as { append?: unknown }).append === true
+    } catch {
+      return false
+    }
+  }
+
+  async function startWithSong(raw: string, append = false) {
     try {
       const data = JSON.parse(raw) as { songId: number; semitones?: number }
       if (typeof data.songId !== "number") return
       const res = await fetch(`/api/songs/${data.songId}`)
       if (!res.ok) return
       const song = (await res.json()) as Song
+      if (append) {
+        const { canconer } = useSongbookStore.getState()
+        const next = [...canconer, { song, semitones: data.semitones ?? 0 }]
+        useSongbookStore.setState({ canconer: next, selectedIdx: next.length - 1, previewActive: true })
+        return
+      }
       useSongbookStore.setState({
         savedCanconerId: null,
         canconer: [{ song, semitones: data.semitones ?? 0 }],
@@ -233,29 +253,36 @@ export function SongbookEditor() {
 
   async function loadFromSession(raw: string) {
     try {
+      // `id` absent: és una còpia d'un cançoner d'algú altre (visor públic),
+      // que es desarà com a cançoner nou. Les cançons que no es poden veure
+      // fora d'aquell cançoner (privades de l'autor) no s'hi copien.
       const data = JSON.parse(raw) as {
-        id: number
+        id?: number
         title: string
         style?: CanconerStyle
         accent_color?: string | null
         pdf_options?: PdfOptions | null
         songs: Array<{ id: number; semitones: number }>
       }
-      const entries = await Promise.all(
-        data.songs.map(async ({ id, semitones }) => {
-          const res = await fetch(`/api/songs/${id}`)
-          const song = (await res.json()) as Song
-          return { song, semitones }
-        }),
-      )
+      const entries = (
+        await Promise.all(
+          data.songs.map(async ({ id, semitones }) => {
+            const res = await fetch(`/api/songs/${id}`)
+            if (!res.ok) return null
+            const song = (await res.json()) as Song
+            return { song, semitones }
+          }),
+        )
+      ).filter((e): e is { song: Song; semitones: number } => e !== null)
       loadExistingCanconer({
-        id: data.id,
+        id: data.id ?? -1,
         title: data.title,
         style: data.style ?? "classic",
         accentColor: data.accent_color ?? null,
         pdfOptions: data.pdf_options ?? null,
         entries,
       })
+      if (data.id === undefined) useSongbookStore.setState({ savedCanconerId: null })
     } catch {
       // Ignore parse/fetch errors
     }

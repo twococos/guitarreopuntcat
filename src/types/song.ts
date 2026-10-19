@@ -1,11 +1,13 @@
 import type { Song, Canconer, CanconerSong, SongProposal, User } from "@/db/schema"
 import type { CanconerStyle } from "@/lib/schemas/canconer"
+import type { SongKind } from "@/lib/songKind"
 
 export type { Song, Canconer, CanconerSong, SongProposal, User }
 export type { CanconerStyle }
 
-// Cançó tal com es mostra a la llista (sense `content`, més lleuger)
-export type SongSummary = Omit<Song, "content">
+// Cançó tal com es mostra a la llista (sense `content`, més lleuger).
+// `kind` el porta GET /api/songs: les pròpies no públiques s'etiqueten.
+export type SongSummary = Omit<Song, "content"> & { kind?: SongKind }
 
 // Entrada dins un cançoner: cançó + transposició
 export interface CanconerEntry {

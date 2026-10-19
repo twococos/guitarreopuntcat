@@ -1,0 +1,333 @@
+"use client"
+import { useCallback, useEffect, useRef, useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { getT } from "@/lib/i18n"
+import { useToastStore } from "@/hooks/useToasts"
+import { usePdfProgress } from "@/hooks/usePdfProgress"
+import { requestPdf, downloadBlob } from "@/lib/pdf-client/request"
+import type { CanconerStyle, PdfOptions } from "@/lib/schemas/canconer"
+import { transposeKey, respellAccidentals, ALL_FLATS, ALL_SHARPS } from "@/lib/transpose"
+import { guardMobileApp } from "@/components/public/MobileGateLink"
+import { PdfProgressOverlay } from "@/components/shared/PdfProgressOverlay"
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconClock,
+  IconCopy,
+  IconFileText,
+  IconList,
+  IconLock,
+  IconOpen,
+} from "@/components/shared/Icons"
+import { PublicSongCard, type PublicSongData } from "@/components/songs/PublicSongCard"
+import { SongControlsBar } from "@/components/songs/SongControlsBar"
+import { useReaderControls } from "@/components/songs/useReaderControls"
+
+export interface SongbookViewerSong extends PublicSongData {
+  state: number
+  semitones: number
+}
+
+export interface SongbookViewerData {
+  id: number
+  title: string
+  owner_name: string
+  style: CanconerStyle
+  accent_color: string | null
+  pdf_options: PdfOptions | null
+  songs: SongbookViewerSong[]
+}
+
+interface Props {
+  songbook: SongbookViewerData
+  /** Context per al PDF (fa visibles les privades del cançoner). */
+  pdfContext: { songbook_id: number } | { share_token: string } | null
+  /** Cançó inicial (índex 0-based, de ?song=N). */
+  initialIndex: number
+  /** Previsualització del propietari: marca les privades i "Edita" en lloc de "Copia". */
+  ownerPreview?: boolean
+  backLink?: { href: string; label: string }
+}
+
+/**
+ * Visor de cançoners de l'àrea pública: índex a l'esquerra, una cançó cada
+ * vegada amb els controls de la pàgina de cançó (to per cançó, notació,
+ * mida, autoscroll) i PDF al navegador. El fan servir /songbooks/[id]/[slug],
+ * /c/[token] i la previsualització de la biblioteca.
+ */
+export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPreview = false, backLink }: Props) {
+  const t = getT()
+  const tv = t.public.songbookViewer
+  const router = useRouter()
+  const controls = useReaderControls()
+  const { stopAutoscroll } = controls
+  const pdfProgress = usePdfProgress()
+  const songs = songbook.songs
+  const [index, setIndex] = useState(() => Math.min(Math.max(0, initialIndex), Math.max(0, songs.length - 1)))
+  // To de cada cançó: parteix del que té al cançoner i es recorda durant la visita
+  const [semitones, setSemitones] = useState<number[]>(() => songs.map((s) => s.semitones ?? 0))
+  const [indexOpen, setIndexOpen] = useState(false)
+  const mainRef = useRef<HTMLElement>(null)
+
+  const song = songs[index]
+  const notation = controls.flats ? ALL_FLATS : ALL_SHARPS
+
+  const goTo = useCallback(
+    (next: number, push = true) => {
+      if (next < 0 || next >= songs.length) return
+      setIndex(next)
+      setIndexOpen(false)
+      stopAutoscroll()
+      if (push) {
+        const url = new URL(window.location.href)
+        url.searchParams.set("song", String(next + 1))
+        window.history.pushState({ songbookSong: next }, "", url)
+      }
+      const top = mainRef.current ? mainRef.current.getBoundingClientRect().top + window.scrollY - 80 : 0
+      if (window.scrollY > top) window.scrollTo({ top, behavior: "instant" })
+    },
+    [songs.length, stopAutoscroll],
+  )
+
+  // Botó enrere/endavant del navegador
+  useEffect(() => {
+    function onPop() {
+      const n = Number(new URL(window.location.href).searchParams.get("song"))
+      const next = Number.isInteger(n) && n >= 1 ? n - 1 : 0
+      if (next < songs.length) {
+        setIndex(next)
+        stopAutoscroll()
+      }
+    }
+    window.addEventListener("popstate", onPop)
+    return () => window.removeEventListener("popstate", onPop)
+  }, [songs.length, stopAutoscroll])
+
+  // ←/→ canvien de cançó (fora de camps de text)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.altKey || e.ctrlKey || e.metaKey) return
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return
+      if (e.key === "ArrowLeft") goTo(index - 1)
+      else if (e.key === "ArrowRight") goTo(index + 1)
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [goTo, index])
+
+  function setSongSemitones(s: number) {
+    setSemitones((prev) => prev.map((v, i) => (i === index ? s : v)))
+  }
+
+  async function downloadPdf() {
+    if (pdfProgress.active || songs.length === 0) return
+    pdfProgress.start(t.common.pdfProgress.missatges)
+    try {
+      const blob = await requestPdf(
+        {
+          title: songbook.title,
+          style: songbook.style,
+          accentColor: songbook.accent_color,
+          options: songbook.pdf_options,
+          songs: songs.map((s, i) => ({ id: s.id, semitones: semitones[i] ?? 0 })),
+          ...(pdfContext ? { context: pdfContext } : {}),
+        },
+        pdfProgress.report,
+      )
+      await pdfProgress.finish()
+      downloadBlob(blob, `${songbook.title}.pdf`)
+    } catch (err) {
+      console.error("Error generant el PDF:", err)
+      pdfProgress.fail()
+      useToastStore.getState().show(t.public.sharedView.errorGenerantPdf, { type: "error" })
+    }
+  }
+
+  /** Obre el cançoner a /app: el propietari l'edita; la resta, en fa una còpia. */
+  function openInEditor() {
+    if (guardMobileApp()) return
+    sessionStorage.setItem(
+      "load_canconer",
+      JSON.stringify({
+        ...(ownerPreview ? { id: songbook.id } : {}),
+        title: songbook.title,
+        style: songbook.style,
+        accent_color: songbook.accent_color,
+        pdf_options: songbook.pdf_options,
+        songs: songs.map((s, i) => ({ id: s.id, semitones: semitones[i] ?? 0 })),
+      }),
+    )
+    if (!ownerPreview && songs.some((s) => s.state !== 0)) {
+      useToastStore.getState().show(tv.copiaSensePrivades)
+    }
+    router.push("/app")
+  }
+
+  const songHref = (s: SongbookViewerSong) =>
+    s.state === 0 && s.artist_slug && s.song_slug ? `/songs/${s.artist_slug}/${s.song_slug}` : null
+
+  return (
+    <div
+      className="songbook-viewer"
+      style={{
+        ["--song-font-size" as string]: `${controls.fontSize}px`,
+        ...(songbook.accent_color ? { ["--songbook-accent" as string]: songbook.accent_color } : {}),
+      }}
+    >
+      <div className="songbook-viewer-header">
+        <div className="songbook-viewer-header-main">
+          {backLink && (
+            <Link href={backLink.href} className="songbook-viewer-back">
+              {backLink.label}
+            </Link>
+          )}
+          <p className="songbook-viewer-eyebrow">{tv.canconer}</p>
+          <h1 className="songbook-viewer-title">{songbook.title}</h1>
+          <p className="songbook-viewer-meta">
+            {tv.perAutor(songbook.owner_name)} · {t.public.sharedView.cancons(songs.length)}
+          </p>
+        </div>
+        <div className="songbook-viewer-actions">
+          <button
+            type="button"
+            className="songbook-viewer-btn songbook-viewer-btn--primary"
+            onClick={() => void downloadPdf()}
+            disabled={pdfProgress.active || songs.length === 0}
+          >
+            {pdfProgress.active ? <IconClock /> : <IconFileText />}{" "}
+            {pdfProgress.active ? t.public.sharedView.generantPdf : t.public.sharedView.descarregarPdf}
+          </button>
+          <button type="button" className="songbook-viewer-btn" onClick={openInEditor} title={ownerPreview ? undefined : tv.copiarHint}>
+            {ownerPreview ? <IconOpen /> : <IconCopy />} {ownerPreview ? tv.editar : tv.copiar}
+          </button>
+        </div>
+      </div>
+
+      {songs.length === 0 ? (
+        <p className="songbook-viewer-empty">{tv.buit}</p>
+      ) : (
+        <div className="songbook-viewer-layout">
+          <aside className={`songbook-viewer-index ${indexOpen ? "is-open" : ""}`} aria-label={t.public.sharedView.index}>
+            <button
+              type="button"
+              className="songbook-viewer-index-toggle"
+              onClick={() => setIndexOpen((v) => !v)}
+              aria-expanded={indexOpen}
+            >
+              <IconList /> <span>{tv.cancoNdeM(index + 1, songs.length)}</span>
+              <span className="songbook-viewer-index-current">{song?.title}</span>
+            </button>
+            <ol className="songbook-viewer-index-list">
+              {songs.map((s, i) => (
+                <li key={`${s.id}-${i}`}>
+                  <button
+                    type="button"
+                    className={`songbook-viewer-index-item ${i === index ? "is-active" : ""}`}
+                    onClick={() => goTo(i)}
+                    aria-current={i === index ? "true" : undefined}
+                  >
+                    <span className="songbook-viewer-index-num">{i + 1}</span>
+                    <span className="songbook-viewer-index-text">
+                      <span className="songbook-viewer-index-title">
+                        {s.title}
+                        {ownerPreview && s.state !== 0 && (
+                          <span className="songbook-viewer-private" title={tv.privadaTitle}>
+                            <IconLock />
+                          </span>
+                        )}
+                      </span>
+                      <span className="songbook-viewer-index-artist">{s.artist}</span>
+                    </span>
+                    <span className="songbook-viewer-index-key">
+                      {respellAccidentals(transposeKey(s.key, semitones[i] ?? 0), notation)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </aside>
+
+          <main className="songbook-viewer-main" ref={mainRef}>
+            {song && (
+              <PublicSongCard
+                key={`${song.id}-${index}`}
+                song={song}
+                semitones={semitones[index] ?? 0}
+                flats={controls.flats}
+                onSemitonesChange={setSongSemitones}
+                titleLevel={2}
+                titleHref={songHref(song)}
+                headerActions={<span className="songbook-viewer-song-num">{index + 1}</span>}
+              />
+            )}
+            <nav className="songbook-viewer-pager" aria-label={tv.navegacio}>
+              {index > 0 ? (
+                <button type="button" className="songbook-viewer-pager-btn" onClick={() => goTo(index - 1)}>
+                  <IconChevronLeft />
+                  <span>
+                    <small>{tv.anterior}</small>
+                    {songs[index - 1].title}
+                  </span>
+                </button>
+              ) : (
+                <span />
+              )}
+              {index < songs.length - 1 && (
+                <button
+                  type="button"
+                  className="songbook-viewer-pager-btn songbook-viewer-pager-btn--next"
+                  onClick={() => goTo(index + 1)}
+                >
+                  <span>
+                    <small>{tv.seguent}</small>
+                    {songs[index + 1].title}
+                  </span>
+                  <IconChevronRight />
+                </button>
+              )}
+            </nav>
+          </main>
+        </div>
+      )}
+
+      {song && (
+        <SongControlsBar controls={controls} semitones={semitones[index] ?? 0} onSemitonesChange={setSongSemitones}>
+          <div className="public-song-bar-group" aria-label={tv.navegacio}>
+            <button
+              type="button"
+              className="public-song-btn"
+              onClick={() => goTo(index - 1)}
+              disabled={index === 0}
+              aria-label={tv.anterior}
+              title={`${tv.anterior} (←)`}
+            >
+              <IconChevronLeft />
+            </button>
+            <span className="songbook-viewer-bar-pos">
+              {index + 1}/{songs.length}
+            </span>
+            <button
+              type="button"
+              className="public-song-btn"
+              onClick={() => goTo(index + 1)}
+              disabled={index >= songs.length - 1}
+              aria-label={tv.seguent}
+              title={`${tv.seguent} (→)`}
+            >
+              <IconChevronRight />
+            </button>
+          </div>
+        </SongControlsBar>
+      )}
+
+      <PdfProgressOverlay
+        open={pdfProgress.active}
+        pct={pdfProgress.pct}
+        title={t.common.pdfProgress.titol}
+        message={pdfProgress.message}
+      />
+    </div>
+  )
+}

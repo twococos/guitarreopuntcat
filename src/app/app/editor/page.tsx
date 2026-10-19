@@ -55,7 +55,57 @@ const DEFAULT_META: SongMetadata = {
   spotifyUrl: "",
 }
 
-type ConfirmKind = "reset" | "save" | "accept"
+/**
+ * Accions de desat. Quines s'ofereixen depèn del mode i de la cançó (vegeu
+ * `saveActions` més avall i .claude/PLAN_VISIBILITAT.md, Fase 2):
+ *   publish          admin, nova → pública
+ *   savePrivate      nova → privada pròpia
+ *   propose          nova → proposta (POST /api/proposals)
+ *   update           ?id= → PUT (admin, o propietari d'una privada)
+ *   saveArrangement  ?id= d'una pública → còpia privada amb l'original
+ *   proposeExisting  ?id= d'una privada pròpia → proposta
+ *   resubmit         ?proposal=&mode=modify → torna a enviar la proposta
+ */
+type SaveAction =
+  | "publish"
+  | "savePrivate"
+  | "propose"
+  | "update"
+  | "saveArrangement"
+  | "proposeExisting"
+  | "resubmit"
+
+const PROPOSE_ACTIONS: ReadonlySet<SaveAction> = new Set(["propose", "proposeExisting", "resubmit"])
+
+type ConfirmState = { kind: "reset" } | { kind: "accept" } | { kind: "save"; action: SaveAction }
+
+/** Dades de la cançó carregada en mode `?id=` que decideixen els botons. */
+interface EditInfo {
+  kind: "public" | "private" | "arrangement" | "proposal"
+  ownerId: number | null
+  originalSongId: number | null
+  originalTitle: string | null
+  publicHref: string | null
+}
+
+interface LoadedSong {
+  title: string
+  artist: string
+  key: string
+  capo: number
+  language: string
+  tags: string
+  content: string
+  album: string | null
+  year: number | null
+  youtube_url: string | null
+  spotify_url: string | null
+  kind?: EditInfo["kind"]
+  owner_id?: number | null
+  original_song_id?: number | null
+  artist_slug?: string | null
+  song_slug?: string | null
+}
 
 interface ProposalMeta {
   id: number
@@ -120,6 +170,7 @@ function EditorPageContent() {
   const isReview = proposalId !== null && !isModify
 
   const isAdmin = session?.user?.role === "admin"
+  const myId = session?.user?.id ? Number(session.user.id) : null
 
   const editor = useEditorHistory("")
   const editorRef = useRef<WysiwygEditorHandle>(null)
@@ -130,7 +181,10 @@ function EditorPageContent() {
   const [showStartPopup, setShowStartPopup] = useState(false)
   const [showRejectPopup, setShowRejectPopup] = useState(false)
   const [proposalMeta, setProposalMeta] = useState<ProposalMeta | null>(null)
-  const [confirm, setConfirm] = useState<{ kind: ConfirmKind } | null>(null)
+  const [editInfo, setEditInfo] = useState<EditInfo | null>(null)
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null)
+  // Acció de proposta que espera que l'usuari accepti el ProposeInfoPopup
+  const [pendingPropose, setPendingPropose] = useState<SaveAction | null>(null)
   const [saving, setSaving] = useState(false)
 
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -311,21 +365,24 @@ function EditorPageContent() {
       fetch(`/api/songs/${editId}`)
         .then((res) => {
           if (!res.ok) throw new Error()
-          return res.json() as Promise<{
-            title: string
-            artist: string
-            key: string
-            capo: number
-            language: string
-            tags: string
-            content: string
-            album: string | null
-            year: number | null
-            youtube_url: string | null
-            spotify_url: string | null
-          }>
+          return res.json() as Promise<LoadedSong>
         })
-        .then((song) => {
+        .then(async (song) => {
+          let originalTitle: string | null = null
+          if (song.original_song_id) {
+            const o = await fetch(`/api/songs/${song.original_song_id}`).catch(() => null)
+            if (o?.ok) originalTitle = ((await o.json()) as { title: string }).title
+          }
+          setEditInfo({
+            kind: song.kind ?? "public",
+            ownerId: song.owner_id ?? null,
+            originalSongId: song.original_song_id ?? null,
+            originalTitle,
+            publicHref:
+              song.kind === "public" && song.artist_slug && song.song_slug
+                ? `/songs/${song.artist_slug}/${song.song_slug}`
+                : null,
+          })
           setMeta({
             title: song.title,
             artist: song.artist,
@@ -375,15 +432,9 @@ function EditorPageContent() {
           }
         }
       }
-      // Show propose info popup if not admin and not accepted
-      if (!isAdmin) {
-        if (typeof window !== "undefined") {
-          const accepted = sessionStorage.getItem(PROPOSE_INFO_KEY)
-          if (!accepted) {
-            setShowProposeInfo(true)
-          }
-        }
-      } else if (!hasDraft) {
+      // L'avís de propostes (ProposeInfoPopup) ja no surt en obrir: només
+      // quan l'usuari tria proposar (desar com a privada no el necessita).
+      if (isAdmin && !hasDraft) {
         // Admin sense draft pendent: mostra el popup d'inici (URL o manual)
         setShowStartPopup(true)
       }
@@ -464,8 +515,17 @@ function EditorPageContent() {
     return snapshotOf(meta, editor.value) !== initialSnapshotRef.current
   }, [isModify, meta, editor.value])
 
-  // Lògica de desat (sense validació: ja la fa handleToolbarSave)
-  const doSave = useCallback(async () => {
+  // On tornar després de desar o descartar en mode `?id=`
+  const editBackHref = !editInfo
+    ? "/app"
+    : editInfo.ownerId !== null && editInfo.ownerId === myId
+      ? "/app/library?tab=songs"
+      : isAdmin
+        ? "/app/admin?tab=songs"
+        : (editInfo.publicHref ?? "/app")
+
+  // Lògica de desat (sense validació: ja la fa requestSave)
+  const doSave = useCallback(async (action: SaveAction) => {
     const body = {
       title: meta.title.trim(),
       artist: meta.artist.trim(),
@@ -480,58 +540,81 @@ function EditorPageContent() {
       spotifyUrl: meta.spotifyUrl.trim() || null,
     }
 
+    const send = (url: string, method: "POST" | "PUT", payload: object) =>
+      fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).then((res) => {
+        if (!res.ok) throw new Error()
+        return res.json() as Promise<{ id?: number }>
+      })
+    const toast = (msg: string) => useToastStore.getState().show(msg, { type: "success" })
+
     try {
-      let res: Response
-      if (isModify && proposalId !== null) {
-        res = await fetch(`/api/proposals/${proposalId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        })
-        if (!res.ok) throw new Error()
-        useToastStore
-          .getState()
-          .show(t.editor.toasts.propostaModificadaReenviada, { type: "success" })
-        router.push("/app/library?tab=proposals")
-        return
-      } else if (isEdit && editId) {
-        res = await fetch(`/api/songs/${editId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        })
-        if (!res.ok) throw new Error()
-        useToastStore.getState().show(t.editor.toasts.cancoActualitzada, { type: "success" })
-        router.push("/app/admin?tab=songs")
-        return
-      } else if (isAdmin) {
-        res = await fetch("/api/songs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        })
-        if (!res.ok) throw new Error()
-        resetEditor()
-        setShowStartPopup(true)
-        useToastStore.getState().show(t.editor.toasts.cancoGuardada, { type: "success" })
-      } else {
-        res = await fetch("/api/proposals", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        })
-        if (!res.ok) throw new Error()
-        resetEditor()
-        useToastStore
-          .getState()
-          .show(t.editor.toasts.propostaEnviada, {
-            type: "success",
-          })
+      switch (action) {
+        case "resubmit":
+          await send(`/api/proposals/${proposalId}`, "PUT", body)
+          toast(t.editor.toasts.propostaModificadaReenviada)
+          router.push("/app/library?tab=proposals")
+          return
+        case "update":
+          await send(`/api/songs/${editId}`, "PUT", body)
+          toast(t.editor.toasts.cancoActualitzada)
+          router.push(editBackHref)
+          return
+        case "saveArrangement": {
+          const res = await send(`/api/songs/${editId}/arrangement`, "POST", body)
+          toast(t.editor.toasts.arranjamentDesat)
+          router.push(isAdmin ? `/app/admin?tab=songs&focus=${res.id}` : "/app/library?tab=songs")
+          return
+        }
+        case "proposeExisting":
+          await send(`/api/songs/${editId}/propose`, "POST", body)
+          toast(t.editor.toasts.propostaEnviada)
+          router.push("/app/library?tab=proposals")
+          return
+        case "publish":
+          await send("/api/songs", "POST", { ...body, visibility: "public" })
+          resetEditor()
+          setShowStartPopup(true)
+          toast(t.editor.toasts.cancoGuardada)
+          return
+        case "savePrivate":
+          await send("/api/songs", "POST", { ...body, visibility: "private" })
+          resetEditor()
+          if (isAdmin) setShowStartPopup(true)
+          toast(t.editor.toasts.privadaDesada)
+          return
+        case "propose":
+          await send("/api/proposals", "POST", body)
+          resetEditor()
+          toast(t.editor.toasts.propostaEnviada)
+          return
       }
     } catch {
       useToastStore.getState().show(t.editor.toasts.errorGuardar, { type: "error" })
     }
-  }, [meta, editor.value, isEdit, editId, isAdmin, isModify, proposalId, resetEditor, router])
+  }, [meta, editor.value, editId, isAdmin, proposalId, resetEditor, router, editBackHref])
+
+  // Botons de desat segons el mode i la cançó carregada
+  const saveActions = useMemo((): { primary: SaveAction; secondary: SaveAction | null } => {
+    if (isModify) return { primary: "resubmit", secondary: null }
+    if (isEdit) {
+      if (!editInfo) return { primary: "update", secondary: null }
+      if (editInfo.kind === "public") {
+        return isAdmin
+          ? { primary: "update", secondary: "saveArrangement" }
+          : { primary: "saveArrangement", secondary: null }
+      }
+      const isOwner = editInfo.ownerId !== null && editInfo.ownerId === myId
+      if (isOwner && editInfo.kind === "private") return { primary: "update", secondary: "proposeExisting" }
+      return { primary: "update", secondary: null }
+    }
+    return isAdmin
+      ? { primary: "publish", secondary: "savePrivate" }
+      : { primary: "savePrivate", secondary: "propose" }
+  }, [isModify, isEdit, editInfo, isAdmin, myId])
 
   // ── Accions de revisió de propostes ─────────────────────────
 
@@ -597,7 +680,7 @@ function EditorPageContent() {
     setConfirm({ kind: "reset" })
   }
 
-  function handleToolbarSave() {
+  function requestSave(action: SaveAction) {
     // Validació prèvia abans d'obrir el toast de confirmació
     if (
       !meta.title.trim() ||
@@ -620,9 +703,8 @@ function EditorPageContent() {
       useToastStore.getState().show(t.editor.toasts.spotifyNoValid, { type: "error" })
       return
     }
-    // Propostes (no-admin): els dos links són obligatoris.
-    // També s'aplica al mode modify (re-enviar la proposta).
-    if (isModify || (!isAdmin && !isEdit)) {
+    // Propostes: els dos links són obligatoris (també en re-enviar-la).
+    if (PROPOSE_ACTIONS.has(action)) {
       if (!yt || !sp) {
         useToastStore
           .getState()
@@ -631,8 +713,14 @@ function EditorPageContent() {
           })
         return
       }
+      // Primera proposta de la sessió: abans, l'avís de com funcionen
+      if (action !== "resubmit" && typeof window !== "undefined" && !sessionStorage.getItem(PROPOSE_INFO_KEY)) {
+        setPendingPropose(action)
+        setShowProposeInfo(true)
+        return
+      }
     }
-    setConfirm({ kind: "save" })
+    setConfirm({ kind: "save", action })
   }
 
   function handleToolbarAccept() {
@@ -685,9 +773,9 @@ function EditorPageContent() {
         return
       }
       if (isEdit) {
-        // En mode edit, "Descartar canvis" → tornar a /admin sense desar res.
+        // En mode edit, "Descartar canvis" → tornar enrere sense desar res.
         setConfirm(null)
-        router.push("/app/admin?tab=songs")
+        router.push(editBackHref)
         return
       }
       resetEditor()
@@ -701,7 +789,7 @@ function EditorPageContent() {
     if (confirm?.kind === "save") {
       setSaving(true)
       try {
-        await doSave()
+        await doSave(confirm.action)
       } finally {
         setSaving(false)
         setConfirm(null)
@@ -737,28 +825,52 @@ function EditorPageContent() {
 
   // ── Derive titles and button text ────────────────────────────
 
+  const sb = t.editor.page.saveButtons
+  const ACTION_LABELS: Record<SaveAction, string> = {
+    publish: sb.publicar,
+    savePrivate: sb.desarPrivada,
+    propose: sb.proposarPublica,
+    update: editInfo?.kind === "public" && isAdmin ? sb.modificarCanco : sb.desar,
+    saveArrangement: isAdmin ? sb.desarArranjament : sb.desarVersioPropia,
+    proposeExisting: sb.proposarPublica,
+    resubmit: sb.modificarProposta,
+  }
+  const ct = t.editor.confirmToast
+  const ACTION_CONFIRMS: Record<SaveAction, { missatge: string; accio: string }> = {
+    publish: ct.guardarCanco,
+    savePrivate: ct.desarPrivada,
+    propose: ct.proposarPublica,
+    update: editInfo?.kind === "public" ? ct.actualitzarCanco : ct.desarCanvisPrivada,
+    saveArrangement: ct.desarArranjament,
+    proposeExisting: ct.proposarPublica,
+    resubmit: ct.reEnviarProposta,
+  }
+
   let pageTitle: string
   let pageSubtitle: string
-  let saveButtonText: string
 
   if (isModify) {
     pageTitle = t.editor.page.titols.modificarPropostaTitol
     pageSubtitle = t.editor.page.titols.modificarPropostaSubtitol
-    saveButtonText = t.editor.page.saveButtons.modificarProposta
   } else if (isReview) {
     pageTitle = t.editor.page.titols.revisarPropostaTitol
     pageSubtitle = proposalMeta
       ? t.editor.page.titols.revisarPropostaDe(proposalMeta.proposerName)
       : t.editor.page.titols.revisarPropostaCarregant
-    saveButtonText = t.editor.page.saveButtons.acceptar
+  } else if (isEdit && editInfo?.kind === "public" && !isAdmin) {
+    pageTitle = t.editor.page.titols.versioPropiaTitol
+    pageSubtitle = t.editor.page.titols.versioPropiaSubtitol
   } else if (isEdit) {
     pageTitle = t.editor.page.titols.editarCancoTitol
-    pageSubtitle = t.editor.page.titols.editarCancoSubtitol
-    saveButtonText = t.editor.page.saveButtons.guardarCanvis
+    pageSubtitle =
+      editInfo?.kind === "arrangement"
+        ? t.editor.page.titols.editarArranjamentSubtitol(editInfo.originalTitle ?? `#${editInfo.originalSongId}`)
+        : editInfo?.kind === "private"
+          ? t.editor.page.titols.editarPrivadaSubtitol
+          : t.editor.page.titols.editarCancoSubtitol
   } else {
     pageTitle = t.editor.page.titols.novaCancoTitol
     pageSubtitle = t.editor.page.titols.novaCancoSubtitol
-    saveButtonText = isAdmin ? t.editor.page.saveButtons.guardarCanco : t.editor.page.saveButtons.enviarProposta
   }
 
   // Missatge i etiquetes del ConfirmToast segons l'acció
@@ -778,19 +890,8 @@ function EditorPageContent() {
     }
     confirmVariant = "danger"
   } else if (confirm?.kind === "save") {
-    if (isModify) {
-      confirmMessage = t.editor.confirmToast.reEnviarProposta.missatge
-      confirmActionLabel = t.editor.confirmToast.reEnviarProposta.accio
-    } else if (isEdit) {
-      confirmMessage = t.editor.confirmToast.actualitzarCanco.missatge
-      confirmActionLabel = t.editor.confirmToast.actualitzarCanco.accio
-    } else if (isAdmin) {
-      confirmMessage = t.editor.confirmToast.guardarCanco.missatge
-      confirmActionLabel = t.editor.confirmToast.guardarCanco.accio
-    } else {
-      confirmMessage = t.editor.confirmToast.enviarProposta.missatge
-      confirmActionLabel = t.editor.confirmToast.enviarProposta.accio
-    }
+    confirmMessage = ACTION_CONFIRMS[confirm.action].missatge
+    confirmActionLabel = ACTION_CONFIRMS[confirm.action].accio
     confirmVariant = "primary"
   } else if (confirm?.kind === "accept") {
     confirmMessage = t.editor.confirmToast.acceptarProposta.missatge
@@ -816,6 +917,14 @@ function EditorPageContent() {
   } else if (isReview) {
     backHref = "/app/admin?tab=proposals"
     backLabel = t.editor.page.backLinks.panellAdmin
+  } else if (isEdit && editInfo) {
+    backHref = editBackHref
+    backLabel =
+      editBackHref === "/app/library?tab=songs"
+        ? t.editor.page.backLinks.lesMevesCancons
+        : editBackHref === "/app/admin?tab=songs"
+          ? t.editor.page.backLinks.panellCancons
+          : t.editor.page.backLinks.canconer
   } else {
     backHref = "/app"
     backLabel = t.editor.page.backLinks.canconer
@@ -858,7 +967,7 @@ function EditorPageContent() {
           </div>
         )}
         <div className="editor-stack">
-          <SongHeader value={meta} onChange={setMeta} isAdmin={isAdmin} />
+          <SongHeader value={meta} onChange={setMeta} linksRequired={isModify} />
           <EditorToolbar
             onInsertSection={handleToolbarInsertSection}
             onInsertChord={handleToolbarInsertChord}
@@ -866,8 +975,14 @@ function EditorPageContent() {
             onRedo={editor.redo}
             canUndo={editor.canUndo}
             canRedo={editor.canRedo}
-            saveLabel={saveButtonText}
-            onSave={handleToolbarSave}
+            saveLabel={ACTION_LABELS[saveActions.primary]}
+            onSave={() => requestSave(saveActions.primary)}
+            secondaryLabel={saveActions.secondary ? ACTION_LABELS[saveActions.secondary] : undefined}
+            onSecondary={
+              saveActions.secondary
+                ? () => requestSave(saveActions.secondary as SaveAction)
+                : undefined
+            }
             onReset={handleToolbarReset}
             resetLabel={
               isModify ? t.editor.page.resetLabels.cancellarProposta : isEdit ? t.editor.page.resetLabels.descartarCanvis : t.editor.page.resetLabels.reset
@@ -941,6 +1056,10 @@ function EditorPageContent() {
               sessionStorage.setItem(PROPOSE_INFO_KEY, "1")
             }
             setShowProposeInfo(false)
+            if (pendingPropose) {
+              setConfirm({ kind: "save", action: pendingPropose })
+              setPendingPropose(null)
+            }
           }}
         />
       )}

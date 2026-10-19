@@ -95,13 +95,15 @@ export interface SyncReport {
   }[]
 }
 
+export interface SyncQuality {
+  coverage: number | null // part de la lletra del content que es canta; null si no hi ha lletra
+  words: number | null // de la lletra que es canta, part aparellada amb paraules que l'ASR va sentir
+  chords: number | null // acords escrits que concorden; null si no n'hi ha
+  ok: boolean // prou bona per a funcions de reproducció
+}
+
 export interface SyncResult {
-  quality: {
-    coverage: number | null // part de la lletra del content que es canta; null si no hi ha lletra
-    words: number | null // de la lletra que es canta, part aparellada amb paraules que l'ASR va sentir
-    chords: number | null // acords escrits que concorden; null si no n'hi ha
-    ok: boolean // prou bona per a funcions de reproducció
-  }
+  quality: SyncQuality
   transpose: number // semitons content → àudio
   occurrences: SyncOccurrence[] // en ordre de l'àudio; sense les línies no cantades
   sections: SyncSection[]

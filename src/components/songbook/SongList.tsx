@@ -68,7 +68,14 @@ export function SongList() {
               onClick={!already ? () => addToCanconer(s.id) : undefined}
             >
               <span className="song-key">{respellAccidentals(s.key, notation)}</span>
-              <div className="song-name">{s.title}</div>
+              <div className="song-name">
+                {s.title}
+                {s.kind && s.kind !== "public" && (
+                  <span className={`song-kind-tag song-kind-${s.kind}`}>
+                    {t.app.songbook.songList.tipus[s.kind]}
+                  </span>
+                )}
+              </div>
               <div className="song-info">{s.artist}</div>
             </li>
           )

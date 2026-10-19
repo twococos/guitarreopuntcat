@@ -44,15 +44,6 @@ interface SongDetail {
   year: number | null
 }
 
-// ─── Constants ────────────────────────────────────────────────
-
-const STATUS_LABELS: Record<ProposalStatus, string> = {
-  pending: "Pendent",
-  approved: "Acceptada",
-  rejected: "Rebutjada",
-  cancelled: "Cancel·lada", // no apareixerà a la UI però el tipus l'exigeix
-}
-
 // ─── Component ────────────────────────────────────────────────
 
 export function ProposalsTab() {
@@ -213,7 +204,7 @@ export function ProposalsTab() {
                     {p.song_artist} ·{" "}
                     {new Date(p.created_at ?? "").toLocaleDateString("ca-ES")}
                     <span className={`library-status status-${p.status}`}>
-                      {STATUS_LABELS[p.status]}
+                      {t.app.library.proposalsTab.estats[p.status]}
                     </span>
                   </div>
                 </button>

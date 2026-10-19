@@ -3,6 +3,7 @@ import {
   listPublicSongsForSitemap,
   listPublicArtistsForSitemap,
 } from "@/db/queries/songs"
+import { listPublicSongbooksForSitemap } from "@/db/queries/canconers"
 import { getBaseUrl } from "@/lib/site"
 
 export const dynamic = "force-dynamic"
@@ -12,12 +13,13 @@ export const dynamic = "force-dynamic"
  *   · Estàtiques: portada, índex de cançons (les dues vistes), projecte, contacte.
  *   · Una entrada per cada artista públic (/songs/[artist]).
  *   · Una entrada per cada cançó pública (/songs/[artist]/[song]).
+ *   · Una entrada per cada cançoner públic (/songbooks/[id]/[slug]).
  *
  * Es **regenera a cada petició** (force-dynamic) perquè la BD pot créixer.
  * En producció amb molt trànsit es podria afegir cache curta.
  *
- * NO incloem `/app/*` (privat, és l'eina d'usuari) ni `/c/[token]`
- * (URLs efímeres per compartir).
+ * NO incloem `/app/*` (privat, és l'eina d'usuari), `/c/[token]` (URLs
+ * efímeres per compartir) ni `/songs/private/*` (cançons privades).
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl()
@@ -55,7 +57,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }))
 
-  return [...staticEntries, ...artistEntries, ...songEntries]
+  const songbookEntries: MetadataRoute.Sitemap = listPublicSongbooksForSitemap().map((c) => ({
+    url: `${baseUrl}/songbooks/${c.id}/${encodeURIComponent(c.slug)}`,
+    lastModified: parseDate(c.updatedAt) ?? now,
+    changeFrequency: "weekly",
+    priority: 0.6,
+  }))
+
+  return [...staticEntries, ...artistEntries, ...songEntries, ...songbookEntries]
 }
 
 /** Converteix "YYYY-MM-DD HH:MM:SS" (format SQLite) a Date, o null si no es pot. */

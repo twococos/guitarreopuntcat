@@ -5,6 +5,7 @@ import { db, schema } from "@/db/client"
 import { canconerStyleSchema } from "@/lib/schemas/canconer"
 import { logEvent } from "@/lib/analytics/logEvent"
 import { getSessionUser } from "@/lib/session"
+import { filterViewableSongs, type SongbookContext } from "@/lib/access/songs"
 
 /**
  * Dades de les cançons per al generador de PDF del client
@@ -26,6 +27,14 @@ const bodySchema = z.object({
     )
     .min(1, "No has seleccionat cap cançó")
     .max(1000),
+  // Cançoner d'on surten (visor públic, /c/[token], editor): hi fa visibles
+  // les privades que en formen part.
+  context: z
+    .union([
+      z.object({ songbook_id: z.number().int().positive() }),
+      z.object({ share_token: z.string().min(1).max(100) }),
+    ])
+    .optional(),
 })
 
 export async function POST(request: Request) {
@@ -41,7 +50,16 @@ export async function POST(request: Request) {
   }
 
   const ids = Array.from(new Set(parsed.songs.map((s) => s.id)))
-  const rows = db.select().from(schema.songs).where(inArray(schema.songs.id, ids)).all()
+  const ctx: SongbookContext | undefined = parsed.context
+    ? "share_token" in parsed.context
+      ? { shareToken: parsed.context.share_token }
+      : { songbookId: parsed.context.songbook_id }
+    : undefined
+  const rows = filterViewableSongs(
+    db.select().from(schema.songs).where(inArray(schema.songs.id, ids)).all(),
+    sessionUser,
+    ctx,
+  )
   const byId = new Map(rows.map((r) => [r.id, r]))
 
   const songs = parsed.songs.flatMap(({ id, semitones }) => {

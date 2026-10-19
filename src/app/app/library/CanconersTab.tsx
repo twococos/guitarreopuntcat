@@ -5,10 +5,13 @@ import Link from "next/link"
 import { useToastStore } from "@/hooks/useToasts"
 import { transposeKey } from "@/lib/transpose"
 import type { CanconerStyle } from "@/types/song"
+import type { PdfOptions } from "@/lib/schemas/canconer"
 import {
   IconCheck,
   IconCopy,
   IconEye,
+  IconGlobe,
+  IconLock,
   IconOpen,
   IconPencil,
   IconPlus,
@@ -27,6 +30,8 @@ interface CanconerListItem {
   style: CanconerStyle
   accent_color: string | null
   share_token: string | null
+  visibility: number
+  slug: string | null
   created_at: string | null
   updated_at: string | null
   song_count: number
@@ -38,11 +43,13 @@ interface CanconerSong {
   artist: string
   key: string
   capo: number
+  state: number
   semitones: number
   position: number | null
 }
 
 interface CanconerDetail extends CanconerListItem {
+  pdf_options: PdfOptions | null
   songs: CanconerSong[]
 }
 
@@ -130,6 +137,8 @@ export function CanconersTab() {
         title: trimmed,
         style: active.style,
         accent_color: active.accent_color,
+        // Sense això, el schema posaria les opcions de PDF per defecte
+        ...(active.pdf_options ? { pdf_options: active.pdf_options } : {}),
         songs: active.songs.map((s) => ({ id: s.id, semitones: s.semitones })),
       }),
     })
@@ -186,13 +195,40 @@ export function CanconersTab() {
     setCopied(false)
   }
 
-  async function handleCopy() {
-    if (!active?.share_token) return
-    const url = `${window.location.origin}/c/${active.share_token}`
+  async function handleCopy(url: string) {
     await navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+
+  async function handleVisibility(visibility: 0 | 1) {
+    if (!active) return
+    const privades = active.songs.filter((s) => s.state !== 0).length
+    const msg = visibility === 1
+      ? t.app.library.canconersTab.confirmPublicar(privades)
+      : t.app.library.canconersTab.confirmRetirar
+    if (!confirm(msg)) return
+    const res = await fetch(`/api/canconers/${active.id}/visibility`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visibility }),
+    })
+    if (!res.ok) {
+      useToastStore.getState().show(t.app.library.canconersTab.toastErrorVisibilitat, { type: "error" })
+      return
+    }
+    const data = (await res.json()) as { visibility: number; slug: string }
+    setActive((prev) => (prev ? { ...prev, visibility: data.visibility, slug: data.slug } : prev))
+    await loadCanconers()
+    useToastStore.getState().show(
+      visibility === 1 ? t.app.library.canconersTab.toastPublicat : t.app.library.canconersTab.toastRetirat,
+      { type: "success" },
+    )
+  }
+
+  const origin = typeof window !== "undefined" ? window.location.origin : ""
+  const publicUrl = active?.visibility === 1 ? `${origin}/songbooks/${active.id}/${active.slug ?? ""}` : null
+  const shareUrl = active?.share_token ? `${origin}/c/${active.share_token}` : null
 
   // ─── Render ───────────────────────────────────────────────
 
@@ -303,6 +339,11 @@ export function CanconersTab() {
                     <div className="library-card-meta">
                       {t.app.library.canconersTab.numCancons(c.song_count)} ·{" "}
                       {new Date(c.updated_at ?? "").toLocaleDateString("ca-ES")}
+                      {c.visibility === 1 && (
+                        <span className="library-status status-public">
+                          <IconGlobe /> {t.app.library.canconersTab.public}
+                        </span>
+                      )}
                     </div>
                   </button>
                 )}
@@ -342,14 +383,64 @@ export function CanconersTab() {
                           </button>
                         </div>
 
-                        {/* Compartir: tot en una fila */}
+                        {/* Publicar a la web */}
                         <div className="library-share-row">
-                          {active.share_token ? (
+                          {publicUrl ? (
+                            <>
+                              <a
+                                href={publicUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="library-share-btn"
+                                title={t.app.library.canconersTab.veurePublic}
+                              >
+                                <IconGlobe />
+                              </a>
+                              <input
+                                type="text"
+                                readOnly
+                                value={publicUrl}
+                                onClick={(e) => (e.target as HTMLInputElement).select()}
+                              />
+                              <button
+                                type="button"
+                                className="library-share-btn"
+                                aria-label={t.app.library.canconersTab.copiarEnllac}
+                                title={t.app.library.canconersTab.copiarEnllac}
+                                onClick={() => void handleCopy(publicUrl)}
+                              >
+                                <IconCopy />
+                              </button>
+                              <button
+                                type="button"
+                                className="library-share-btn library-share-btn-danger"
+                                aria-label={t.app.library.canconersTab.retirar}
+                                title={t.app.library.canconersTab.retirar}
+                                onClick={() => void handleVisibility(0)}
+                              >
+                                <IconRevoke />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="library-action library-action-primary"
+                              title={t.app.library.canconersTab.publicarHint}
+                              onClick={() => void handleVisibility(1)}
+                            >
+                              <IconGlobe /> {t.app.library.canconersTab.publicar}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Compartir per enllaç: tot en una fila */}
+                        <div className="library-share-row" title={t.app.library.canconersTab.enllacCompartir}>
+                          {shareUrl ? (
                             <>
                               <input
                                 type="text"
                                 readOnly
-                                value={`${typeof window !== "undefined" ? window.location.origin : ""}/c/${active.share_token}`}
+                                value={shareUrl}
                                 onClick={(e) =>
                                   (e.target as HTMLInputElement).select()
                                 }
@@ -359,7 +450,7 @@ export function CanconersTab() {
                                 className="library-share-btn"
                                 aria-label={copied ? t.app.library.canconersTab.copiat : t.app.library.canconersTab.copiarEnllac}
                                 title={copied ? t.app.library.canconersTab.copiat : t.app.library.canconersTab.copiarEnllac}
-                                onClick={handleCopy}
+                                onClick={() => void handleCopy(shareUrl)}
                               >
                                 {copied ? <IconCheck /> : <IconCopy />}
                               </button>
@@ -376,7 +467,7 @@ export function CanconersTab() {
                           ) : (
                             <button
                               type="button"
-                              className="library-action library-action-primary"
+                              className="library-action"
                               onClick={handleEnableShare}
                             >
                               <IconShare /> {t.app.library.canconersTab.compartir}
@@ -411,7 +502,14 @@ export function CanconersTab() {
               {active.songs.map((s, i) => (
                 <li key={s.id}>
                   <span className="library-song-pos">{i + 1}</span>
-                  <span className="library-song-title">{s.title}</span>
+                  <span className="library-song-title">
+                    {s.title}
+                    {s.state !== 0 && (
+                      <span className="library-song-private" title={t.app.library.canconersTab.cancoPrivadaTitle}>
+                        <IconLock />
+                      </span>
+                    )}
+                  </span>
                   <span className="library-song-artist">{s.artist}</span>
                   <span className="library-song-key">{transposeKey(s.key, s.semitones)}</span>
                 </li>

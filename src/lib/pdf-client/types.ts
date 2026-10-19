@@ -21,6 +21,9 @@ export interface PdfClientInput {
   accentColor: string | null
   options: PdfOptions
   songs: Array<{ id: number; semitones: number }>
+  /** Cançoner d'on surten les cançons: fa visibles les privades que en formen
+   *  part (src/lib/access/songs.ts, regla 5). */
+  context?: { songbook_id: number } | { share_token: string }
 }
 
 /** Callback de progrés real, 0..100. */

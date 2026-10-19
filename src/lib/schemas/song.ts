@@ -24,6 +24,21 @@ export const songInputSchema = z.object({
 
 export type SongInput = z.infer<typeof songInputSchema>
 
+// POST /api/songs: `visibility` només la tria l'admin (els usuaris sempre
+// creen privades). `original_song_id` en fa un arranjament d'una pública.
+export const songCreateSchema = songInputSchema.extend({
+  visibility: z.enum(["public", "private"]).default("private"),
+  original_song_id: z.number().int().positive().nullable().optional(),
+  bpm: z.number().int().min(20).max(400).nullable().optional(),
+  timeSignature: z
+    .string()
+    .regex(/^\d{1,2}\/\d{1,2}$/, "Compàs no vàlid")
+    .nullable()
+    .optional(),
+})
+
+export type SongCreate = z.infer<typeof songCreateSchema>
+
 export const songUpdateSchema = z.object({
   title: z.string().min(1).optional(),
   artist: z.string().min(1).optional(),
@@ -32,7 +47,6 @@ export const songUpdateSchema = z.object({
   content: z.string().min(1).optional(),
   language: z.string().optional(),
   tags: z.string().optional(),
-  state: z.number().int().optional(),
   album: z.string().max(200).nullable().optional(),
   year: z.number().int().min(1000).max(2100).nullable().optional(),
   youtubeUrl: z
