@@ -10,15 +10,20 @@ import type { BookParts } from "./html"
  * PDF surt d'aquí, així que el que es veu a l'iframe ÉS el PDF.
  */
 
-/** Espai reservat dalt/baix per a capçalera i peu, sumat als marges. */
-export const HEADER_AREA_MM = 12
-export const FOOTER_AREA_MM = 10
+/** Espai entre la línia de la capçalera (o del peu) i el contingut. */
+const RULE_GAP_MM = 3
 
 /* Unitats: 1mm a 96 dpi. Les pàgines es maqueten en px CSS i l'escriptor
    passa a punts PDF (×0.75). */
 export const MM_PX = 96 / 25.4
 export const PAGE_W_PX = 210 * MM_PX
 export const PAGE_H_PX = 297 * MM_PX
+/** Separació (px) entre pàgines a la vista prèvia de l'editor. */
+export const PREVIEW_GAP_PX = 24
+
+/** hidden: generació del PDF · debug: iframe visible a sobre de tot ·
+ *  preview: vista prèvia de l'editor, muntada dins `mount`. */
+export type FrameMode = "hidden" | "debug" | "preview"
 
 const FRAME_CSS = `
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,12 +46,23 @@ body {
 }
 body.pdf-debug .pdf-page { margin: 0 auto 12px; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
 body.pdf-debug { background: #888; padding: 12px 0; }
+html:has(body.pdf-preview), body.pdf-preview { background: transparent; overflow: hidden; }
+body.pdf-preview .pdf-page { margin: 0 0 ${PREVIEW_GAP_PX}px; box-shadow: 0 2px 14px rgba(0,0,0,.12); }
+/* El contingut comença just a sota de la línia de la capçalera i acaba
+   just a sobre de la del peu (mateixes alçades que .pdf-header/.pdf-footer). */
 .pdf-content {
   position: absolute;
-  top: calc(var(--pdf-mt) + ${HEADER_AREA_MM}mm);
-  bottom: calc(var(--pdf-mb) + ${FOOTER_AREA_MM}mm);
+  top: calc(max(calc(var(--pdf-mt) - 6pt), 30pt) + ${RULE_GAP_MM}mm);
+  bottom: calc(max(calc(var(--pdf-mb) - 6pt), 30pt) + ${RULE_GAP_MM}mm);
   left: var(--pdf-ml);
   right: var(--pdf-mr);
+}
+/* Mode llibre: pàgina esquerra, marges interior/exterior emmirallats. */
+.pdf-page.is-verso .pdf-content,
+.pdf-page.is-verso .pdf-header,
+.pdf-page.is-verso .pdf-footer {
+  left: var(--pdf-mr);
+  right: var(--pdf-ml);
 }
 /* Font de la maqueta: fora de la vista però amb l'amplada útil real,
    perquè els salts de línia coincideixin amb els de la pàgina. */
@@ -249,14 +265,21 @@ export async function createBookFrame(
   parts: BookParts,
   options: PdfOptions,
   style: string,
-  debug: boolean,
+  mode: FrameMode,
+  mount: HTMLElement = document.body,
 ): Promise<BookFrame> {
+  const debug = mode === "debug"
   const iframe = document.createElement("iframe")
   iframe.setAttribute("aria-hidden", "true")
   iframe.tabIndex = -1
-  iframe.style.cssText = debug
-    ? "position:fixed;inset:0;width:100vw;height:100vh;border:0;z-index:99999;background:#888"
-    : `position:fixed;left:-30000px;top:0;width:${Math.ceil(PAGE_W_PX) + 40}px;height:${Math.ceil(PAGE_H_PX)}px;border:0;visibility:hidden;pointer-events:none`
+  iframe.style.cssText =
+    mode === "debug"
+      ? "position:fixed;inset:0;width:100vw;height:100vh;border:0;z-index:99999;background:#888"
+      : mode === "preview"
+        ? // L'alçada i l'escala les posa el component. Sense pointer-events,
+          // la roda del ratolí va al contenidor de scroll del pare.
+          `position:absolute;top:0;left:0;width:${Math.ceil(PAGE_W_PX)}px;height:${Math.ceil(PAGE_H_PX)}px;border:0;pointer-events:none;transform-origin:top left`
+        : `position:fixed;left:-30000px;top:0;width:${Math.ceil(PAGE_W_PX) + 40}px;height:${Math.ceil(PAGE_H_PX)}px;border:0;visibility:hidden;pointer-events:none`
 
   const staging = [parts.coverHtml ?? "", parts.tocHtml ?? "", ...parts.songHtmls].join("\n")
   iframe.srcdoc = `<!DOCTYPE html>
@@ -264,13 +287,13 @@ export async function createBookFrame(
 <link rel="stylesheet" href="/api/pdf/styles">
 <style>${FRAME_CSS}</style>
 </head>
-<body class="${parts.bodyClass}${debug ? " pdf-debug" : ""}" data-style="${style}" style="${parts.bodyStyle}; ${marginVars(options)}">
+<body class="${parts.bodyClass}${debug ? " pdf-debug" : ""}${mode === "preview" ? " pdf-preview" : ""}" data-style="${style}" style="${parts.bodyStyle}; ${marginVars(options)}">
 <div id="pdf-pages"></div>
 <div id="pdf-staging">${staging}</div>
 </body></html>`
 
   const loaded = waitForLoad(iframe)
-  document.body.appendChild(iframe)
+  mount.appendChild(iframe)
   await loaded
 
   const doc = iframe.contentDocument

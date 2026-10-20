@@ -21,6 +21,8 @@ import { useSongbookStore, type CanconerEntry } from "@/hooks/useSongbook"
 import { transposeKey, respellAccidentals } from "@/lib/transpose"
 import { getT } from "@/lib/i18n"
 import { IconX } from "@/components/shared/Icons"
+import { COVER_CATEGORY_ID } from "./options/OptionsPanel"
+import type { SongKind } from "@/lib/songKind"
 
 function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
   const t = getT()
@@ -35,6 +37,8 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
   const notation = useSongbookStore((s) => s.pdfOptions.notation)
 
   const currentKey = respellAccidentals(transposeKey(entry.song.key, entry.semitones), notation)
+  // L'API (mapSong) hi afegeix `kind`, que el tipus `Song` de la BD no porta.
+  const kind = (entry.song as unknown as { kind?: SongKind }).kind
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition: transition ?? undefined,
@@ -55,7 +59,12 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
       {...listeners}
     >
       <span className="c-num">{idx + 1}</span>
-      <span className="c-title">{entry.song.title}</span>
+      <span className="c-title">
+        {entry.song.title}
+        {kind && kind !== "public" && (
+          <span className={`song-kind-tag song-kind-${kind}`}>{t.app.songbook.songList.tipus[kind]}</span>
+        )}
+      </span>
       <span className="c-artist">{entry.song.artist}</span>
       <div className="c-transpose" onPointerDown={(e) => e.stopPropagation()}>
         <button
@@ -107,6 +116,100 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
       >
         <IconX />
       </button>
+    </li>
+  )
+}
+
+/** Interruptor petit dins un ítem de la llista (no selecciona l'ítem). */
+function MiniSwitch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      title={label}
+      className={`opt-switch is-mini${checked ? " is-on" : ""}`}
+      onClick={(e) => {
+        e.stopPropagation()
+        onChange(!checked)
+      }}
+    >
+      <span className="opt-switch-knob" aria-hidden="true" />
+    </button>
+  )
+}
+
+/** Primer ítem de la llista: portada + índex, cadascun amb el seu
+ *  interruptor. Clicar-lo porta la prèvia a l'inici; «Edita» (on hi hauria
+ *  la tonalitat) obre les opcions de portada. */
+function FrontItem() {
+  const t = getT()
+  const l = t.app.songbook.canconerList
+  const showCover = useSongbookStore((s) => s.pdfOptions.show_cover)
+  const showIndex = useSongbookStore((s) => s.pdfOptions.show_index)
+  const setOpt = useSongbookStore((s) => s.setPdfOption)
+  const selected = useSongbookStore((s) => s.selectedIdx === null)
+  const selectFront = useSongbookStore((s) => s.selectFront)
+  const requestPreviewScroll = useSongbookStore((s) => s.requestPreviewScroll)
+  const openOptionsAt = useSongbookStore((s) => s.openOptionsAt)
+
+  /** Clic a «Índex»: selecciona l'ítem però porta la prèvia a l'índex. */
+  function goToIndex() {
+    selectFront()
+    requestPreviewScroll({ kind: "toc" })
+  }
+
+  return (
+    <li
+      className={`c-front${selected ? " selected" : ""}${showCover ? "" : " is-cover-off"}`}
+      onClick={selectFront}
+    >
+      <span className="c-num" />
+      <span className={`c-front-part${showCover ? "" : " is-off"}`}>
+        <span className="c-title">{l.portada}</span>
+        <MiniSwitch
+          checked={showCover}
+          onChange={(v) => {
+            setOpt("show_cover", v)
+            if (v) requestPreviewScroll({ kind: "front" })
+          }}
+          label={l.mostrarPortada}
+        />
+      </span>
+      <span
+        className={`c-front-part${showIndex ? "" : " is-off"}`}
+        onClick={(e) => {
+          e.stopPropagation()
+          goToIndex()
+        }}
+      >
+        <span className="c-artist">{l.index}</span>
+        <MiniSwitch
+          checked={showIndex}
+          onChange={(v) => {
+            setOpt("show_index", v)
+            if (v) requestPreviewScroll({ kind: "toc" })
+          }}
+          label={l.mostrarIndex}
+        />
+      </span>
+      <button
+        type="button"
+        className="c-edit"
+        title={l.editaPortadaTitle}
+        onClick={(e) => {
+          e.stopPropagation()
+          openOptionsAt(COVER_CATEGORY_ID)
+        }}
+      >
+        {l.edita}
+      </button>
+      {/* Mateixa amplada que la creu de treure de les cançons: cada fila és
+          una graella pròpia i, sense, «Índex» no quedaria alineat. */}
+      <span className="c-remove c-remove-slot" aria-hidden="true">
+        <IconX />
+      </span>
     </li>
   )
 }
@@ -199,6 +302,7 @@ export function CanconerList() {
         strategy={verticalListSortingStrategy}
       >
         <ul id="canconer-list" ref={listRef}>
+          <FrontItem />
           {canconer.map((entry, i) => (
             <SortableItem key={entry.song.id} entry={entry} idx={i} />
           ))}

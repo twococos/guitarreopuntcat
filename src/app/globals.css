@@ -435,6 +435,66 @@ select:focus {
   border-color: var(--accent);
   background: #fdf4f3;
 }
+/* Ítem «Portada» (no es pot arrossegar ni treure). «Edita» ocupa el
+   lloc dels controls de tonalitat i només apareix en passar-hi el cursor. */
+/* Portada desactivada: vora puntejada. Cada part (Portada, Índex) porta el
+   seu interruptor petit; «Índex» queda a la columna dels artistes. */
+#canconer-list li.c-front.is-cover-off {
+  border-style: dashed;
+}
+#canconer-list li .c-remove-slot {
+  visibility: hidden;
+}
+.c-front-part {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.c-front-part.is-off .c-title,
+.c-front-part.is-off .c-artist {
+  color: var(--muted);
+}
+.opt-switch.is-mini {
+  width: 24px;
+  height: 14px;
+  border-width: 1px;
+}
+.opt-switch.is-mini .opt-switch-knob {
+  top: 2px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+}
+.opt-switch.is-mini.is-on .opt-switch-knob {
+  transform: translateX(10px);
+}
+/* «Edita»: com el botó de tonalitat (.c-key), però en verd. */
+.c-edit {
+  grid-column: 4;
+  width: 76px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1px solid #b9e2c7;
+  background: #eef8f1;
+  color: #1e8449;
+  font-size: 0.66rem;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    background 0.12s,
+    border-color 0.12s;
+}
+#canconer-list li.c-front:hover .c-edit,
+.c-edit:focus-visible {
+  opacity: 1;
+}
+.c-edit:hover {
+  border-color: #27ae60;
+  background: #dcf1e3;
+}
 #canconer-list li.dragging {
   opacity: 0.35;
 }
@@ -803,6 +863,7 @@ select:focus {
 
 .detail-tabs {
   display: flex;
+  min-height: 3rem;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   flex-shrink: 0;
@@ -821,6 +882,42 @@ select:focus {
     color 0.15s,
     border-color 0.15s;
   white-space: nowrap;
+}
+/* Capçalera de la vista prèvia: títol · PDF · toggle d'opcions (1/3). */
+.detail-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.85rem;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Centrat amb flex (la icona en línia queda per sobre de la línia base) i
+   vora superior transparent per compensar la inferior de l'estat actiu. */
+.detail-tabs .detail-tab.is-toggle {
+  flex: 0 0 33.333%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0 0.85rem;
+  border-top: 2px solid transparent;
+  border-left: 1px solid var(--border);
+  color: var(--text);
+}
+/* Botó de PDF flotant dins la fila (mateix estil que «Guardar»). */
+.detail-tabs .btn-icon-action {
+  align-self: center;
+  flex-shrink: 0;
+  margin: 0 0.75rem;
+  color: var(--text);
 }
 .detail-tab.active {
   color: var(--accent);
@@ -852,43 +949,60 @@ select:focus {
    ara els proporciona el component <SongView /> i els seus estils
    viuen a src/styles/song.css. */
 
-/* ── Vista prèvia fidedigna A4 ───────────────────────────────
+/* ── Vista prèvia del llibret ────────────────────────────────
    El contenidor .preview-viewport té un padding fix i és scroll-
-   able. Dins dibuixem una pàgina A4 a mida real (210×297mm a 96dpi)
-   i li apliquem `transform: scale(...)` perquè encaixi exactament
-   a l'amplada disponible — així el resultat és sempre fidedigne al
-   PDF, només canvia el zoom. */
+   able. Dins hi ha l'iframe paginat del PDF (pàgines A4 reals a 96dpi,
+   src/lib/pdf-client/preview.ts) amb `transform: scale(...)` perquè
+   encaixi a l'amplada disponible: és el mateix que es descarrega,
+   només canvia el zoom. */
+/* min-height: 0 perquè sigui aquest contenidor (i no #tab-preview) el que
+   fa scroll: BookPreview hi llegeix i escriu scrollTop. Barra sempre visible. */
 .preview-viewport {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  overflow-y: scroll;
   overflow-x: hidden;
-  padding: 1rem;
+  padding: 1rem 1.5rem 1rem 1rem;
   background: var(--bg);
+  /* Barra més visible que la fina global: és la manera de saber on som. */
+  scrollbar-width: auto;
+  scrollbar-color: rgba(60, 60, 60, 0.45) rgba(0, 0, 0, 0.05);
 }
-.preview-scaler {
+.book-preview-stage {
   position: relative;
   width: 100%;
+  overflow: hidden;
 }
-.preview-page {
-  background: #fff;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.1);
-  /* width/height/padding/transform venen del style inline (JS) */
+/* Un contenidor per iframe: el nou es construeix amagat a sobre de
+   l'antic i el substitueix quan és llest (src/lib/pdf-client/preview.ts). */
+.book-preview-buffer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
-/* Columnes del PDF també a la preview, perquè la coincidència sigui
-   completa. Mirroreja la regla equivalent de src/lib/pdf-client/frame.ts. */
-.preview-page .song-body {
-  column-count: var(--pdf-cols, 1);
-  column-fill: balance;
-  column-gap: 1.2rem;
+#tab-preview {
+  position: relative;
+  overflow: hidden;
 }
-.preview-page .song {
-  --song-body-size: calc(0.9rem * var(--pdf-font-scale, 1));
+.book-preview-status {
+  position: absolute;
+  top: 0.6rem;
+  right: 1.4rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.72rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
-.preview-page .song-head {
-  break-inside: avoid;
-}
-.preview-page .song-body sec {
-  break-inside: avoid;
+.book-preview-status.is-visible {
+  opacity: 1;
+  transition-delay: 0.3s;
 }
 
 /* ── Estat buit ────────────────────────────────────────────── */
@@ -910,12 +1024,11 @@ select:focus {
   font-size: 0.85rem;
 }
 
-/* ── Botó toggle "Format PDF" dins de la barra de pestanyes ───
+/* ── Botó toggle "Opcions i format" dins de la barra de pestanyes ──
    Visualment és idèntic a una pestanya (mateixa alçada/amplada
    flex, sense vores ni cantonades arrodonides). Funcionalment és
    un toggle que obre el panell flotant; quan està actiu es marca
-   en vermell. La pestanya "Vista prèvia" segueix `active` darrere
-   perquè es vegi el contingut. */
+   en vermell. */
 .detail-tab.is-toggle.toggled {
   color: #fff;
   background: var(--accent);
@@ -926,28 +1039,36 @@ select:focus {
   color: #fff;
 }
 
-/* ── Panell flotant "Format PDF" ──────────────────────────────
-   Apareix per sobre del `#panel-canconer` (col del mig) com una
-   targeta flotant amb cantonades arrodonides. La resta del fons
-   queda difuminat (excepte AppHeader i la vista prèvia) perquè
-   l'usuari pugui veure els canvis en temps real. */
-body.pdf-format-overlay-active #panel-songs,
-body.pdf-format-overlay-active #panel-canconer {
+/* ── Panell flotant "Opcions i format" ────────────────────────
+   Per defecte, a sobre del `#panel-canconer` (col del mig), amb la
+   vista prèvia nítida per veure els canvis. Les categories que cal
+   mirar amb la llista (`.is-right`) el fan lliscar a sobre de la vista
+   prèvia, i llavors la difuminada és la prèvia i la llista queda nítida.
+   El catàleg (#panel-songs) sempre queda difuminat. */
+#panel-songs,
+#panel-canconer,
+#panel-detail {
+  transition: filter 0.25s ease;
+}
+body.options-overlay-active #panel-songs,
+body.options-overlay-active:not(.options-side-right) #panel-canconer,
+body.options-overlay-active.options-side-right #panel-detail {
   filter: blur(7px) brightness(0.92);
   pointer-events: none;
   user-select: none;
-  transition: filter 0.18s ease;
 }
-/* Quan els panells del fons es difuminen, el seu `border-right` també
-   es difumina i sembla que desapareix. Restaurem la línia divisòria
-   amb un `border-left` nítid al `#panel-detail`, que no està difuminat. */
-body.pdf-format-overlay-active #panel-detail {
-  border-left: 1px solid var(--border);
+/* Quan una columna es difumina, la seva vora també, i sembla que la
+   línia divisòria desaparegui: la restaurem a la columna nítida. */
+body.options-overlay-active:not(.options-side-right) #panel-detail {
+  box-shadow: inset 1px 0 0 var(--border);
 }
-.pdf-format-panel {
+body.options-overlay-active.options-side-right #panel-canconer {
+  box-shadow:
+    inset 1px 0 0 var(--border),
+    inset -1px 0 0 var(--border);
+}
+.options-panel {
   position: absolute;
-  /* Ancorat dins la columna del mig (#panel-canconer), amb marge
-     a tots costats perquè es vegi "flotant". */
   top: 1.25rem;
   bottom: 1.25rem;
   left: calc(var(--col-songs) + 1.25rem);
@@ -960,13 +1081,20 @@ body.pdf-format-overlay-active #panel-detail {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: pdfFormatPanelIn 0.18s ease;
+  animation: optionsPanelIn 0.18s ease;
+  transition:
+    left 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.pdf-format-panel.is-closing {
-  animation: pdfFormatPanelOut 0.16s ease forwards;
+.options-panel.is-right {
+  left: calc(100% - var(--col-detail) + 1.25rem);
+  width: calc(var(--col-detail) - 2.5rem);
+}
+.options-panel.is-closing {
+  animation: optionsPanelOut 0.16s ease forwards;
   pointer-events: none;
 }
-@keyframes pdfFormatPanelIn {
+@keyframes optionsPanelIn {
   from {
     opacity: 0;
     transform: translateY(-6px) scale(0.985);
@@ -976,7 +1104,7 @@ body.pdf-format-overlay-active #panel-detail {
     transform: translateY(0) scale(1);
   }
 }
-@keyframes pdfFormatPanelOut {
+@keyframes optionsPanelOut {
   from {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -986,7 +1114,7 @@ body.pdf-format-overlay-active #panel-detail {
     transform: translateY(-6px) scale(0.985);
   }
 }
-.pdf-format-panel-header {
+.options-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -997,13 +1125,13 @@ body.pdf-format-overlay-active #panel-detail {
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
 }
-.pdf-format-panel-title {
+.options-panel-title {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text);
 }
-.pdf-format-panel-close {
+.options-panel-close {
   background: none;
   border: none;
   cursor: pointer;
@@ -1017,21 +1145,84 @@ body.pdf-format-overlay-active #panel-detail {
     color 0.12s,
     background 0.12s;
 }
-.pdf-format-panel-close:hover {
+.options-panel-close:hover {
   color: var(--accent);
   background: #fdf4f3;
 }
-.pdf-format-panel-body {
+.options-panel-body {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 0.25rem 0;
 }
 
-/* ── Panell opcions (col 3 → tab Opcions) ─────────────────── */
-#tab-options {
-  padding: 1rem;
-  gap: 1rem;
+/* ── Acordió de categories ─────────────────────────────────────
+   Sempre n'hi ha una d'oberta. Les tancades només mostren el títol i
+   el xevró, que gira cap avall en obrir-se. L'alçada s'anima amb
+   grid-template-rows 0fr → 1fr. */
+.opt-cat {
+  border-bottom: 1px solid var(--border);
 }
+.opt-cat:last-child {
+  border-bottom: none;
+}
+.opt-cat-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  transition: color 0.12s;
+}
+.opt-cat-head:hover,
+.opt-cat.is-open .opt-cat-head {
+  color: var(--text);
+}
+.opt-cat.is-open .opt-cat-head {
+  cursor: default;
+}
+.opt-cat-chevron {
+  flex-shrink: 0;
+  font-size: 1rem;
+  transition: transform 0.2s ease;
+}
+.opt-cat.is-open .opt-cat-chevron {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+.opt-cat-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.22s ease;
+}
+.opt-cat.is-open .opt-cat-body {
+  grid-template-rows: 1fr;
+}
+.opt-cat-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+.opt-cat-inner > .options-section {
+  padding: 0 1rem 1rem;
+}
+.opt-title-input {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.opt-title-input.is-default {
+  color: var(--muted);
+}
+
+/* ── Contingut de les categories ──────────────────────────────── */
 .options-section {
   display: flex;
   flex-direction: column;
@@ -1177,12 +1368,6 @@ body.pdf-format-overlay-active #panel-detail {
   border-color: var(--accent);
   background: #fdf4f3;
   color: var(--accent);
-}
-
-.options-sep {
-  height: 1px;
-  background: var(--border);
-  margin: 0.25rem 0;
 }
 
 .key-filter-grid {
@@ -1394,6 +1579,16 @@ body.pdf-format-overlay-active #panel-detail {
   border: 1.5px solid var(--border);
   border-radius: 4px;
   background: var(--surface);
+}
+.margins-box-edge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.margins-box-label {
+  font-size: 0.68rem;
+  color: var(--muted);
 }
 .margins-box-edge input {
   width: 100px;
@@ -8109,4 +8304,3 @@ body:has(.account-page) > header {
   font-size: 0.75rem;
   font-weight: 700;
 }
-

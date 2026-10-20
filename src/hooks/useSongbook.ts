@@ -63,6 +63,10 @@ export interface CanconerEntry {
   semitones: number
 }
 
+/** On ha d'anar la vista prèvia: la portada (inici del llibret), l'índex
+ *  (si no n'hi ha, l'inici) o una cançó. */
+export type PreviewTarget = { kind: "front" } | { kind: "toc" } | { kind: "song"; idx: number }
+
 export interface KeyMenuState {
   idx: number
   anchorRect: { left: number; top: number; bottom: number; right: number }
@@ -72,10 +76,21 @@ export interface SongbookState {
   /* ── Dades ── */
   songs: SongSummary[]
   canconer: CanconerEntry[]
+  /** `null` amb cançons al cançoner: la portada és la seleccionada. */
   selectedIdx: number | null
 
   /* ── UI ── */
   previewActive: boolean
+  /** Comptador: cada increment demana a la vista prèvia que vagi a
+   *  `previewTarget`. Només ho fan els clics, les altes i el panell
+   *  d'opcions, no els canvis de `selectedIdx` per reordenar o eliminar. */
+  previewScrollRequest: number
+  previewTarget: PreviewTarget
+  /** Panell flotant «Opcions i format». */
+  optionsOpen: boolean
+  /** Categoria que el panell ha d'obrir (des de fora, p. ex. «Edita» de la
+   *  portada). El panell la consumeix i la torna a `null`. */
+  optionsPendingCategory: string | null
   sortMode: SortMode
   sortAsc: boolean
   allowedKeys: Set<string>
@@ -117,6 +132,13 @@ export interface SongbookState {
   setSemitones: (idx: number, value: number) => void
   bumpSemitones: (idx: number, delta: number) => void
   setSelectedIdx: (idx: number | null) => void
+  /** Selecciona la portada (selectedIdx = null) i hi porta la prèvia. */
+  selectFront: () => void
+  requestPreviewScroll: (target: PreviewTarget) => void
+  setOptionsOpen: (open: boolean) => void
+  /** Obre el panell d'opcions amb una categoria concreta. */
+  openOptionsAt: (categoryId: string) => void
+  clearOptionsPendingCategory: () => void
 
   setSortMode: (mode: SortMode) => void
   toggleSortDir: () => void
@@ -228,6 +250,10 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
   // Per defecte plegat amb cançoner buit: redueix l'aclaparament inicial
   // per l'usuari nou. S'autodesplega en afegir la primera cançó.
   previewActive: false,
+  previewScrollRequest: 0,
+  previewTarget: { kind: "front" },
+  optionsOpen: false,
+  optionsPendingCategory: null,
   sortMode: "custom",
   sortAsc: true,
   allowedKeys: new Set(ALL_MAJOR_KEYS),
@@ -260,7 +286,7 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
   },
 
   async addToCanconer(songId) {
-    const { canconer, songs, previewActive } = get()
+    const { canconer, songs, previewActive, previewScrollRequest } = get()
     // Carregar la cançó sencera (els elements de songs no inclouen content)
     let full: Song
     const summary = songs.find((s) => s.id === songId)
@@ -278,6 +304,8 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
       canconer: next,
       selectedIdx: next.length - 1,
       previewActive: wasEmpty && !previewActive ? true : previewActive,
+      previewScrollRequest: previewScrollRequest + 1,
+      previewTarget: { kind: "song", idx: next.length - 1 },
     })
   },
 
@@ -332,7 +360,31 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
   },
 
   setSelectedIdx(idx) {
-    set({ selectedIdx: idx })
+    set((s) => ({
+      selectedIdx: idx,
+      previewScrollRequest: s.previewScrollRequest + 1,
+      previewTarget: idx === null ? { kind: "front" } : { kind: "song", idx },
+    }))
+  },
+
+  selectFront() {
+    get().setSelectedIdx(null)
+  },
+
+  requestPreviewScroll(target) {
+    set((s) => ({ previewTarget: target, previewScrollRequest: s.previewScrollRequest + 1 }))
+  },
+
+  setOptionsOpen(open) {
+    set({ optionsOpen: open })
+  },
+
+  openOptionsAt(categoryId) {
+    set({ optionsOpen: true, optionsPendingCategory: categoryId })
+  },
+
+  clearOptionsPendingCategory() {
+    set({ optionsPendingCategory: null })
   },
 
   setSortMode(mode) {
@@ -427,7 +479,8 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
   },
 
   togglePreviewActive() {
-    set((s) => ({ previewActive: !s.previewActive }))
+    // El panell d'opcions només existeix amb la vista prèvia oberta.
+    set((s) => ({ previewActive: !s.previewActive, optionsOpen: false }))
   },
 
   openKeyMenu(idx, anchorRect) {

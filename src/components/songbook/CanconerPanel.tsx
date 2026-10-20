@@ -4,15 +4,14 @@ import { useSession } from "next-auth/react"
 import { useSongbookStore, isDefaultCanconerTitle } from "@/hooks/useSongbook"
 import { useToastStore } from "@/hooks/useToasts"
 import { useUiStore } from "@/hooks/useUi"
-import { usePdfProgress } from "@/hooks/usePdfProgress"
 import { saveCanconer } from "@/lib/canconerApi"
-import { requestPdf, downloadBlob } from "@/lib/pdf-client/request"
 import { CanconerList } from "./CanconerList"
 import { CanconerGrid } from "./CanconerGrid"
+import { CanconerTitleInput } from "./CanconerTitleInput"
+import { PdfDownloadButton } from "./PdfDownloadButton"
 import { ConfirmToast } from "@/components/editor/ConfirmToast"
-import { PdfProgressOverlay } from "@/components/shared/PdfProgressOverlay"
 import { getT } from "@/lib/i18n"
-import { IconX, IconSave, IconClock, IconFileText, IconMusic, IconGlobe } from "@/components/shared/Icons"
+import { IconX, IconSave, IconMusic, IconGlobe } from "@/components/shared/Icons"
 import type { CanconerListItem } from "@/types/song"
 
 export function CanconerPanel() {
@@ -26,20 +25,13 @@ export function CanconerPanel() {
   const accentColor = useSongbookStore((s) => s.accentColor)
   const pdfOptions = useSongbookStore((s) => s.pdfOptions)
   const savedCanconerId = useSongbookStore((s) => s.savedCanconerId)
-  const setCanconerTitle = useSongbookStore((s) => s.setCanconerTitle)
   const setOverwriteToast = useSongbookStore((s) => s.setOverwriteToast)
   const markSaved = useSongbookStore((s) => s.markSaved)
   const resetCanconer = useSongbookStore((s) => s.resetCanconer)
   const showToast = useToastStore((s) => s.show)
   const setLoginPopup = useUiStore((s) => s.setLoginPopup)
 
-  const pdfProgress = usePdfProgress()
   const [confirmDiscard, setConfirmDiscard] = useState(false)
-  // Mentre el camp té focus mostrem el text "buit" perquè el placeholder
-  // (el títol provisional) faci de hint. En perdre focus, si l'usuari no
-  // ha escrit res, restaurem el provisional perquè mai s'arribi a guardar
-  // sense nom.
-  const [titleFocused, setTitleFocused] = useState(false)
   // Visibilitat del cançoner desat (null: no desat o encara no se sap)
   const [visibility, setVisibility] = useState<number | null>(null)
 
@@ -80,14 +72,7 @@ export function CanconerPanel() {
 
   const hasItems = canconer.length > 0
   const isLoggedIn = !!(session?.user?.active)
-  const titleIsProvisional = canconerTitle === provisionalTitle
-  // El títol "provisional" en estilem en gris (com un placeholder permanent).
-  // Per compat retornem true també per als "El meu cançoner N" perquè altres
-  // llocs (autoguardat) hi confiïn.
-  const titleIsDefault = titleIsProvisional || isDefaultCanconerTitle(canconerTitle)
-  // Mentre el camp té focus i el valor és el provisional, el mostrem buit
-  // perquè el placeholder (el provisional) actuï com a hint.
-  const displayedTitle = titleFocused && titleIsProvisional ? "" : canconerTitle
+  const titleIsDefault = canconerTitle === provisionalTitle || isDefaultCanconerTitle(canconerTitle)
   // Es pot descartar si hi ha qualsevol contingut o si el títol s'ha canviat
   const canDiscard = hasItems || !titleIsDefault || savedCanconerId !== null
 
@@ -144,31 +129,6 @@ export function CanconerPanel() {
     }
   }
 
-  async function onGeneratePdf() {
-    if (!hasItems || pdfProgress.active) return
-    pdfProgress.start(t.common.pdfProgress.missatges)
-    try {
-      const blob = await requestPdf(
-        {
-          title: canconerTitle || "El meu cançoner",
-          style: canconerStyle,
-          accentColor,
-          options: pdfOptions,
-          songs: canconer.map((e) => ({ id: e.song.id, semitones: e.semitones })),
-        },
-        pdfProgress.report,
-      )
-      // Accelerem la barra fins al 100% i tanquem l'overlay abans de
-      // disparar la descàrrega.
-      await pdfProgress.finish()
-      downloadBlob(blob, `${canconerTitle || "canconer"}.pdf`)
-    } catch (err) {
-      console.error("Error generant el PDF:", err)
-      pdfProgress.fail()
-      showToast(t.app.songbook.canconerPanel.errorGenerantPdf, { type: "error" })
-    }
-  }
-
   function onConfirmDiscard() {
     resetCanconer()
     setConfirmDiscard(false)
@@ -178,23 +138,7 @@ export function CanconerPanel() {
   return (
     <section id="panel-canconer">
       <div className="canconer-header">
-        <input
-          type="text"
-          id="canconer-title"
-          className={`canconer-title-input${titleIsDefault ? " is-default" : ""}`}
-          placeholder={provisionalTitle}
-          value={displayedTitle}
-          onChange={(e) => setCanconerTitle(e.target.value)}
-          onFocus={() => setTitleFocused(true)}
-          onBlur={() => {
-            setTitleFocused(false)
-            // Si l'usuari l'ha deixat buit, restaura el provisional perquè
-            // mai pugui quedar el camp sense nom.
-            if (canconerTitle.trim() === "") {
-              setCanconerTitle(provisionalTitle)
-            }
-          }}
-        />
+        <CanconerTitleInput id="canconer-title" className="canconer-title-input" />
         <div className="canconer-header-actions">
           <button
             id="btn-discard-canconer"
@@ -231,21 +175,8 @@ export function CanconerPanel() {
               {visibility === 1 ? t.app.library.canconersTab.public : t.app.songbook.canconerPanel.publicarLabel}
             </button>
           )}
-          <button
-            id="btn-generate"
-            className="btn-icon-action"
-            disabled={!hasItems || pdfProgress.active}
-            title={t.app.songbook.canconerPanel.generarPdfTitle}
-            onClick={onGeneratePdf}
-          >
-            {pdfProgress.active ? (
-              <IconClock />
-            ) : (
-              <>
-                <IconFileText /> {t.app.songbook.canconerPanel.pdfLabel}
-              </>
-            )}
-          </button>
+          {/* Amb la vista prèvia oberta, el PDF és a la seva capçalera. */}
+          {!previewActive && <PdfDownloadButton variant="panel" />}
         </div>
       </div>
       {!hasItems && (
@@ -265,12 +196,6 @@ export function CanconerPanel() {
         onConfirm={onConfirmDiscard}
         onCancel={() => setConfirmDiscard(false)}
         autoDismissMs={10000}
-      />
-      <PdfProgressOverlay
-        open={pdfProgress.active}
-        pct={pdfProgress.pct}
-        title={t.common.pdfProgress.titol}
-        message={pdfProgress.message}
       />
     </section>
   )

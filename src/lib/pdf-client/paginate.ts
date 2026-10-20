@@ -286,6 +286,15 @@ export async function paginate(
   const firstNumberedIdx = firstSong ? firstSong.pageIdx : p.pages.length
   p.decorate(title, firstNumberedIdx)
 
+  // ── Mode llibre: margin_left és l'interior i margin_right l'exterior.
+  // A les pàgines parells (esquerra, índex físic senar) s'emmirallen.
+  // L'amplada útil no canvia, així que la paginació d'abans val igual.
+  if (options.book_format) {
+    p.pages.forEach((pg, i) => {
+      if (i % 2 === 1 && pg.kind !== "cover") pg.el.classList.add("is-verso")
+    })
+  }
+
   // ── Números de pàgina a l'índex (enllaçats a la cançó) ──
   frame.doc.querySelectorAll<HTMLElement>(".toc tr[data-song-idx]").forEach((tr) => {
     const idx = Number(tr.dataset.songIdx)

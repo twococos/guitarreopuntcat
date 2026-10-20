@@ -77,7 +77,7 @@ export async function generatePdfClient(input: PdfClientInput, opts: GenerateOpt
   report(0, 100)(5)
   const parts = await buildBookParts(input.title, input.style, input.accentColor, songs, input.options)
   phase("html")
-  const frame = await createBookFrame(parts, input.options, input.style, opts.debug ?? false)
+  const frame = await createBookFrame(parts, input.options, input.style, opts.debug ? "debug" : "hidden")
   phase("frame")
   try {
     report(0, 100)(15)
