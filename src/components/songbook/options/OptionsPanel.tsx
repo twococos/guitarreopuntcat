@@ -2,7 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useSongbookStore } from "@/hooks/useSongbook"
 import { getT } from "@/lib/i18n"
-import { IconChevronRight, IconX } from "@/components/shared/Icons"
+import { IconX } from "@/components/shared/Icons"
+import { OptionsAccordion } from "./OptionsAccordion"
+import { StoreOptionsSource } from "./OptionsSource"
 import {
   StructureSection,
   StyleSection,
@@ -85,14 +87,16 @@ export function OptionsPanel({ onClose }: { onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement | null>(null)
   // El primer render sempre usa la primera categoria; la desada es llegeix
   // després (mateix criteri que useColumnSizes, per no trencar la hidratació).
-  const [openId, setOpenId] = useState<OptionsCategoryId>(list[0].id)
+  // null = totes plegades (tornar a clicar l'oberta la plega).
+  const [openId, setOpenId] = useState<OptionsCategoryId | null>(list[0].id)
   // Tancament animat: marquem `closing`, deixem que l'animació de sortida
   // corri i només llavors desmuntem cridant `onClose()` real.
   const [closing, setClosing] = useState(false)
   const closeTimer = useRef<number | null>(null)
 
-  const side = list.find((c) => c.id === openId)?.side ?? "left"
-  const sideRef = useRef(side)
+  // Amb totes plegades, el panell es queda al costat on era.
+  const sideRef = useRef<"left" | "right">("left")
+  const side = openId ? (list.find((c) => c.id === openId)?.side ?? "left") : sideRef.current
   sideRef.current = side
 
   // Categoria inicial: la demanada des de fora (p. ex. «Edita» de la
@@ -117,9 +121,13 @@ export function OptionsPanel({ onClose }: { onClose: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCategory])
 
-  function openCategory(id: OptionsCategoryId) {
+  function openCategory(id: OptionsCategoryId | null) {
+    if (id === null) {
+      setOpenId(null)
+      return
+    }
     scrollPreviewFor(id)
-    if (id === openId) return // sempre n'hi ha una d'oberta
+    if (id === openId) return
     setOpenId(id)
     storeCategory(id)
   }
@@ -199,28 +207,9 @@ export function OptionsPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
       <div className="options-panel-body">
-        {list.map(({ id, title, Body }) => {
-          const open = id === openId
-          return (
-            <div key={id} className={`opt-cat${open ? " is-open" : ""}`}>
-              <button
-                type="button"
-                className="opt-cat-head"
-                aria-expanded={open}
-                aria-controls={`opt-cat-${id}`}
-                onClick={() => openCategory(id)}
-              >
-                <span className="opt-cat-title">{title}</span>
-                <IconChevronRight className="opt-cat-chevron" />
-              </button>
-              <div className="opt-cat-body" id={`opt-cat-${id}`} role="region" aria-hidden={!open} inert={!open}>
-                <div className="opt-cat-inner">
-                  <Body />
-                </div>
-              </div>
-            </div>
-          )
-        })}
+        <StoreOptionsSource>
+          <OptionsAccordion categories={list} openId={openId} onOpen={openCategory} />
+        </StoreOptionsSource>
       </div>
     </div>
   )

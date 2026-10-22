@@ -48,6 +48,17 @@ body.pdf-debug .pdf-page { margin: 0 auto 12px; box-shadow: 0 2px 10px rgba(0,0,
 body.pdf-debug { background: #888; padding: 12px 0; }
 html:has(body.pdf-preview), body.pdf-preview { background: transparent; overflow: hidden; }
 body.pdf-preview .pdf-page { margin: 0 0 ${PREVIEW_GAP_PX}px; box-shadow: 0 2px 14px rgba(0,0,0,.12); }
+/* Prèvia: 1, 2, 4 o 8 columnes de pàgines (el component fixa --preview-cols).
+   En mode llibre amb més d'una columna, l'espaiador deixa la primera pàgina
+   sola a la dreta perquè les pàgines quedin en plecs (parella a l'esquerra). */
+body.pdf-preview #pdf-pages {
+  display: grid;
+  grid-template-columns: repeat(var(--preview-cols, 1), 210mm);
+  column-gap: ${PREVIEW_GAP_PX}px;
+  align-items: start;
+}
+.pdf-preview-spacer { display: none; }
+body.pdf-preview-spread .pdf-preview-spacer { display: block; }
 /* El contingut comença just a sota de la línia de la capçalera i acaba
    just a sobre de la del peu (mateixes alçades que .pdf-header/.pdf-footer). */
 .pdf-content {

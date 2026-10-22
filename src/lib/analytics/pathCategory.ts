@@ -5,7 +5,7 @@
 
 export type PathCategory =
   | "page"      // qualsevol pàgina visitable (no /api/)
-  | "public"    // pàgines públiques: /, /songs*, /projecte, /contacte, /c/*, /songbooks/*
+  | "public"    // pàgines públiques: /, /songs*, /projecte, /contacte, /c/*, /songbooks*
   | "app"       // pàgines de l'app: /app*
   | "song"      // /songs/[artist]/[song]
   | "artist"    // /songs/[artist]
@@ -22,7 +22,7 @@ export function categoryOf(path: string): Exclude<PathCategory, "page"> | null {
     if (segments.length >= 3) return "song"             // /songs/[a]/[s]
   }
   if (path === "/" || path === "/projecte" || path === "/contacte") return "public"
-  if (path.startsWith("/c/") || path.startsWith("/songbooks/")) return "public"
+  if (path.startsWith("/c/") || path === "/songbooks" || path.startsWith("/songbooks/")) return "public"
   return null
 }
 
@@ -35,7 +35,7 @@ export function categoryWhereClause(category: PathCategory): string {
     case "page":
       return "path NOT LIKE '/api/%' AND path != '/api' AND path NOT LIKE '/img/%' AND path NOT LIKE '/_next/%' AND path != '/favicon.ico' AND path NOT LIKE '/api/track%'"
     case "public":
-      return "(path = '/' OR path = '/songs' OR path LIKE '/songs/%' OR path = '/projecte' OR path = '/contacte' OR path LIKE '/c/%' OR path LIKE '/songbooks/%')"
+      return "(path = '/' OR path = '/songs' OR path LIKE '/songs/%' OR path = '/projecte' OR path = '/contacte' OR path LIKE '/c/%' OR path = '/songbooks' OR path LIKE '/songbooks/%')"
     case "app":
       return "(path = '/app' OR path LIKE '/app/%')"
     case "song":

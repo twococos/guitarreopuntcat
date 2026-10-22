@@ -1157,7 +1157,7 @@ body.options-overlay-active.options-side-right #panel-canconer {
 }
 
 /* ── Acordió de categories ─────────────────────────────────────
-   Sempre n'hi ha una d'oberta. Les tancades només mostren el títol i
+   Com a molt una d'oberta (tornar a clicar-la la plega). Les tancades només mostren el títol i
    el xevró, que gira cap avall en obrir-se. L'alçada s'anima amb
    grid-template-rows 0fr → 1fr. */
 .opt-cat {
@@ -3755,7 +3755,8 @@ a.library-action {
    ════════════════════════════════════════════════════════════
    Mateix llenguatge que la pàgina pública de cançó (secció 7): fons
    --bg, targeta blanca sense radius, títols Georgia, accent vermell.
-   La targeta i la barra flotant són les de la secció 7. */
+   La targeta i la barra flotant són les de la secció 7. La capçalera va
+   en una tira blanca com els banners del catàleg; índex i pager, arrodonits. */
 
 .songbook-viewer {
   --song-font-size: 14px;
@@ -3771,10 +3772,22 @@ a.library-action {
 }
 
 /* ── Capçalera del cançoner ──────────────────────────────── */
+header.songbook-viewer-banner {
+  display: block;
+  height: auto;
+  padding: 0;
+  width: 100%;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: auto;
+  position: relative;
+  margin-bottom: 1.75rem;
+}
+
 .songbook-viewer-header {
   max-width: 1140px;
   margin: 0 auto;
-  padding: 2.25rem 1.25rem 1.5rem;
+  padding: 2rem 1.25rem 1.5rem;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -3901,7 +3914,7 @@ a.library-action {
   overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-top: 2px solid var(--songbook-accent, var(--accent));
+  border-radius: 14px;
 }
 
 /* El botó només fa de capçalera plegable en mòbil */
@@ -3912,7 +3925,10 @@ a.library-action {
 .songbook-viewer-index-list {
   list-style: none;
   margin: 0;
-  padding: 0.4rem 0;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .songbook-viewer-index-item {
@@ -3921,11 +3937,11 @@ a.library-action {
   grid-template-columns: 1.6rem minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.85rem;
+  padding: 0.55rem 0.7rem;
   text-align: left;
   background: transparent;
-  border: none;
-  border-left: 3px solid transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
   color: var(--text);
   cursor: pointer;
   font: inherit;
@@ -3935,10 +3951,11 @@ a.library-action {
 }
 .songbook-viewer-index-item:hover {
   background: var(--bg);
+  border-color: var(--border);
 }
 .songbook-viewer-index-item.is-active {
-  background: color-mix(in srgb, var(--songbook-accent, var(--accent)) 7%, transparent);
-  border-left-color: var(--songbook-accent, var(--accent));
+  background: color-mix(in srgb, var(--songbook-accent, var(--accent)) 8%, transparent);
+  border-color: color-mix(in srgb, var(--songbook-accent, var(--accent)) 45%, transparent);
 }
 
 .songbook-viewer-index-num {
@@ -4006,18 +4023,10 @@ a.library-action {
   padding: 3rem 3.5rem;
 }
 
+/* Número de la cançó, a l'esquerra del títol i l'artista (PublicSongCard) */
 .songbook-viewer-song-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.4rem;
-  padding: 0 0.5rem;
-  font-family: "Georgia", serif;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--songbook-accent, var(--accent));
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  color: color-mix(in srgb, var(--songbook-accent, var(--accent)) 75%, #fff);
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .public-song-title-link {
@@ -4041,9 +4050,10 @@ a.library-action {
   align-items: center;
   gap: 0.6rem;
   max-width: 48%;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1.1rem;
   background: var(--surface);
   border: 1px solid var(--border);
+  border-radius: 14px;
   color: var(--text);
   font-family: "Georgia", serif;
   font-size: 0.95rem;
@@ -4051,7 +4061,8 @@ a.library-action {
   cursor: pointer;
   transition:
     border-color 0.12s,
-    color 0.12s;
+    color 0.12s,
+    box-shadow 0.12s;
 }
 .songbook-viewer-pager-btn span {
   display: flex;
@@ -4072,6 +4083,7 @@ a.library-action {
 .songbook-viewer-pager-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
 }
 .songbook-viewer-pager-btn--next {
   margin-left: auto;
@@ -4102,13 +4114,15 @@ a.library-action {
   .songbook-viewer-title {
     font-size: 1.75rem;
   }
+  header.songbook-viewer-banner {
+    margin-bottom: 0.75rem;
+  }
   .songbook-viewer-index {
     top: 3.6rem;
     z-index: 30;
     max-height: none;
-    overflow: visible;
-    border-left: none;
-    border-right: none;
+    overflow: hidden;
+    margin: 0 0.75rem;
   }
   .songbook-viewer-index-toggle {
     width: 100%;
@@ -4141,7 +4155,7 @@ a.library-action {
     border-top: 1px solid var(--border);
   }
   .songbook-viewer-index.is-open .songbook-viewer-index-list {
-    display: block;
+    display: flex;
   }
   .songbook-viewer-main .public-song-card {
     padding: 1.8rem 1.2rem;
@@ -4164,6 +4178,250 @@ a.library-action {
   /* A la barra flotant, la posició no hi cap: només les fletxes */
   .songbook-viewer-bar-pos {
     display: none;
+  }
+}
+
+/* ── Diàleg «Descarrega el PDF» (PdfExportDialog) ────────────
+   Opcions a l'esquerra (les classes .opt-cat* del panell de /app) i la
+   prèvia paginada a la dreta. El progrés del PDF (z-index 1100) hi queda
+   per sobre. */
+body.pdf-dialog-open {
+  overflow: hidden !important;
+}
+.pdf-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 20, 20, 0.55);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.18s ease;
+}
+.pdf-dialog {
+  --pdf-dialog-head-h: 3.6rem;
+  width: min(1120px, 94vw);
+  height: 90vh;
+  display: grid;
+  grid-template-columns: 400px minmax(0, 1fr);
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  animation: optionsPanelIn 0.18s ease;
+}
+.pdf-dialog-options {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+}
+/* Les dues capçaleres (opcions i prèvia) fan la mateixa alçada */
+.pdf-dialog-options .options-panel-header,
+.pdf-dialog-head {
+  box-sizing: border-box;
+  height: var(--pdf-dialog-head-h);
+  flex-shrink: 0;
+}
+.pdf-dialog-options .options-panel-header {
+  border-radius: 0;
+  padding: 0 1.25rem;
+}
+.pdf-dialog-options-toggle {
+  display: none;
+}
+.pdf-dialog-hint {
+  margin: 0;
+  padding: 0.9rem 1rem 1.1rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.pdf-dialog-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.pdf-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 0.9rem 0 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.pdf-dialog-head-text {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.pdf-dialog-title {
+  margin: 0;
+  font-family: "Georgia", serif;
+  font-size: 1.1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdf-dialog-pages {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.pdf-dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.pdf-dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: none;
+  border: none;
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.pdf-dialog-close:hover:not(:disabled) {
+  color: var(--accent);
+  background: var(--bg);
+}
+.pdf-dialog-preview {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.pdf-dialog-preview .preview-viewport {
+  padding: 1.25rem 1.75rem 4.5rem;
+}
+
+/* Prèvia amb zoom (PaginatedPreview zoomable): l'stage fa l'amplada del
+   llibret escalat i es centra; si és més ample que el visor, scroll lateral. */
+.preview-viewport.is-zoomable {
+  overflow-x: auto;
+  /* Que el control de zoom no tapi el final de l'última pàgina */
+  padding-bottom: 4.5rem;
+}
+.preview-viewport.is-zoomable .book-preview-stage {
+  margin: 0 auto;
+}
+.preview-zoom {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+.preview-zoom:hover,
+.preview-zoom:focus-within {
+  opacity: 1;
+}
+.preview-zoom button {
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.preview-zoom button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+}
+.preview-zoom button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.preview-zoom .preview-zoom-value {
+  min-width: 3rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.preview-zoom-sep {
+  width: 1px;
+  height: 1.1rem;
+  margin: 0 0.15rem;
+  background: var(--border);
+}
+
+@media (max-width: 720px) {
+  .pdf-dialog {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .pdf-dialog-options {
+    order: 2;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    max-height: var(--pdf-dialog-head-h);
+  }
+  .pdf-dialog-options.is-open {
+    max-height: 55dvh;
+  }
+  .pdf-dialog-options-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: none;
+    border: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .pdf-dialog-options-toggle .opt-cat-chevron {
+    transform: rotate(-90deg);
+  }
+  .pdf-dialog-options.is-open .pdf-dialog-options-toggle .opt-cat-chevron {
+    transform: rotate(90deg);
+  }
+  .pdf-dialog-options:not(.is-open) .options-panel-body {
+    display: none;
+  }
+  .pdf-dialog-main {
+    order: 1;
+  }
+  .pdf-dialog-head-text .pdf-dialog-pages {
+    display: none;
+  }
+  .pdf-dialog-preview .preview-viewport {
+    padding: 0.75rem 0.75rem 4rem;
   }
 }
 
@@ -5286,9 +5544,24 @@ div[data-block="section"]:hover .wsec {
   gap: 1rem;
   flex-wrap: wrap;
 }
+.public-song-heading-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
 .public-song-heading {
   flex: 1 1 auto;
   min-width: 0;
+}
+/* Número de la cançó dins d'un cançoner: centrat entre títol i artista */
+.public-song-heading-prefix {
+  flex-shrink: 0;
+  font-family: var(--song-title-font, "Georgia", serif);
+  font-size: 3.2rem;
+  font-weight: 700;
+  line-height: 1;
 }
 .public-song-header-side {
   display: flex;
@@ -5622,6 +5895,40 @@ div[data-block="section"]:hover .wsec {
   font-size: 0.9rem;
 }
 
+/* Cançoners populars que contenen la cançó (sota els CTA) */
+.public-song-songbooks {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+.public-song-songbooks-title {
+  margin: 0 0 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+.public-song-songbooks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.public-song-songbooks-list .public-home-card-link {
+  height: 100%;
+  background: var(--bg);
+}
+@media (max-width: 640px) {
+  .public-song-songbooks-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* ── Adaptació mòbil ─────────────────────────────────────── */
 @media (max-width: 640px) {
   .public-song-main {
@@ -5643,6 +5950,7 @@ div[data-block="section"]:hover .wsec {
     align-items: stretch;
   }
   .public-song-title-row,
+  .public-song-heading-wrap,
   .public-song-heading,
   .public-song-header-side {
     display: contents;
@@ -5650,6 +5958,20 @@ div[data-block="section"]:hover .wsec {
   .public-song-title {
     font-size: 1.55rem;
     order: 1;
+  }
+  /* Amb número (cançoner), títol i artista queden junts al costat del número */
+  .public-song-heading-wrap.has-prefix {
+    display: flex;
+    order: 1;
+    gap: 0.75rem;
+  }
+  .public-song-heading-wrap.has-prefix .public-song-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .public-song-heading-prefix {
+    font-size: 2.3rem;
   }
   .public-song-artist-line,
   .public-song-extra-line {
@@ -5783,6 +6105,19 @@ header.public-artist-banner {
   max-width: 820px;
   margin: 0 auto;
   padding: 0 1rem;
+}
+
+/* Cançoners amb l'artista, sota la llista de cançons */
+.public-artist-songbooks {
+  margin-top: 2.5rem;
+}
+.public-artist-songbooks-title {
+  margin: 0 0 1rem;
+  padding: 0 0.25rem 0.55rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--accent);
 }
 
 .public-artist-songs {
@@ -6182,6 +6517,10 @@ header.public-home-section-head {
 }
 .public-home-section-link:hover {
   color: var(--accent);
+}
+.public-home-section-more {
+  margin: 0.85rem 0 0;
+  text-align: right;
 }
 
 .public-home-grid {
@@ -7067,6 +7406,52 @@ header.songs-index-banner {
 }
 .songs-index-empty a {
   color: var(--accent);
+}
+
+/* /songbooks: toggle d'ordre a la dreta i paginació a sota de la graella */
+.songbooks-index-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 1.5rem 0 1rem;
+}
+.songbooks-index-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+.songbooks-index-pages {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem;
+}
+.songbooks-index-page {
+  min-width: 2.1rem;
+  height: 2.1rem;
+  padding: 0 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.88rem;
+  color: var(--text);
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition:
+    border-color 0.1s,
+    color 0.1s;
+}
+a.songbooks-index-page:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.songbooks-index-page.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 @media (max-width: 640px) {

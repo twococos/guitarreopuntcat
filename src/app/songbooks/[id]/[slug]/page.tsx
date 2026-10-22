@@ -9,7 +9,7 @@ import { getT } from "@/lib/i18n"
 
 interface Props {
   params: Promise<{ id: string; slug: string }>
-  searchParams: Promise<{ song?: string | string[] }>
+  searchParams: Promise<{ song?: string | string[]; from?: string | string[] }>
 }
 
 export const dynamic = "force-dynamic"
@@ -35,12 +35,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 /**
  * /songbooks/[id]/[slug] — cançoner públic. El slug és decoratiu: si no
  * coincideix (s'ha canviat el títol), redirigeix a la URL canònica.
+ * `?from=ID` (targetes de les pàgines de cançó i d'artista) obre el visor
+ * a aquella cançó; es resol sobre les cançons visibles, no sobre `position`.
  */
 export default async function PublicSongbookPage({ params, searchParams }: Props) {
   const { id, slug } = await params
   const c = await load(id)
   if (!c) notFound()
-  if (c.slug && slug !== c.slug) redirect(`/songbooks/${c.id}/${c.slug}`)
+  const query = await searchParams
+  if (c.slug && slug !== c.slug) {
+    const from = Array.isArray(query.from) ? query.from[0] : query.from
+    redirect(`/songbooks/${c.id}/${c.slug}${from ? `?from=${encodeURIComponent(from)}` : ""}`)
+  }
+  const fromId = Number(Array.isArray(query.from) ? query.from[0] : query.from)
+  const fromIndex = Number.isInteger(fromId) ? c.songs.findIndex((s) => s.id === fromId) : -1
 
   return (
     <>
@@ -48,7 +56,7 @@ export default async function PublicSongbookPage({ params, searchParams }: Props
       <SongbookViewer
         songbook={toViewerData(c)}
         pdfContext={{ songbook_id: c.id }}
-        initialIndex={initialIndexFrom((await searchParams).song)}
+        initialIndex={fromIndex >= 0 ? fromIndex : initialIndexFrom(query.song)}
       />
     </>
   )

@@ -539,6 +539,98 @@ export function getRandomPublicSongbooks(count: number, excludeIds: number[] = [
   return publicSongbookSummaries(undefined, { limit: Math.max(1, count), random: true, excludeIds })
 }
 
+export type PublicSongbookSort = "popular" | "alpha"
+
+/**
+ * Pàgina /songbooks: tots els cançoners públics, per visites (desempat pel
+ * més recent) o alfabètic. Ordenar en JS és barat (només id, títol i data).
+ */
+export function listPublicSongbooks(opts: { sort: PublicSongbookSort; page: number; perPage: number }) {
+  const all = db
+    .select({
+      id: schema.canconers.id,
+      title: schema.canconers.title,
+      publishedAt: schema.canconers.publishedAt,
+    })
+    .from(schema.canconers)
+    .where(eq(schema.canconers.visibility, 1))
+    .all()
+
+  if (opts.sort === "alpha") {
+    all.sort((a, b) => a.title.localeCompare(b.title, "ca", { sensitivity: "base" }) || a.id - b.id)
+  } else {
+    const views = getSongbookViewCounts()
+    all.sort(
+      (a, b) =>
+        (views.get(b.id) ?? 0) - (views.get(a.id) ?? 0) ||
+        (b.publishedAt ?? "").localeCompare(a.publishedAt ?? "") ||
+        b.id - a.id,
+    )
+  }
+
+  const total = all.length
+  const pages = Math.max(1, Math.ceil(total / opts.perPage))
+  const page = Math.min(Math.max(1, opts.page), pages)
+  const ids = all.slice((page - 1) * opts.perPage, page * opts.perPage).map((r) => r.id)
+  if (ids.length === 0) return { items: [] as PublicSongbookSummary[], total, page, pages }
+
+  const summaries = publicSongbookSummaries(inArray(schema.canconers.id, ids), { limit: ids.length })
+  const items = ids
+    .map((id) => summaries.find((s) => s.id === id))
+    .filter((s): s is PublicSongbookSummary => s !== undefined)
+  return { items, total, page, pages }
+}
+
+/**
+ * Cançoners públics més visitats que contenen una cançó o un artista
+ * (desempat: més cançons coincidents). Cada un porta `from_song_id`, la
+ * primera cançó coincident, perquè l'enllaç obri el visor allà.
+ */
+export function getPopularSongbooksContaining(filter: { songId: number } | { artistSlug: string }, limit: number) {
+  const rows = db
+    .select({
+      canconerId: schema.canconerSongs.canconerId,
+      songId: schema.canconerSongs.songId,
+      position: schema.canconerSongs.position,
+    })
+    .from(schema.canconerSongs)
+    .innerJoin(schema.canconers, eq(schema.canconers.id, schema.canconerSongs.canconerId))
+    .innerJoin(schema.songs, eq(schema.songs.id, schema.canconerSongs.songId))
+    .where(and(
+      eq(schema.canconers.visibility, 1),
+      "songId" in filter ? eq(schema.songs.id, filter.songId) : eq(schema.songs.artistSlug, filter.artistSlug),
+      // Mateix criteri que el visor: les privades només si el cançoner públic les mostra
+      PUBLIC_SONGBOOK_SHOWS_PRIVATE_SONGS ? undefined : eq(schema.songs.state, SONG_STATE.PUBLIC),
+    ))
+    .all()
+  if (rows.length === 0) return []
+
+  const byCanconer = new Map<number, { n: number; first: { songId: number; position: number } }>()
+  for (const r of rows) {
+    const cur = byCanconer.get(r.canconerId)
+    if (!cur) byCanconer.set(r.canconerId, { n: 1, first: { songId: r.songId, position: r.position } })
+    else {
+      cur.n++
+      if (r.position < cur.first.position) cur.first = { songId: r.songId, position: r.position }
+    }
+  }
+
+  const views = getSongbookViewCounts()
+  const ids = [...byCanconer.entries()]
+    .map(([id, m]) => ({ id, n: m.n, v: views.get(id) ?? 0 }))
+    .sort((a, b) => b.v - a.v || b.n - a.n || b.id - a.id)
+    .slice(0, limit)
+    .map((c) => c.id)
+
+  const summaries = publicSongbookSummaries(inArray(schema.canconers.id, ids), { limit: ids.length })
+  return ids
+    .map((id) => {
+      const summary = summaries.find((s) => s.id === id)
+      return summary ? { ...summary, from_song_id: byCanconer.get(id)!.first.songId } : null
+    })
+    .filter((s): s is PublicSongbookSummary & { from_song_id: number } => s !== null)
+}
+
 export function listPublicSongbooksForSitemap() {
   return db
     .select({

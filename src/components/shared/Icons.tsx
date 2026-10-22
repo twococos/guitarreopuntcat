@@ -465,3 +465,16 @@ export const IconFlag = (p: IconProps) =>
     </>,
     p,
   )
+
+/** Ajusta a l'amplada: fletxes horitzontals cap a les vores. */
+export const IconFitWidth = (p: IconProps) =>
+  svg(
+    <>
+      <line x1="3" y1="4" x2="3" y2="20" />
+      <line x1="21" y1="4" x2="21" y2="20" />
+      <line x1="7" y1="12" x2="17" y2="12" />
+      <polyline points="10 9 7 12 10 15" />
+      <polyline points="14 9 17 12 14 15" />
+    </>,
+    p,
+  )

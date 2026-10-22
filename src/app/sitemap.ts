@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic"
 
 /**
  * Sitemap dinàmic generat des de la BD. Inclou:
- *   · Estàtiques: portada, índex de cançons (les dues vistes), projecte, contacte.
+ *   · Estàtiques: portada, índex de cançons (les dues vistes), cançoners, projecte, contacte.
  *   · Una entrada per cada artista públic (/songs/[artist]).
  *   · Una entrada per cada cançó pública (/songs/[artist]/[song]).
  *   · Una entrada per cada cançoner públic (/songbooks/[id]/[slug]).
@@ -34,6 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.8,
     },
+    { url: `${baseUrl}/songbooks`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
     { url: `${baseUrl}/projecte`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
     { url: `${baseUrl}/contacte`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
   ]

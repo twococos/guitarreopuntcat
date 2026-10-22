@@ -21,6 +21,8 @@ interface SongbookQueryResult {
     content: string
     album: string | null
     year: number | null
+    youtube_url: string | null
+    spotify_url: string | null
     state: number
     semitones: number
   }>
@@ -46,6 +48,8 @@ export function toViewerData(c: SongbookQueryResult): SongbookViewerData {
       content: s.content,
       album: s.album,
       year: s.year,
+      youtube_url: s.youtube_url,
+      spotify_url: s.spotify_url,
       state: s.state,
       semitones: s.semitones,
     })),

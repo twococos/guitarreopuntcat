@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { getSongBySlug } from "@/db/queries/songs"
+import { getPopularSongbooksContaining } from "@/db/queries/canconers"
 import { PublicNav } from "@/components/public/PublicNav"
 import { PublicSongView } from "@/components/songs/PublicSongView"
 import { getT } from "@/lib/i18n"
@@ -40,11 +41,12 @@ export default async function PublicSongPage({ params }: Props) {
   const { artistSlug, songSlug } = await params
   const song = await getSongBySlug(artistSlug, songSlug)
   if (!song) notFound()
+  const songbooks = getPopularSongbooksContaining({ songId: song.id }, 3)
 
   return (
     <>
       <PublicNav />
-      <PublicSongView song={song} />
+      <PublicSongView song={song} songbooks={songbooks} />
     </>
   )
 }

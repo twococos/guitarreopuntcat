@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getArtistBySlug } from "@/db/queries/songs"
+import { getPopularSongbooksContaining } from "@/db/queries/canconers"
+import { SongbookCard } from "@/components/public/SongbookCard"
 import { PublicNav } from "@/components/public/PublicNav"
 import { getT } from "@/lib/i18n"
 
@@ -41,6 +43,7 @@ export default async function ArtistPage({ params }: Props) {
   const { artistSlug } = await params
   const artist = await getArtistBySlug(artistSlug)
   if (!artist) notFound()
+  const songbooks = getPopularSongbooksContaining({ artistSlug: artist.slug }, 6)
 
   return (
     <>
@@ -75,6 +78,21 @@ export default async function ArtistPage({ params }: Props) {
             </li>
           ))}
         </ul>
+
+        {songbooks.length > 0 && (
+          <section className="public-artist-songbooks" aria-labelledby="artist-songbooks-heading">
+            <h2 id="artist-songbooks-heading" className="public-artist-songbooks-title">
+              {t.public.publicArtist.canconers(artist.name)}
+            </h2>
+            <ul className="public-home-grid">
+              {songbooks.map((s) => (
+                <li key={s.id} className="public-home-card">
+                  <SongbookCard songbook={s} fromSongId={s.from_song_id} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </main>
       </div>
     </>

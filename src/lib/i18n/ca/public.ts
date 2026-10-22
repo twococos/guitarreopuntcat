@@ -6,6 +6,7 @@ export const public_ = {
     wordmark: "guitarreo.cat",
     navPrincipal: "Principal",
     cancons: "Cançons",
+    canconers: "Cançoners",
     elProjecte: "El projecte",
     contacte: "Contacte",
     cercaPlaceholder: "Cerca cançons o artistes…",
@@ -67,6 +68,7 @@ export const public_ = {
   publicArtist: {
     artista: "Artista",
     countCancons: (n: number) => (n === 1 ? "1 cançó" : `${n} cançons`),
+    canconers: (artista: string) => `Cançoners amb ${artista}`,
   },
 
   publicSong: {
@@ -105,6 +107,7 @@ export const public_ = {
     separadorIConjuncio: " i ",
     comencaCanconerCta: "Comença un cançoner",
     comencaCanconerCtaLlarg: "Comença un cançoner amb aquesta cançó →",
+    canconersAmbAquesta: "Ja és en aquests cançoners",
     comencaCanconerHint:
       "Crea un llibret amb les teves cançons preferides, transposa-les i exporta-les en PDF.",
     celleta: (n: number) => `Celleta ${n}`,
@@ -281,7 +284,7 @@ export const public_ = {
   songbookViewer: {
     canconer: "Cançoner",
     perAutor: (autor: string) => `per ${autor}`,
-    copiar: "Fes-ne una còpia",
+    copiar: "Copia i edita'l",
     copiarHint: "Obre'l a l'editor com a cançoner teu per canviar-lo o afegir-hi cançons",
     copiaSensePrivades: "Les cançons privades de l'autor no es copien: només es poden veure dins d'aquest cançoner.",
     editar: "Edita'l",
@@ -293,6 +296,34 @@ export const public_ = {
     privadaTitle: "Cançó privada: només es veu dins d'aquest cançoner",
   },
 
+  pdfDialog: {
+    titol: "Descarrega el PDF",
+    opcions: "Opcions del PDF",
+    opcionsHint: "Els canvis només afecten el teu PDF: el cançoner no es modifica.",
+    descarrega: "Descarrega PDF",
+    tancar: "Tanca",
+    pagines: (n: number) => (n === 1 ? "1 pàgina" : `${n} pàgines`),
+    mostraOpcions: "Opcions",
+    zoom: "Zoom de la vista prèvia",
+    apropa: "Amplia",
+    allunya: "Redueix",
+    ajusta: "Ajusta a l'amplada",
+  },
+
+  songbooksIndex: {
+    titol: "Cançoners",
+    count: (n: number) => (n === 1 ? "1 cançoner" : `${n} cançoners`),
+    encaNoNHiHa: "encara no n'hi ha cap de públic",
+    ordreAriaLabel: "Ordre dels cançoners",
+    populars: "Més populars",
+    alfabetic: "A-Z",
+    paginacioAriaLabel: "Pàgines",
+    anterior: "← Anterior",
+    seguent: "Següent →",
+    buit: "Encara no hi ha cançoners públics.",
+    creaElTeu: "Crea el teu",
+  },
+
   songbooksHome: {
     titol: "Descobreix cançoners",
     subtitol: "— Fets per la comunitat",
@@ -300,6 +331,7 @@ export const public_ = {
     tiraDauTitle: "Tira el dau",
     numCancons: (n: number) => (n === 1 ? "1 cançó" : `${n} cançons`),
     per: (autor: string) => `per ${autor}`,
+    veureTots: "Veure'ls tots →",
     /** "Els Pets, Auxili i 3 més" (els dos amb més cançons i quants més n'hi ha). */
     artistes: (top: string[], total: number) => {
       const rest = total - top.length

@@ -52,4 +52,9 @@ export const metadata = {
       `Cançoner "${titol}" amb ${n} ${n === 1 ? "cançó" : "cançons"}${mostra ? `: ${mostra}…` : ""}. Acords i lletra a guitarreo.cat.`,
     noTrobat: "Cançoner no trobat — guitarreo.cat",
   },
+  songbooks: {
+    title: "Cançoners — guitarreo.cat",
+    description:
+      "Cançoners públics fets per la comunitat de guitarreo.cat: llegeix-los, descarrega'ls en PDF o copia'ls per fer-ne el teu.",
+  },
 } as const

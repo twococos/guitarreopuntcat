@@ -2,17 +2,9 @@
 import Link from "next/link"
 import { useState } from "react"
 import { getT } from "@/lib/i18n"
+import { SongbookCard, type SongbookCardData } from "./SongbookCard"
 
-interface SongbookLite {
-  id: number
-  title: string
-  slug: string
-  accent_color: string | null
-  owner_name: string
-  song_count: number
-  top_artists: string[]
-  artist_count: number
-}
+type SongbookLite = SongbookCardData
 
 /**
  * SongbooksSection — cançoners públics a l'atzar a la portada, amb el mateix
@@ -90,17 +82,15 @@ export function SongbooksSection({ initial }: { initial: SongbookLite[] }) {
             className="public-home-card public-home-card--reroll"
             style={{ "--i": i } as React.CSSProperties}
           >
-            <Link
-              href={`/songbooks/${s.id}/${s.slug}`}
-              className="public-home-card-link public-home-card-link--songbook"
-            >
-              <span className="public-home-card-title">{s.title}</span>
-              <span className="public-home-card-artist">{tt.per(s.owner_name)}</span>
-              <span className="public-home-card-artists">{tt.artistes(s.top_artists, s.artist_count)}</span>
-            </Link>
+            <SongbookCard songbook={s} />
           </li>
         ))}
       </ul>
+      <p className="public-home-section-more">
+        <Link href="/songbooks" className="public-home-section-link">
+          {tt.veureTots}
+        </Link>
+      </p>
     </section>
   )
 }

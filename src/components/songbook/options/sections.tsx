@@ -3,6 +3,7 @@ import { useState } from "react"
 import { useSongbookStore, ALL_MAJOR_KEYS, RELATIVE_MINOR } from "@/hooks/useSongbook"
 import { AccentPicker } from "../AccentPicker"
 import { CanconerTitleInput } from "../CanconerTitleInput"
+import { useOptionsSource } from "./OptionsSource"
 import { getT } from "@/lib/i18n"
 import { IconShuffle } from "@/components/shared/Icons"
 import {
@@ -32,10 +33,7 @@ import type { CSSProperties } from "react"
 
 function StyleSelect() {
   const t = getT()
-  const canconerStyle = useSongbookStore((s) => s.canconerStyle)
-  const setCanconerStyle = useSongbookStore((s) => s.setCanconerStyle)
-  const accentColor = useSongbookStore((s) => s.accentColor)
-  const setAccentColor = useSongbookStore((s) => s.setAccentColor)
+  const { style: canconerStyle, setStyle: setCanconerStyle, accentColor, setAccentColor } = useOptionsSource()
   const [pickerOpen, setPickerOpen] = useState(false)
 
   const effectiveColor = accentColor ?? STYLE_DEFAULT_ACCENTS[canconerStyle]
@@ -187,28 +185,33 @@ function OptToggle({
 }
 
 /* ── StructureSection (Portada) ──────────────────────────────
- *  Títol + subtítol, i a sota els interruptors de portada i índex. */
+ *  Títol + subtítol, i a sota els interruptors de portada i índex. Títol i
+ *  subtítol són de l'autor: el diàleg de PDF públic només hi deixa els
+ *  interruptors (`editableTexts = false`). */
 
-export function StructureSection() {
+export function StructureSection({ editableTexts = true }: { editableTexts?: boolean } = {}) {
   const t = getT()
-  const opts = useSongbookStore((s) => s.pdfOptions)
-  const setOpt = useSongbookStore((s) => s.setPdfOption)
+  const { pdfOptions: opts, setPdfOption: setOpt } = useOptionsSource()
 
   return (
     <div className="options-section">
-      <CanconerTitleInput
-        className="opt-input-text opt-title-input"
-        ariaLabel={t.app.songbook.detailPanel.titolCanconer}
-      />
-      <input
-        type="text"
-        className="opt-input-text"
-        placeholder={t.app.songbook.detailPanel.subtitolPlaceholder}
-        disabled={!opts.show_cover}
-        value={opts.cover_subtitle ?? ""}
-        onChange={(e) => setOpt("cover_subtitle", e.target.value || null)}
-        maxLength={200}
-      />
+      {editableTexts && (
+        <>
+          <CanconerTitleInput
+            className="opt-input-text opt-title-input"
+            ariaLabel={t.app.songbook.detailPanel.titolCanconer}
+          />
+          <input
+            type="text"
+            className="opt-input-text"
+            placeholder={t.app.songbook.detailPanel.subtitolPlaceholder}
+            disabled={!opts.show_cover}
+            value={opts.cover_subtitle ?? ""}
+            onChange={(e) => setOpt("cover_subtitle", e.target.value || null)}
+            maxLength={200}
+          />
+        </>
+      )}
       <div className="switch-row-pair">
         <OptToggle
           checked={opts.show_cover}
@@ -265,8 +268,7 @@ type MarginKey = "margin_top" | "margin_bottom" | "margin_left" | "margin_right"
  *  i s'emmirallen a les parells (src/lib/pdf-client/paginate.ts). */
 function MarginsBox() {
   const t = getT()
-  const opts = useSongbookStore((s) => s.pdfOptions)
-  const setOpt = useSongbookStore((s) => s.setPdfOption)
+  const { pdfOptions: opts, setPdfOption: setOpt } = useOptionsSource()
   const d = t.app.songbook.detailPanel
   const labels: Record<MarginKey, string> = {
     margin_top: d.capçalera,
@@ -312,8 +314,7 @@ export function StyleSection() {
 /** Cos: columnes, mida de lletra, format llibre i, al final, marges. */
 export function BodySection() {
   const t = getT()
-  const opts = useSongbookStore((s) => s.pdfOptions)
-  const setOpt = useSongbookStore((s) => s.setPdfOption)
+  const { pdfOptions: opts, setPdfOption: setOpt } = useOptionsSource()
 
   return (
     <div className="options-section">
@@ -372,8 +373,7 @@ export function BodySection() {
 
 export function LinksSection() {
   const t = getT()
-  const opts = useSongbookStore((s) => s.pdfOptions)
-  const setOpt = useSongbookStore((s) => s.setPdfOption)
+  const { pdfOptions: opts, setPdfOption: setOpt } = useOptionsSource()
 
   return (
     <div className="options-section">
@@ -435,8 +435,8 @@ function modeFromMap(map: AccidentalMap): NotationMode {
  *  a la vista prèvia i al PDF. */
 export function NotationSection() {
   const t = getT()
-  const notation = useSongbookStore((s) => s.pdfOptions.notation)
-  const setOpt = useSongbookStore((s) => s.setPdfOption)
+  const { pdfOptions, setPdfOption: setOpt } = useOptionsSource()
+  const notation = pdfOptions.notation
   // Marca local: l'usuari ha triat "Personalitzat" explícitament. Cal perquè
   // si els 5 toggles coincideixen amb un preset (tot # o tot b) el mode derivat
   // del mapa tornaria a "sharps"/"flats" i el desplegable saltaria enrere.

@@ -44,6 +44,7 @@ export function PublicSongCard({
   extraLine,
   titleLevel = 1,
   titleHref,
+  titlePrefix,
   report,
   onReportOpen,
 }: {
@@ -59,6 +60,9 @@ export function PublicSongCard({
   titleLevel?: 1 | 2
   /** Enllaç del títol (dins d'un cançoner, a la pàgina pública de la cançó). */
   titleHref?: string | null
+  /** A l'esquerra del títol i l'artista, centrat entre les dues línies
+   *  (dins d'un cançoner, el número de la cançó). */
+  titlePrefix?: ReactNode
   /** Botó «Reporta un error» (només cançons públiques). On s'ha obert, per al registre. */
   report?: ReportContext
   /** En obrir el report (p. ex. per aturar l'autoscroll). */
@@ -132,21 +136,24 @@ export function PublicSongCard({
       >
         <div className="public-song-header">
           <div className="public-song-title-row">
-            <div className="public-song-heading">
-              <Title className="public-song-title">
-                {titleHref ? <Link href={titleHref} className="public-song-title-link">{song.title}</Link> : song.title}
-              </Title>
-              <p className="public-song-artist-line">
-                {artistHref ? (
-                  <Link href={artistHref} className="public-song-artist-link">
-                    {song.artist}
-                  </Link>
-                ) : (
-                  <span>{song.artist}</span>
-                )}
-                {subline && <span className="public-song-subline">{subline}</span>}
-              </p>
-              {extraLine && <p className="public-song-extra-line">{extraLine}</p>}
+            <div className={`public-song-heading-wrap${titlePrefix ? " has-prefix" : ""}`}>
+              {titlePrefix && <div className="public-song-heading-prefix">{titlePrefix}</div>}
+              <div className="public-song-heading">
+                <Title className="public-song-title">
+                  {titleHref ? <Link href={titleHref} className="public-song-title-link">{song.title}</Link> : song.title}
+                </Title>
+                <p className="public-song-artist-line">
+                  {artistHref ? (
+                    <Link href={artistHref} className="public-song-artist-link">
+                      {song.artist}
+                    </Link>
+                  ) : (
+                    <span>{song.artist}</span>
+                  )}
+                  {subline && <span className="public-song-subline">{subline}</span>}
+                </p>
+                {extraLine && <p className="public-song-extra-line">{extraLine}</p>}
+              </div>
             </div>
             <div className="public-song-header-side">
               <div className="public-song-header-actions">

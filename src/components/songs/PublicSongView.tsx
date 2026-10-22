@@ -6,6 +6,7 @@ import { signIn, useSession } from "next-auth/react"
 import { guardMobileApp } from "@/components/public/MobileGateLink"
 import { getT } from "@/lib/i18n"
 import { IconGitBranch, IconLock, IconPencil } from "@/components/shared/Icons"
+import { SongbookCard, type SongbookCardData } from "@/components/public/SongbookCard"
 import { PublicSongCard, type PublicSongData } from "./PublicSongCard"
 import { SongControlsBar } from "./SongControlsBar"
 import { useReaderControls } from "./useReaderControls"
@@ -24,6 +25,8 @@ interface Props {
     original: { title: string; href: string | null } | null
     canEdit: boolean
   }
+  /** Cançoners públics populars que la contenen (sota els CTA). */
+  songbooks?: Array<SongbookCardData & { from_song_id: number }>
 }
 
 /**
@@ -35,7 +38,7 @@ interface Props {
  *
  * Controls (transposició, mida i autoscroll) en barra flotant a baix de tot.
  */
-export function PublicSongView({ song, privateInfo }: Props) {
+export function PublicSongView({ song, privateInfo, songbooks = [] }: Props) {
   const t = getT()
   const router = useRouter()
   const { status } = useSession()
@@ -128,6 +131,18 @@ export function PublicSongView({ song, privateInfo }: Props) {
           )}
           {!privateInfo && (
             <p className="public-song-cta-hint">{t.public.publicSong.fesLaTevaVersioHint}</p>
+          )}
+          {songbooks.length > 0 && (
+            <div className="public-song-songbooks">
+              <h2 className="public-song-songbooks-title">{t.public.publicSong.canconersAmbAquesta}</h2>
+              <ul className="public-song-songbooks-list">
+                {songbooks.map((s) => (
+                  <li key={s.id}>
+                    <SongbookCard songbook={s} fromSongId={s.from_song_id} />
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       </main>

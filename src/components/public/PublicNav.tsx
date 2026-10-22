@@ -33,6 +33,7 @@ export function PublicNav() {
 
   const isHome = pathname === "/"
   const isSongs = pathname === "/songs" || pathname.startsWith("/songs/")
+  const isSongbooks = pathname === "/songbooks" || pathname.startsWith("/songbooks/")
   const isProjecte = pathname.startsWith("/projecte")
   const isContacte = pathname.startsWith("/contacte")
 
@@ -61,6 +62,12 @@ export function PublicNav() {
                 className={`public-nav-link ${isSongs ? "is-active" : ""}`}
               >
                 {t.public.nav.cancons}
+              </Link>
+              <Link
+                href="/songbooks"
+                className={`public-nav-link ${isSongbooks ? "is-active" : ""}`}
+              >
+                {t.public.nav.canconers}
               </Link>
               <Link
                 href="/projecte"

@@ -7,14 +7,16 @@ import { SONG_STATE } from "@/lib/songKind"
 import { useToastStore } from "@/hooks/useToasts"
 import { usePdfProgress } from "@/hooks/usePdfProgress"
 import { requestPdf, downloadBlob } from "@/lib/pdf-client/request"
-import type { CanconerStyle, PdfOptions } from "@/lib/schemas/canconer"
+import { pdfOptionsSchema, type CanconerStyle, type PdfOptions } from "@/lib/schemas/canconer"
+import type { PdfSong } from "@/lib/pdf-client/types"
+import type { OptionsSourceValue } from "@/components/songbook/options/OptionsSource"
+import { PdfExportDialog } from "./PdfExportDialog"
 import { transposeKey, respellAccidentals, ALL_FLATS, ALL_SHARPS } from "@/lib/transpose"
 import { guardMobileApp } from "@/components/public/MobileGateLink"
 import { PdfProgressOverlay } from "@/components/shared/PdfProgressOverlay"
 import {
   IconChevronLeft,
   IconChevronRight,
-  IconClock,
   IconCopy,
   IconFileText,
   IconList,
@@ -29,6 +31,8 @@ import type { ReportContext } from "@/components/reports/useSongReport"
 export interface SongbookViewerSong extends PublicSongData {
   state: number
   semitones: number
+  youtube_url: string | null
+  spotify_url: string | null
 }
 
 export interface SongbookViewerData {
@@ -45,7 +49,7 @@ interface Props {
   songbook: SongbookViewerData
   /** Context per al PDF (fa visibles les privades del cançoner). */
   pdfContext: { songbook_id: number } | { share_token: string } | null
-  /** Cançó inicial (índex 0-based, de ?song=N). */
+  /** Cançó inicial (índex 0-based, de ?song=N o ?from=ID). */
   initialIndex: number
   /** Previsualització del propietari: marca les privades i "Edita" en lloc de "Copia". */
   ownerPreview?: boolean
@@ -71,6 +75,40 @@ export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPrevie
   const [semitones, setSemitones] = useState<number[]>(() => songs.map((s) => s.semitones ?? 0))
   const [indexOpen, setIndexOpen] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
+  // Opcions del PDF: parteixen de les de l'autor i duren tota la visita
+  // (tancar i reobrir el diàleg les conserva; «Copia i edita'l» se les emporta).
+  const [pdfOptions, setPdfOptions] = useState<PdfOptions>(() => pdfOptionsSchema.parse(songbook.pdf_options ?? {}))
+  const [pdfStyle, setPdfStyle] = useState<CanconerStyle>(songbook.style)
+  const [pdfAccent, setPdfAccent] = useState<string | null>(songbook.accent_color)
+  const optionsSource = useMemo<OptionsSourceValue>(
+    () => ({
+      pdfOptions,
+      setPdfOption: (key, value) => setPdfOptions((prev) => ({ ...prev, [key]: value })),
+      style: pdfStyle,
+      setStyle: setPdfStyle,
+      accentColor: pdfAccent,
+      setAccentColor: setPdfAccent,
+    }),
+    [pdfOptions, pdfStyle, pdfAccent],
+  )
+  // Cançons de la prèvia, amb el to triat a cada una
+  const pdfSongs = useMemo<PdfSong[]>(
+    () =>
+      songs.map((s, i) => ({
+        title: s.title,
+        artist: s.artist,
+        key: s.key,
+        capo: s.capo ?? null,
+        content: s.content,
+        semitones: semitones[i] ?? 0,
+        album: s.album,
+        year: s.year,
+        youtubeUrl: s.youtube_url,
+        spotifyUrl: s.spotify_url,
+      })),
+    [songs, semitones],
+  )
 
   const song = songs[index]
   const notation = controls.flats ? ALL_FLATS : ALL_SHARPS
@@ -102,6 +140,16 @@ export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPrevie
     },
     [songs.length, stopAutoscroll],
   )
+
+  // ?from=ID (enllaços des d'una cançó o un artista) → URL canònica ?song=N
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has("from")) return
+    url.searchParams.delete("from")
+    url.searchParams.set("song", String(index + 1))
+    window.history.replaceState(window.history.state, "", url)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Botó enrere/endavant del navegador
   useEffect(() => {
@@ -141,9 +189,9 @@ export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPrevie
       const blob = await requestPdf(
         {
           title: songbook.title,
-          style: songbook.style,
-          accentColor: songbook.accent_color,
-          options: songbook.pdf_options,
+          style: pdfStyle,
+          accentColor: pdfAccent,
+          options: pdfOptions,
           songs: songs.map((s, i) => ({ id: s.id, semitones: semitones[i] ?? 0 })),
           ...(pdfContext ? { context: pdfContext } : {}),
         },
@@ -151,6 +199,7 @@ export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPrevie
       )
       await pdfProgress.finish()
       downloadBlob(blob, `${songbook.title}.pdf`)
+      setPdfDialogOpen(false)
     } catch (err) {
       console.error("Error generant el PDF:", err)
       pdfProgress.fail()
@@ -166,9 +215,9 @@ export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPrevie
       JSON.stringify({
         ...(ownerPreview ? { id: songbook.id } : {}),
         title: songbook.title,
-        style: songbook.style,
-        accent_color: songbook.accent_color,
-        pdf_options: songbook.pdf_options,
+        style: pdfStyle,
+        accent_color: pdfAccent,
+        pdf_options: pdfOptions,
         songs: songs.map((s, i) => ({ id: s.id, semitones: semitones[i] ?? 0 })),
       }),
     )
@@ -177,6 +226,8 @@ export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPrevie
     }
     router.push("/app")
   }
+
+  const closePdfDialog = useCallback(() => setPdfDialogOpen(false), [])
 
   const songHref = (s: SongbookViewerSong) =>
     s.state === 0 && s.artist_slug && s.song_slug ? `/songs/${s.artist_slug}/${s.song_slug}` : null
@@ -189,34 +240,35 @@ export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPrevie
         ...(songbook.accent_color ? { ["--songbook-accent" as string]: songbook.accent_color } : {}),
       }}
     >
-      <div className="songbook-viewer-header">
-        <div className="songbook-viewer-header-main">
-          {backLink && (
-            <Link href={backLink.href} className="songbook-viewer-back">
-              {backLink.label}
-            </Link>
-          )}
-          <p className="songbook-viewer-eyebrow">{tv.canconer}</p>
-          <h1 className="songbook-viewer-title">{songbook.title}</h1>
-          <p className="songbook-viewer-meta">
-            {tv.perAutor(songbook.owner_name)} · {t.public.sharedView.cancons(songs.length)}
-          </p>
+      <header className="songbook-viewer-banner">
+        <div className="songbook-viewer-header">
+          <div className="songbook-viewer-header-main">
+            {backLink && (
+              <Link href={backLink.href} className="songbook-viewer-back">
+                {backLink.label}
+              </Link>
+            )}
+            <p className="songbook-viewer-eyebrow">{tv.canconer}</p>
+            <h1 className="songbook-viewer-title">{songbook.title}</h1>
+            <p className="songbook-viewer-meta">
+              {tv.perAutor(songbook.owner_name)} · {t.public.sharedView.cancons(songs.length)}
+            </p>
+          </div>
+          <div className="songbook-viewer-actions">
+            <button
+              type="button"
+              className="songbook-viewer-btn songbook-viewer-btn--primary"
+              onClick={() => setPdfDialogOpen(true)}
+              disabled={songs.length === 0}
+            >
+              <IconFileText /> {t.public.sharedView.descarregarPdf}
+            </button>
+            <button type="button" className="songbook-viewer-btn" onClick={openInEditor} title={ownerPreview ? undefined : tv.copiarHint}>
+              {ownerPreview ? <IconOpen /> : <IconCopy />} {ownerPreview ? tv.editar : tv.copiar}
+            </button>
+          </div>
         </div>
-        <div className="songbook-viewer-actions">
-          <button
-            type="button"
-            className="songbook-viewer-btn songbook-viewer-btn--primary"
-            onClick={() => void downloadPdf()}
-            disabled={pdfProgress.active || songs.length === 0}
-          >
-            {pdfProgress.active ? <IconClock /> : <IconFileText />}{" "}
-            {pdfProgress.active ? t.public.sharedView.generantPdf : t.public.sharedView.descarregarPdf}
-          </button>
-          <button type="button" className="songbook-viewer-btn" onClick={openInEditor} title={ownerPreview ? undefined : tv.copiarHint}>
-            {ownerPreview ? <IconOpen /> : <IconCopy />} {ownerPreview ? tv.editar : tv.copiar}
-          </button>
-        </div>
-      </div>
+      </header>
 
       {songs.length === 0 ? (
         <p className="songbook-viewer-empty">{tv.buit}</p>
@@ -272,7 +324,7 @@ export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPrevie
                 onSemitonesChange={setSongSemitones}
                 titleLevel={2}
                 titleHref={songHref(song)}
-                headerActions={<span className="songbook-viewer-song-num">{index + 1}</span>}
+                titlePrefix={<span className="songbook-viewer-song-num">{index + 1}</span>}
                 report={song.state === SONG_STATE.PUBLIC ? reportContext : undefined}
                 onReportOpen={stopAutoscroll}
               />
@@ -335,6 +387,17 @@ export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPrevie
             </button>
           </div>
         </SongControlsBar>
+      )}
+
+      {pdfDialogOpen && (
+        <PdfExportDialog
+          title={songbook.title}
+          songs={pdfSongs}
+          options={optionsSource}
+          downloading={pdfProgress.active}
+          onDownload={() => void downloadPdf()}
+          onClose={closePdfDialog}
+        />
       )}
 
       <PdfProgressOverlay
