@@ -47,6 +47,7 @@ export function PublicSongCard({
   titlePrefix,
   report,
   onReportOpen,
+  body,
 }: {
   song: PublicSongData
   semitones: number
@@ -67,6 +68,8 @@ export function PublicSongCard({
   report?: ReportContext
   /** En obrir el report (p. ex. per aturar l'autoscroll). */
   onReportOpen?: () => void
+  /** Cos alternatiu (el reproductor hi posa el sincronitzat). En mode report mana el report. */
+  body?: ReactNode
 }) {
   const t = getT()
   const [keyPickerOpen, setKeyPickerOpen] = useState(false)
@@ -196,11 +199,13 @@ export function PublicSongCard({
             displayKey={transposeChord(song.key, semitones)}
           />
         ) : (
-          <div
-            className="song-body"
-            // eslint-disable-next-line react/no-danger
-            dangerouslySetInnerHTML={{ __html: transposedContent }}
-          />
+          body ?? (
+            <div
+              className="song-body"
+              // eslint-disable-next-line react/no-danger
+              dangerouslySetInnerHTML={{ __html: transposedContent }}
+            />
+          )
         )}
       </article>
 

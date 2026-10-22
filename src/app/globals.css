@@ -19,6 +19,7 @@
      D. songs-index    → índex /songs (per cançó o per artista)
      E. visibilitat    → tipus de cançó, cançoners públics, diàlegs d'admin
      F. reports        → reportar errors d'una cançó i pestanya Errors de l'admin
+     G. reproductor    → «Toca-la»: panell, franja, vídeo i cos sincronitzat
    ════════════════════════════════════════════════════════════ */
 
 @import "../styles/song.css";
@@ -9672,4 +9673,596 @@ body.report-active .public-song-floating-bar {
   background: #fff3b0;
   box-shadow: -6px 0 0 #f2c94c;
   transition: background 0.6s;
+}
+
+/* ════════════════════════════════════════════════════════════
+   G. REPRODUCTOR — «Toca-la» (src/components/player/)
+   Escriptori ample: columna esquerra enganxosa al costat de la
+   targeta (la barra de controls es centra amb la targeta). Pantalles estretes: franja sobre la barra de controls,
+   vídeo en miniatura flotant i full d'ajustos.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Botó de la barra de controls ────────────────────────── */
+.player-start-btn {
+  gap: 0.35rem;
+  background: var(--accent);
+  color: #fff;
+  padding: 0 0.85rem;
+}
+.player-start-btn:hover:not(:disabled) {
+  background: var(--accent-hv);
+}
+.player-start-btn svg,
+.player-toggle-btn svg {
+  fill: currentColor;
+  width: 0.85em;
+  height: 0.85em;
+}
+.player-toggle-btn {
+  background: var(--accent);
+  color: #fff;
+  min-width: 2.4rem;
+}
+.player-toggle-btn:hover:not(:disabled) {
+  background: var(--accent-hv);
+}
+
+/* ── Cos sincronitzat ─────────────────────────────────────── */
+.sync-body-wrap {
+  position: relative;
+  isolation: isolate;
+}
+.sync-hl {
+  position: absolute;
+  top: 0;
+  left: -1rem;
+  right: -1rem;
+  height: 0;
+  z-index: -1;
+  background: #fff4d1;
+  border-left: 3px solid var(--accent);
+  border-radius: 4px 8px 8px 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.28s ease,
+    height 0.28s ease,
+    opacity 0.2s;
+}
+.sync-hl.is-on {
+  opacity: 1;
+}
+.sync-hl-badge {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #9a7b2c;
+  font-variant-numeric: tabular-nums;
+}
+.sync-body .sync-line {
+  cursor: pointer;
+}
+.sync-body ch .sync-chip {
+  border-radius: 4px;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.sync-body ch.is-now .sync-chip {
+  background: var(--accent);
+  color: #fff;
+  padding: 0 0.22em;
+  margin: 0 -0.22em;
+}
+/* Cursor que avança per la lletra (posició i alçada des de SyncedSongBody) */
+.sync-cursor {
+  position: absolute;
+  top: 0;
+  left: -1px;
+  width: 2px;
+  height: 1em;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 60%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  will-change: transform;
+}
+.sync-cursor::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: -2.5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.sync-cursor.is-on {
+  opacity: 1;
+}
+
+/* ── Panell (columna esquerra) ───────────────────────────── */
+.player-panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  font-size: 0.9rem;
+}
+/* Amb el panell més alt que la finestra, fa scroll: que no s'encongeixi res (el vídeo) */
+.player-panel > * {
+  flex-shrink: 0;
+}
+.player-panel-head,
+.player-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.player-title {
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.player-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1rem;
+}
+.player-icon-btn:hover,
+.player-icon-btn.is-active {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+.player-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 999px;
+}
+.player-mode-btn {
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.player-mode-btn.is-active {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.player-video-box {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #111;
+}
+.player-video,
+.player-video iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+/* Amagat (mode sol): l'iframe no es desmunta, només deixa d'ocupar lloc */
+.player-video-box.is-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.player-video-toggle {
+  display: none;
+}
+
+.player-status {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.player-status.is-error,
+.player-warn {
+  color: var(--accent);
+}
+.player-warn {
+  font-size: 0.8rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  background: #fdf4f3;
+}
+.player-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+/* Acord que sona i tira de compassos */
+.player-now {
+  --lane-bg: #fff;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.4rem 0.3rem;
+}
+.player-chord-now {
+  font-family: var(--song-body-font);
+  font-weight: 700;
+  font-size: 2.1rem;
+  line-height: 1;
+  color: var(--accent);
+  white-space: nowrap;
+  min-width: 2.2ch;
+}
+.player-lane {
+  display: block;
+  width: 100%;
+  height: 3.3rem;
+  cursor: pointer;
+}
+.player-now-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  min-height: 1.2rem;
+}
+.player-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.player-dots i {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.12);
+  transition: background 0.06s;
+}
+.player-dots i:first-child {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+.player-dots i.is-on {
+  background: var(--accent);
+}
+.player-bar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Seccions */
+.player-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.player-section-chip {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.78rem;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.player-section-chip:hover {
+  border-color: #c9c9c9;
+}
+.player-section-chip.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.player-follow-btn {
+  align-self: flex-start;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.player-follow-btn:hover {
+  background: #fdf4f3;
+}
+
+/* Ajustos */
+.player-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--border);
+}
+.player-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.player-field-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.player-field-note {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.player-select {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+.player-admin-row {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: -0.3rem;
+}
+.player-link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.player-mix {
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.player-mix legend {
+  margin-bottom: 0.3rem;
+}
+.player-slider {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+.player-slider input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.player-rate-value {
+  float: right;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.player-rate {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ── Franja i full d'ajustos (pantalles estretes) ────────── */
+.player-strip {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 4.4rem;
+  z-index: 89;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(720px, calc(100% - 1rem));
+  padding: 0.35rem 0.4rem 0.35rem 0.8rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+}
+.player-now.is-compact {
+  --lane-bg: #fbfbfb;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 0.5rem;
+}
+.player-now.is-compact .player-chord-now {
+  font-size: 1.5rem;
+}
+.player-now.is-compact .player-lane {
+  height: 2.3rem;
+}
+.player-sections.is-compact {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 0 1 13rem;
+  min-width: 0;
+  mask-image: linear-gradient(to right, transparent, #000 0.6rem, #000 calc(100% - 0.6rem), transparent);
+  padding: 0 0.4rem;
+}
+.player-sections.is-compact::-webkit-scrollbar {
+  display: none;
+}
+.player-follow-btn.is-compact {
+  align-self: center;
+  white-space: nowrap;
+  padding: 0.25rem 0.6rem;
+}
+.player-sheet {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 8.2rem;
+  z-index: 96;
+  width: min(420px, calc(100% - 1rem));
+  max-height: min(70vh, 34rem);
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  padding: 0.8rem 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  font-size: 0.9rem;
+}
+
+/* ── Escriptori ample: graella targeta + columna ─────────── */
+@media (min-width: 1180px) {
+  .public-song-page.has-player .public-song-main {
+    max-width: calc(320px + 1.5rem + 820px);
+    display: grid;
+    grid-template-columns: 320px minmax(0, 820px);
+    gap: 1.5rem;
+    align-items: start;
+  }
+  /* La barra de controls queda centrada amb la targeta, no amb la finestra */
+  .public-song-page .public-song-floating-bar {
+    transition: left 0.25s ease;
+  }
+  .public-song-page.has-player .public-song-floating-bar {
+    left: calc(1rem + 320px + 1.5rem);
+  }
+  .public-song-page.has-player .player-panel {
+    position: sticky;
+    top: 5rem;
+    margin-top: 1rem;
+    /* Fins a baix de la finestra (la barra de controls és sota la targeta, no hi topa) */
+    height: calc(100vh - 6rem);
+    overflow-y: auto;
+  }
+  .public-song-page.has-player .player-panel .player-settings {
+    margin-top: auto;
+  }
+  .player-strip,
+  .player-sheet {
+    display: none;
+  }
+}
+
+/* ── Pantalles estretes: del panell només queda el vídeo, flotant ─ */
+@media (max-width: 1179px) {
+  .public-song-page.has-player {
+    padding-bottom: 11rem;
+  }
+  .player-panel {
+    display: contents;
+  }
+  .player-panel > :not(.player-video-box) {
+    display: none;
+  }
+  .player-video-box:not(.is-hidden) {
+    position: fixed;
+    right: 0.75rem;
+    bottom: 8.4rem;
+    z-index: 88;
+    width: min(240px, 45vw);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+    transition: width 0.2s;
+  }
+  .player-video-toggle {
+    display: inline-flex;
+    position: absolute;
+    top: 0.3rem;
+    right: 0.3rem;
+    z-index: 2;
+    width: 1.7rem;
+    height: 1.7rem;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    cursor: pointer;
+  }
+  /* Plegat: l'iframe continua sonant, només en queda el botó */
+  .player-video-box.is-collapsed:not(.is-hidden) {
+    width: 2.3rem;
+    aspect-ratio: 1;
+    background: var(--accent);
+  }
+  .player-video-box.is-collapsed .player-video {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .player-video-box.is-collapsed .player-video-toggle {
+    background: transparent;
+  }
+}
+
+@media (max-width: 640px) {
+  .player-strip {
+    bottom: 3.7rem;
+    gap: 0.35rem;
+    padding-left: 0.6rem;
+  }
+  .player-video-box:not(.is-hidden) {
+    bottom: 7.6rem;
+  }
+  .player-sheet {
+    bottom: 7.4rem;
+  }
+  .player-strip .player-sections {
+    display: none;
+  }
+  .player-start-btn {
+    padding: 0 0.6rem;
+  }
+}
+@media (max-width: 420px) {
+  .player-start-label {
+    display: none;
+  }
+}
+
+/* Mentre es reporta un error, el reproductor no hi és (l'iframe continua muntat) */
+body.report-active .player-panel,
+body.report-active .player-strip,
+body.report-active .player-sheet,
+body.report-active .player-video-box {
+  visibility: hidden;
 }

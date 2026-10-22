@@ -48,7 +48,8 @@ export async function GET(
     if (new URL(request.url).searchParams.get("sync") === "1") {
       body.sync = syncAnalysis(row.analysis, song.content, song.capo)
     }
-    return NextResponse.json(body)
+    // El reproductor la demana cada cop que s'obre: uns minuts de cache al navegador
+    return NextResponse.json(body, { headers: { "Cache-Control": "private, max-age=300" } })
   } catch (err) {
     console.error("[GET /api/songs/[id]/analysis]", err)
     return NextResponse.json({ error: "Error intern del servidor" }, { status: 500 })

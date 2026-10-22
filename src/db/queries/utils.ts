@@ -32,6 +32,7 @@ export function mapSong(song: {
   spotifyUrl: string | null
   bpm?: number | null
   timeSignature?: string | null
+  rhythm?: string | null
   state: number
   ownerId?: number | null
   originalSongId?: number | null
@@ -55,6 +56,7 @@ export function mapSong(song: {
     spotify_url: song.spotifyUrl,
     bpm: song.bpm ?? null,
     time_signature: song.timeSignature ?? null,
+    rhythm: song.rhythm ?? null,
     state: song.state,
     kind: songKind(song.state, song.originalSongId),
     owner_id: song.ownerId ?? null,

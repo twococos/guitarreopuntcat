@@ -31,7 +31,10 @@ export async function GET() {
   }
 }
 
-/** Encua una o més feines, o `analyzeMissing` per a totes les cançons públiques sense anàlisi. */
+/**
+ * Encua una o més feines, o `analyzeMissing` per a totes les cançons públiques sense anàlisi
+ * (`true`) o amb una anàlisi sense estil rítmic (`"rhythm"`).
+ */
 export async function POST(req: Request) {
   const auth = await requireAdmin()
   if (auth instanceof NextResponse) return auth
@@ -49,7 +52,8 @@ export async function POST(req: Request) {
       status: 200,
     })
     if ("analyzeMissing" in parsed.data) {
-      const queued = enqueueAnalyzeMissing(parsed.data.priority, user.id)
+      const missing = parsed.data.analyzeMissing === "rhythm" ? "rhythm" : "analysis"
+      const queued = enqueueAnalyzeMissing(parsed.data.priority, user.id, missing)
       return NextResponse.json({ queued })
     }
     const results = enqueueJobs(parsed.data.jobs, parsed.data.priority, user.id)

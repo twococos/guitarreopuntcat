@@ -313,6 +313,10 @@ export const admin = {
     analitzarFaltenTitle:
       "Afegeix a la cua totes les cançons públiques amb YouTube que encara no tenen anàlisi. No en toca el contingut.",
     confirmAnalitzarFalten: "Encuar l'anàlisi de totes les cançons publicades que encara no en tenen?",
+    analitzarSenseRitme: "Reanalitzar les que no tenen ritme",
+    analitzarSenseRitmeTitle:
+      "Torna a analitzar les cançons públiques amb una anàlisi d'abans que el transcriptor detectés l'estil rítmic (el reproductor el fa servir per triar l'acompanyament).",
+    confirmAnalitzarSenseRitme: "Encuar de nou l'anàlisi de les cançons publicades que no tenen l'estil rítmic detectat?",
     actualitzar: "Actualitzar",
     cuaTitol: "Cua",
     capFeina: "No hi ha cap feina.",

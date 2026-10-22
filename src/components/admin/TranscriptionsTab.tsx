@@ -157,9 +157,9 @@ export function TranscriptionsTab() {
     if (count("error") === 0) setLines("")
   }
 
-  async function handleAnalyzeMissing() {
-    if (!confirm(tt.confirmAnalitzarFalten)) return
-    const data = (await enqueue({ analyzeMissing: true })) as { queued: number } | null
+  async function handleAnalyzeMissing(missing: true | "rhythm") {
+    if (!confirm(missing === "rhythm" ? tt.confirmAnalitzarSenseRitme : tt.confirmAnalitzarFalten)) return
+    const data = (await enqueue({ analyzeMissing: missing })) as { queued: number } | null
     if (data) toast(t.admin.toasts.transcripcionsEncuades(data.queued, 0, 0), { type: "success" })
   }
 
@@ -246,8 +246,16 @@ export function TranscriptionsTab() {
           <button className="btn-xs success" onClick={handleEnqueue} disabled={busy || !lines.trim()}>
             {tt.encuar}
           </button>
-          <button className="btn-xs" onClick={handleAnalyzeMissing} disabled={busy} title={tt.analitzarFaltenTitle}>
+          <button className="btn-xs" onClick={() => handleAnalyzeMissing(true)} disabled={busy} title={tt.analitzarFaltenTitle}>
             {tt.analitzarFalten}
+          </button>
+          <button
+            className="btn-xs"
+            onClick={() => handleAnalyzeMissing("rhythm")}
+            disabled={busy}
+            title={tt.analitzarSenseRitmeTitle}
+          >
+            {tt.analitzarSenseRitme}
           </button>
         </div>
       </section>

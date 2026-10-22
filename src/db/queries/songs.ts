@@ -399,6 +399,11 @@ export async function updateSong(
   return { changes: result.changes }
 }
 
+/** Estil d'acompanyament fixat per l'admin (null = el detectat). No toca `updated_at`. */
+export function setSongRhythm(id: number, rhythm: string | null) {
+  return db.update(schema.songs).set({ rhythm }).where(eq(schema.songs.id, id)).run()
+}
+
 // ─── DELETE /api/songs/[id] ──────────────────────────────────
 
 export async function deleteSong(id: number) {

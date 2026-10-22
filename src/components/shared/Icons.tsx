@@ -385,6 +385,15 @@ export const IconFlat = (p: IconProps) =>
 export const IconPlay = (p: IconProps) =>
   svg(<polygon points="6 4 20 12 6 20 6 4" />, p)
 
+export const IconPause = (p: IconProps) =>
+  svg(
+    <>
+      <rect x="6" y="4" width="4" height="16" />
+      <rect x="14" y="4" width="4" height="16" />
+    </>,
+    p,
+  )
+
 export const IconCheckCircle = (p: IconProps) =>
   svg(
     <>

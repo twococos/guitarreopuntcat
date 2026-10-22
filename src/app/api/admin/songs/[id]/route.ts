@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { requireAdmin } from "@/lib/session"
-import { changeSongKind, changeSongOwner, isValidOriginal } from "@/db/queries/songs"
+import { changeSongKind, changeSongOwner, isValidOriginal, setSongRhythm } from "@/db/queries/songs"
 import { userExists } from "@/db/queries/admin"
 import { moveSongToProposals } from "@/db/queries/proposals"
 import { getSongAccessRow } from "@/lib/access/songs"
 import { SONG_STATE } from "@/lib/songKind"
 import { logEvent } from "@/lib/analytics/logEvent"
+import { STYLE_IDS } from "@/lib/player/styles"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -15,6 +16,8 @@ const bodySchema = z.object({
   kind: z.enum(["public", "private", "arrangement", "proposal"]).optional(),
   owner_id: z.number().int().positive().optional(),
   original_song_id: z.number().int().positive().optional(),
+  // Estil d'acompanyament fixat (null = el detectat pel transcriptor)
+  rhythm: z.enum(STYLE_IDS).nullable().optional(),
 })
 
 /**
@@ -24,6 +27,8 @@ const bodySchema = z.object({
  *   · `kind: "arrangement"`: cal `original_song_id` (una pública que no sigui ella).
  *   · `kind: "proposal"`: torna a la cua de propostes, a nom del propietari.
  *   · Només `owner_id`: canvia el propietari d'una privada o arranjament.
+ *   · `rhythm`: fixa l'estil d'acompanyament del reproductor (null = el detectat). Es pot
+ *     combinar amb la resta, i és l'únic que també es pot canviar a les propostes.
  * Les propostes pendents no es toquen aquí.
  */
 export async function PATCH(
@@ -45,10 +50,23 @@ export async function PATCH(
     if (!parsed.success) {
       return NextResponse.json({ error: "Dades invàlides" }, { status: 400 })
     }
-    const { kind, owner_id, original_song_id } = parsed.data
+    const { kind, owner_id, original_song_id, rhythm } = parsed.data
 
     const song = getSongAccessRow(id)
     if (!song) return NextResponse.json({ error: "Cançó no trobada" }, { status: 404 })
+    if (rhythm !== undefined) {
+      setSongRhythm(id, rhythm)
+      if (kind === undefined && owner_id === undefined) {
+        logEvent({
+          type: "admin_action",
+          request,
+          userId: user.id,
+          metadata: { action: "songs.rhythm", target_id: id },
+          status: 200,
+        })
+        return NextResponse.json({ ok: true })
+      }
+    }
     if (song.state === SONG_STATE.PENDING) {
       return NextResponse.json({ error: "Les propostes es revisen a la pestanya de propostes" }, { status: 400 })
     }

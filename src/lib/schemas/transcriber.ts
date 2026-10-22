@@ -73,6 +73,25 @@ export const analysisCompactSchema = z.object({
   models: z.record(z.string(), z.string()),
   stage_times_s: z.record(z.string(), z.number()).default({}),
   warnings: z.array(z.string()).default([]),
+  // Estil rítmic detectat (opcional: els workers antics no l'envien). `style` és un dels
+  // STYLE_IDS de src/lib/player/styles.ts; un de desconegut s'ignora en reproduir.
+  rhythm: z
+    .object({
+      style: z.string().max(40),
+      confidence: z.number().min(0).max(1),
+      alternatives: z.array(z.tuple([z.string().max(40), z.number().min(0).max(1)])).max(5).default([]),
+      // Empremta de groove: una fila de compàs per banda (greus, mitjos, aguts), valors 0-1
+      groove: z
+        .object({
+          slots_per_beat: z.number().int().positive().max(8),
+          low: z.array(z.number().min(0).max(1)).max(64),
+          mid: z.array(z.number().min(0).max(1)).max(64),
+          high: z.array(z.number().min(0).max(1)).max(64),
+        })
+        .optional(),
+      arpeggiated: z.number().min(0).max(1).optional(),
+    })
+    .optional(),
 })
 
 export type AnalysisCompact = z.infer<typeof analysisCompactSchema>
@@ -141,7 +160,8 @@ export type EnqueueJob = z.infer<typeof enqueueJobSchema>
 export const enqueueBodySchema = z.union([
   z.object({ jobs: z.array(enqueueJobSchema).min(1).max(1000), priority: z.number().int().default(0) }),
   // Encua el mode `analyze` per a totes les cançons públiques amb YouTube i sense anàlisi
-  z.object({ analyzeMissing: z.literal(true), priority: z.number().int().default(0) }),
+  // (`true`), o amb una anàlisi sense l'estil rítmic (`"rhythm"`)
+  z.object({ analyzeMissing: z.union([z.literal(true), z.literal("rhythm")]), priority: z.number().int().default(0) }),
 ])
 
 export const jobActionSchema = z.object({ action: z.enum(["cancel", "retry"]) })

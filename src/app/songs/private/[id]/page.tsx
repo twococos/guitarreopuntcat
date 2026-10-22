@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { getSongById } from "@/db/queries/songs"
+import { playerAvailability } from "@/db/queries/transcriptions"
 import { getSessionUser } from "@/lib/session"
 import { canEditSong, canViewSong } from "@/lib/access/songs"
 import { PublicNav } from "@/components/public/PublicNav"
@@ -65,6 +66,7 @@ export default async function PrivateSongPage({ params }: Props) {
       <PublicNav />
       <PublicSongView
         song={song}
+        player={playerAvailability(song.id)}
         privateInfo={
           song.kind === "public"
             ? undefined

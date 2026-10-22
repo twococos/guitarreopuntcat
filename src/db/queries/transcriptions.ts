@@ -464,8 +464,19 @@ export function enqueueJobs(jobs: EnqueueJob[], priority: number, userId: number
 }
 
 /** Encua `analyze` per a les cançons públiques amb YouTube que no tenen anàlisi ni feina activa. */
-export function enqueueAnalyzeMissing(priority: number, userId: number): number {
-  const analysed = db.select({ id: schema.songAnalyses.songId }).from(schema.songAnalyses)
+/**
+ * Encua `analyze` per a les cançons públiques amb YouTube que no en tenen (`missing: "analysis"`)
+ * o que en tenen una d'abans que el transcriptor detectés l'estil rítmic (`missing: "rhythm"`).
+ */
+export function enqueueAnalyzeMissing(priority: number, userId: number, missing: "analysis" | "rhythm" = "analysis"): number {
+  const analysed =
+    missing === "analysis"
+      ? db.select({ id: schema.songAnalyses.songId }).from(schema.songAnalyses)
+      : db
+          .select({ id: schema.songAnalyses.songId })
+          .from(schema.songAnalyses)
+          .where(sql`json_extract(${schema.songAnalyses.analysis}, '$.rhythm') IS NOT NULL`)
+  const withAnalysis = db.select({ id: schema.songAnalyses.songId }).from(schema.songAnalyses)
   const active = db
     .select({ id: schema.transcriptionJobs.songId })
     .from(schema.transcriptionJobs)
@@ -482,6 +493,7 @@ export function enqueueAnalyzeMissing(priority: number, userId: number): number 
         ne(schema.songs.youtubeUrl, ""),
         notInArray(schema.songs.id, analysed),
         notInArray(schema.songs.id, active),
+        missing === "rhythm" ? inArray(schema.songs.id, withAnalysis) : undefined,
       ),
     )
     .orderBy(asc(schema.songs.id))
@@ -869,4 +881,14 @@ export function getAnalysisSummaries(songIds: number[]): Map<number, SongAnalysi
     out.set(r.songId, { current: true, quality })
   }
   return out
+}
+
+/**
+ * Reproductor de la pàgina de la cançó: null si no té cap anàlisi vigent; si en té, si la
+ * sincronització amb el content actual és prou bona (amb la cache de getAnalysisSummaries).
+ */
+export function playerAvailability(songId: number): { ok: boolean } | null {
+  const summary = getAnalysisSummaries([songId]).get(songId)
+  if (!summary?.current) return null
+  return { ok: summary.quality?.ok ?? false }
 }

@@ -31,6 +31,9 @@ export const songs = sqliteTable(
     // Tempo i compàs. Els omple el transcriptor (si són buits) i es poden corregir a mà.
     bpm: integer("bpm"),
     timeSignature: text("time_signature"), // "4/4", "3/4", "6/8"
+    // Estil d'acompanyament fixat per l'admin (STYLE_IDS de src/lib/player/styles.ts).
+    // Null = el que detecta el transcriptor (song_analyses) o el per defecte.
+    rhythm: text("rhythm"),
     state: integer("state").notNull().default(0),
     // 0 pública, 1 privada, 2 proposta pendent. Qui la pot veure: src/lib/access/songs.ts
     // Propietari de les privades i de les propostes. Null a les públiques (són de tothom).
