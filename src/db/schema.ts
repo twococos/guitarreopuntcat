@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm"
 import { index, integer, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core"
 import type { PdfOptions } from "@/lib/schemas/canconer"
+import type { ReportItem } from "@/lib/schemas/report"
 import type { AnalysisCompact, JobStats, WorkerDeviceInfo } from "@/lib/schemas/transcriber"
 import type { SyncQuality } from "@/lib/transcriber/sync"
 
@@ -217,6 +218,58 @@ export const songAnalyses = sqliteTable("song_analyses", {
   createdAt: text("created_at").default(sql`(datetime('now'))`),
 })
 
+// ─── Reports d'errors de les cançons (vegeu src/lib/reports/) ──
+// Un report és un enviament d'un visitant (amb sessió o sense); els ítems són
+// les correccions concretes, que l'admin aplica o rebutja d'una en una.
+export const songReports = sqliteTable(
+  "song_reports",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    songId: integer("song_id")
+      .notNull()
+      .references(() => songs.id, { onDelete: "cascade" }),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    // Antispam: hash de la cookie de sessió d'analítiques i de la IP (mai en clar)
+    sessionHash: text("session_hash"),
+    ipHash: text("ip_hash"),
+    contentHash: text("content_hash").notNull(), // del content que veia l'usuari
+    semitones: integer("semitones").notNull().default(0),
+    source: text("source", { enum: ["song", "songbook", "share"] }).notNull().default("song"),
+    canconerId: integer("canconer_id").references(() => canconers.id, { onDelete: "set null" }),
+    comment: text("comment").notNull().default(""),
+    status: text("status", { enum: ["pending", "resolved"] }).notNull().default("pending"),
+    createdAt: text("created_at").default(sql`(datetime('now'))`),
+    resolvedAt: text("resolved_at"),
+  },
+  (t) => ({
+    songIdx: index("song_reports_song_idx").on(t.songId, t.status),
+    sessionIdx: index("song_reports_session_idx").on(t.sessionHash, t.createdAt),
+    ipIdx: index("song_reports_ip_idx").on(t.ipHash, t.createdAt),
+  }),
+)
+
+export const songReportItems = sqliteTable(
+  "song_report_items",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    reportId: integer("report_id")
+      .notNull()
+      .references(() => songReports.id, { onDelete: "cascade" }),
+    category: text("category", { enum: ["chords", "lyrics", "sections", "other"] }).notNull(),
+    kind: text("kind").notNull(),
+    payload: text("payload", { mode: "json" }).$type<ReportItem>().notNull(),
+    // Mateix lloc i mateixa correcció → mateixa clau («×N persones»)
+    dedupeKey: text("dedupe_key").notNull(),
+    status: text("status", { enum: ["pending", "applied", "rejected"] }).notNull().default("pending"),
+    reviewerId: integer("reviewer_id").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: text("reviewed_at"),
+  },
+  (t) => ({
+    reportIdx: index("song_report_items_report_idx").on(t.reportId),
+    dedupeIdx: index("song_report_items_dedupe_idx").on(t.dedupeKey, t.status),
+  }),
+)
+
 // ─── Tipus inferits ─────────────────────────────────────────
 export type Song = typeof songs.$inferSelect
 export type SongInsert = typeof songs.$inferInsert
@@ -231,3 +284,5 @@ export type SongProposalInsert = typeof songProposals.$inferInsert
 export type TranscriptionWorker = typeof transcriptionWorkers.$inferSelect
 export type TranscriptionJob = typeof transcriptionJobs.$inferSelect
 export type SongAnalysis = typeof songAnalyses.$inferSelect
+export type SongReport = typeof songReports.$inferSelect
+export type SongReportItem = typeof songReportItems.$inferSelect

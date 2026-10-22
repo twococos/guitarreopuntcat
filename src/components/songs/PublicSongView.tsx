@@ -10,6 +10,9 @@ import { PublicSongCard, type PublicSongData } from "./PublicSongCard"
 import { SongControlsBar } from "./SongControlsBar"
 import { useReaderControls } from "./useReaderControls"
 
+/** Les cançons públiques es poden reportar des de la seva pàgina. */
+const REPORT_FROM_SONG = { source: "song" } as const
+
 interface Props {
   song: PublicSongData
   /**
@@ -93,6 +96,8 @@ export function PublicSongView({ song, privateInfo }: Props) {
           flats={controls.flats}
           onSemitonesChange={setSemitones}
           extraLine={extraLine}
+          report={privateInfo ? undefined : REPORT_FROM_SONG}
+          onReportOpen={controls.stopAutoscroll}
           headerActions={
             <button
               type="button"

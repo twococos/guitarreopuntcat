@@ -443,6 +443,25 @@ function EditorPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, isEdit, editId, isAdmin, isReview, isModify, proposalId, session?.user?.id])
 
+  // ?line=N (des de la pestanya Errors de l'admin): un cop carregada la cançó,
+  // porta la línia N a la vista i la ressalta un moment.
+  const focusLineRaw = searchParams.get("line")
+  const focusLineDone = useRef(false)
+  useEffect(() => {
+    if (focusLineDone.current || focusLineRaw === null || !editor.value) return
+    const line = Number(focusLineRaw)
+    if (!Number.isInteger(line) || line < 0) return
+    focusLineDone.current = true
+    // Al frame següent: el DOM de l'editor ja reflecteix el content
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`.wysiwyg-editor [data-block-idx="${line}"]`)
+      if (!el) return
+      el.scrollIntoView({ block: "center" })
+      el.classList.add("wysiwyg-block-focus")
+      window.setTimeout(() => el.classList.remove("wysiwyg-block-focus"), 4000)
+    })
+  }, [focusLineRaw, editor.value])
+
   // Auto-save draft (create mode only) with debounce
   useEffect(() => {
     if (isEdit || isReview || isModify) return

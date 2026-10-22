@@ -10,6 +10,7 @@ import { SongsTab } from "@/components/admin/SongsTab"
 import { UsersTab } from "@/components/admin/UsersTab"
 import { CanconersTab } from "@/components/admin/CanconersTab"
 import { TranscriptionsTab } from "@/components/admin/TranscriptionsTab"
+import { ReportsTab } from "@/components/admin/ReportsTab"
 import { AnalyticsPanel } from "@/components/admin/analytics/AnalyticsPanel"
 import {
   IconBarChart,
@@ -18,12 +19,13 @@ import {
   IconUsers,
   IconBookOpen,
   IconWand,
+  IconFlag,
 } from "@/components/shared/Icons"
 import { AppHeader } from "@/components/songbook/AppHeader"
 
-type Tab = "stats" | "proposals" | "songs" | "users" | "canconers" | "transcriptions" | "analytics"
+type Tab = "stats" | "proposals" | "reports" | "songs" | "users" | "canconers" | "transcriptions" | "analytics"
 
-const VALID_TABS: Tab[] = ["stats", "proposals", "songs", "users", "canconers", "transcriptions", "analytics"]
+const VALID_TABS: Tab[] = ["stats", "proposals", "reports", "songs", "users", "canconers", "transcriptions", "analytics"]
 
 interface Stats {
   songs: number
@@ -31,6 +33,7 @@ interface Stats {
   users: number
   canconers: number
   pending: number
+  reports_pending: number
 }
 
 export default function AdminPage() {
@@ -53,12 +56,14 @@ export default function AdminPage() {
     router.replace(`/app/admin?tab=${next}`, { scroll: false })
   }
   const [pendingCount, setPendingCount] = useState(0)
+  const [reportsCount, setReportsCount] = useState(0)
 
   const loadStats = useCallback(async () => {
     const res = await fetch("/api/admin/stats")
     if (!res.ok) return
     const data = (await res.json()) as Stats
     setPendingCount(data.pending)
+    setReportsCount(data.reports_pending)
   }, [])
 
   useEffect(() => {
@@ -97,6 +102,13 @@ export default function AdminPage() {
           {pendingCount > 0 && <span id="pending-badge">{pendingCount}</span>}
         </button>
         <button
+          className={`tab ${tab === "reports" ? "active" : ""}`}
+          onClick={() => setTab("reports")}
+        >
+          <IconFlag /> {t.admin.tabs.errors}{" "}
+          {reportsCount > 0 && <span className="pending-badge">{reportsCount}</span>}
+        </button>
+        <button
           className={`tab ${tab === "songs" ? "active" : ""}`}
           onClick={() => setTab("songs")}
         >
@@ -131,6 +143,7 @@ export default function AdminPage() {
       <div id="admin-content">
         {tab === "stats" && <StatsCards />}
         {tab === "proposals" && <ProposalsTab onChange={loadStats} />}
+        {tab === "reports" && <ReportsTab onChange={loadStats} />}
         {tab === "songs" && <SongsTab focusId={focusId} />}
         {tab === "users" && <UsersTab />}
         {tab === "canconers" && <CanconersTab />}

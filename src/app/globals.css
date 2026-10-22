@@ -18,6 +18,7 @@
      C. public-static  → pàgines /projecte i /contacte
      D. songs-index    → índex /songs (per cançó o per artista)
      E. visibilitat    → tipus de cançó, cançoners públics, diàlegs d'admin
+     F. reports        → reportar errors d'una cançó i pestanya Errors de l'admin
    ════════════════════════════════════════════════════════════ */
 
 @import "../styles/song.css";
@@ -5275,15 +5276,26 @@ div[data-block="section"]:hover .wsec {
   border-bottom: 2px solid var(--accent);
 }
 
-/* Primera fila: títol a l'esquerra, botons (tonalitat + cançoner) a la dreta,
-   alineats a la mateixa baseline. flex-wrap perquè si la pantalla és molt
-   estreta els botons saltin a una nova línia. */
+/* Dues columnes: a l'esquerra títol + artista (+ línia extra), a la dreta els
+   botons (tonalitat + cançoner) i, a sota, «Reporta un error» alineat a la
+   dreta. flex-wrap perquè si la pantalla és molt estreta els botons saltin. */
 .public-song-title-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
+}
+.public-song-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.public-song-header-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+  flex-shrink: 0;
 }
 
 .public-song-title {
@@ -5630,14 +5642,17 @@ div[data-block="section"]:hover .wsec {
     gap: 0.6rem;
     align-items: stretch;
   }
-  .public-song-title-row {
+  .public-song-title-row,
+  .public-song-heading,
+  .public-song-header-side {
     display: contents;
   }
   .public-song-title {
     font-size: 1.55rem;
     order: 1;
   }
-  .public-song-artist-line {
+  .public-song-artist-line,
+  .public-song-extra-line {
     font-size: 0.95rem;
     margin-top: 0;
     order: 2;
@@ -8303,4 +8318,973 @@ body:has(.account-page) > header {
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+/* ════════════════════════════════════════════════════════════
+   F. REPORTS — reportar errors d'una cançó (src/components/reports/)
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Botó «Reporta un error» (capçalera i còpia flotant) ── */
+.rp-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.85rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 0.12s,
+    color 0.12s;
+}
+.rp-trigger:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* Fila del botó: just sota la línia de la capçalera, a la dreta. És sticky
+   dins la targeta (el `top` el posa ReportButton sota la nav): en fer scroll
+   el mateix botó es queda ancorat a dalt fins que s'acaba la targeta. */
+.rp-trigger-row {
+  position: sticky;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  margin: -1.4rem 0 0.4rem;
+  pointer-events: none;
+}
+.rp-trigger-row .rp-trigger {
+  pointer-events: auto;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+@keyframes rp-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 640px) {
+  .rp-trigger-label {
+    display: none;
+  }
+  .rp-trigger {
+    padding: 0.55rem 0.65rem;
+  }
+}
+
+/* ── Mode correcció: la resta de la pàgina s'atenua i es difumina ── */
+body.report-active::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 20, 0.35);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  z-index: 80;
+}
+/* La nav continua per sobre de la targeta (la tapa en fer scroll), però
+   apagada i difuminada com la resta */
+body.report-active header.public-nav {
+  z-index: 90;
+  filter: blur(2px) brightness(0.65);
+  pointer-events: none;
+}
+body.report-active .public-song-floating-bar {
+  display: none;
+}
+.public-song-card.is-reporting {
+  position: relative;
+  z-index: 81;
+}
+/* Capçalera en gris (títol i artista continuen negres); el to proposat, en color */
+.public-song-card.is-reporting .public-song-header {
+  border-bottom-color: #c9c9c9;
+}
+.public-song-card.is-reporting .public-song-header-actions > :not(.public-song-key-badge) {
+  filter: grayscale(1);
+}
+.public-song-card.is-reporting .public-song-key-badge {
+  color: #6b6b6b;
+  background: #f2f2f2;
+  border-color: #d0d0d0;
+}
+.public-song-key-badge .rp-key-old {
+  color: #c62828;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+.public-song-key-badge .rp-key-new {
+  color: #2e7d32;
+}
+.rp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 82;
+}
+
+/* ── Franja d'instruccions ── */
+.rp-instruction {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  translate: -50% 0;
+  width: min(640px, calc(100vw - 16px));
+  z-index: 96;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  background: #1d1d1f;
+  color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  animation: rp-fade-in 0.15s ease-out;
+}
+.rp-instruction-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.rp-instruction-text strong {
+  font-size: 0.98rem;
+  overflow-wrap: anywhere;
+}
+.rp-instruction-text small {
+  color: #b5b5b5;
+  font-size: 0.78rem;
+}
+.rp-instruction .rp-icon-btn {
+  color: #fff;
+}
+.rp-instruction .rp-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.rp-instruction .rp-btn-ghost {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Botons comuns ── */
+.rp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.rp-icon-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+.rp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #2e7d32;
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rp-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.rp-btn-primary {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+.rp-btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.rp-btn-small {
+  padding: 0.4rem 0.7rem;
+}
+
+/* ── Panell (escriptori: centrat sobre la vora dreta de la targeta, posat
+   des de ReportPanel; mòbil: full inferior) ── */
+.rp-panel {
+  position: fixed;
+  top: 76px;
+  right: 24px;
+  width: 380px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  z-index: 95;
+  padding: 0.9rem 1rem 1.1rem;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+  animation: rp-fade-in 0.15s ease-out;
+}
+.rp-panel-head {
+  display: grid;
+  grid-template-columns: 2rem 1fr 2rem;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+.rp-panel-title {
+  margin: 0;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.rp-panel-sub {
+  margin: 0 0 0.8rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.rp-category-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+.rp-category {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-height: 5.2rem;
+  padding: 0.8rem;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.rp-category strong {
+  font-size: 1.05rem;
+}
+.rp-category small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+.rp-category:hover,
+.rp-kind:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.rp-kind-list {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.rp-kind {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+}
+.rp-kind span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.rp-kind small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* Llista de correccions abans d'enviar i formularis */
+.rp-review,
+.rp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.rp-item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.rp-item-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.3rem 0.45rem 0.6rem;
+  background: #eef6ee;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.rp-item-list li span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rp-item-ok {
+  color: #2e7d32;
+  flex-shrink: 0;
+}
+.rp-add-more {
+  align-self: flex-start;
+}
+.rp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.rp-field input,
+.rp-field textarea,
+.rp-textarea,
+.rp-text-picker input,
+.rp-text-picker textarea,
+.rp-free-row input {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 1rem; /* 16px: iOS no fa zoom en enfocar */
+  color: var(--text);
+  background: var(--surface);
+  resize: vertical;
+}
+.rp-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.rp-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.rp-check input {
+  margin-top: 0.15rem;
+}
+.rp-error {
+  margin: 0.3rem 0 0;
+  color: #c62828;
+  font-size: 0.85rem;
+}
+.rp-hint {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.rp-thanks {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 0 0.4rem;
+  text-align: center;
+}
+.rp-thanks-icon {
+  width: 3rem;
+  height: 3rem;
+  color: #2e7d32;
+}
+.rp-thanks p {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* ── Popover (selectors d'acord, secció i text) ── */
+.rp-popover {
+  position: fixed;
+  z-index: 100;
+  width: min(340px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 0.7rem 0.8rem 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
+}
+.rp-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.rp-popover-title {
+  font-weight: 700;
+  font-size: 0.98rem;
+}
+.rp-label {
+  display: block;
+  margin: 0.6rem 0 0.3rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.rp-chord-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.3rem;
+}
+.rp-chord-grid-main,
+.rp-key-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+}
+.rp-chord-btn {
+  padding: 0.55rem 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--song-body-font);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.rp-chord-btn:hover:not(:disabled) {
+  border-color: #2e7d32;
+  color: #2e7d32;
+  background: #eef6ee;
+}
+.rp-chord-btn.is-current {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.rp-chord-btn-small {
+  padding: 0.4rem 0.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.rp-variant-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.rp-variant {
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--song-body-font);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.rp-variant.is-active {
+  background: #2e7d32;
+  border-color: #2e7d32;
+  color: #fff;
+}
+.rp-free-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+.rp-free-row label {
+  flex: 1;
+}
+.rp-free-row input {
+  padding: 0.4rem 0.55rem;
+}
+.rp-section-grid,
+.rp-section-copy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.rp-chip-btn {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.rp-chip-btn:hover {
+  border-color: #2e7d32;
+  color: #2e7d32;
+}
+.rp-chip-btn.is-current {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.rp-text-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .rp-panel,
+  .rp-popover {
+    left: 0 !important;
+    right: 0;
+    top: auto !important;
+    bottom: 0;
+    width: auto;
+    max-height: 85vh;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+  .rp-instruction {
+    top: 8px;
+  }
+}
+
+/* ── Cos de la cançó en mode correcció (src/lib/reports/render.ts) ──
+   Tot en gris; cada mode torna el color al que s'ha de tocar
+   (.rp-emph-chords / -lyrics / -sections) i les correccions sempre
+   destaquen: vermell ratllat el que està malament, verd el nou.
+   L'admin fa servir .rp-body sense mode: tot gris menys les correccions. */
+.rp-body {
+  color: #b4b4b4;
+}
+/* Acords i seccions, un gris una mica més fosc que la lletra */
+.rp-body ch,
+.rp-body sec {
+  color: #8a8a8a;
+}
+.rp-body.rp-emph-lyrics {
+  color: var(--text);
+}
+.rp-body.rp-emph-chords ch {
+  color: var(--accent);
+}
+.rp-body .rp-chip {
+  display: inline-block;
+  padding: 0 3px;
+  margin: 0 -3px;
+  border-radius: 4px;
+}
+.rp-body .rp-chip + .rp-chip {
+  margin-left: 2px;
+}
+.rp-mode-chords,
+.rp-mode-sections,
+.rp-mode-lines,
+.rp-mode-text {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.rp-mode-chords ch[data-ci] .rp-chip {
+  cursor: pointer;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+  touch-action: none;
+}
+.rp-mode-chords ch[data-ci] .rp-chip:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+/* Seccions en mode secció: en negre, dins un requadre blau cel */
+.rp-body.rp-emph-sections sec {
+  color: var(--text);
+  padding: 1px 6px;
+  margin-inline: -6px;
+  border-radius: 5px;
+  background: #e3f3fc;
+  box-shadow: 0 0 0 1px #a9d8f2;
+}
+.rp-mode-sections sec[data-b] {
+  cursor: pointer;
+}
+.rp-mode-sections sec[data-b]:hover {
+  background: #cdeafa;
+}
+.rp-mode-lines {
+  cursor: pointer;
+}
+.rp-mode-lines .rp-line[data-b]:hover {
+  background: #fff7d6;
+}
+.rp-mode-text {
+  cursor: text;
+}
+.rp-body .rp-hl,
+.rp-body ch.rp-hl .rp-chip {
+  background: #ffef9f;
+}
+.rp-body .rp-old,
+.rp-body .rp-del,
+.rp-body sec .rp-del,
+.rp-body sec.rp-del {
+  color: #c62828;
+  text-decoration: line-through;
+  text-decoration-color: #c62828;
+  text-decoration-thickness: 2px;
+}
+.rp-body .rp-new,
+.rp-body .rp-ins,
+.rp-body sec .rp-ins,
+.rp-body sec.rp-ins {
+  color: #2e7d32;
+  background: #e3f2e4;
+  text-decoration: none;
+  border-radius: 3px;
+}
+
+/* Cursor: on aniria el text que falta o l'acord (fix mentre hi ha el popover) */
+.rp-caret {
+  position: absolute;
+  width: 2px;
+  margin-left: -1px;
+  background: #1a1a1a;
+  pointer-events: none;
+  animation: rp-caret-blink 1s steps(1) infinite;
+}
+.rp-caret.is-fixed {
+  background: #2e7d32;
+  width: 3px;
+  animation: none;
+}
+@keyframes rp-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Correcció seleccionada a l'admin: requadre groc */
+.rp-body .rp-focus:not(ch),
+.rp-body ch.rp-focus .rp-chip {
+  outline: 2px solid #f2c94c;
+  outline-offset: 2px;
+  border-radius: 3px;
+  background-color: #fff6cc;
+}
+
+/* Selecció de lletra pròpia: caixeta que creix d'una paraula a l'altra */
+.rp-body-wrap {
+  position: relative;
+}
+.rp-sel-box {
+  position: absolute;
+  pointer-events: none;
+  border: 1.5px solid #8a8a8a;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.04);
+  transition:
+    left 0.12s ease-out,
+    top 0.12s ease-out,
+    width 0.12s ease-out,
+    height 0.12s ease-out;
+  animation: rp-sel-in 0.12s ease-out;
+}
+@keyframes rp-sel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rp-drag-ghost {
+  position: fixed;
+  z-index: 110;
+  translate: -2px -110%;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #2e7d32;
+  color: #fff;
+  font-family: var(--song-body-font);
+  font-weight: 700;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Admin: pestanya «Errors» (src/components/admin/ReportsTab.tsx) ── */
+.pending-badge {
+  font-size: 0.68rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 99px;
+  padding: 1px 6px;
+  font-weight: 700;
+}
+.rp-admin-toggle {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+.rp-admin-toggle .btn-xs.active {
+  background: var(--text);
+  border-color: var(--text);
+  color: #fff;
+}
+.rp-admin-row {
+  cursor: pointer;
+}
+.rp-admin-row:hover {
+  background: var(--bg);
+}
+.rp-admin-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.rp-admin-head {
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+.rp-admin-head h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-admin-head h2 small {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+.rp-admin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.2rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .rp-admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.rp-admin-groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.rp-admin-group {
+  padding: 0.65rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.rp-admin-group-applied,
+.rp-admin-group-rejected {
+  opacity: 0.7;
+}
+.rp-admin-group-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.88rem;
+}
+.rp-admin-group-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.rp-admin-context code {
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.rp-admin-context {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.rp-admin-comments {
+  margin: 0;
+  padding-left: 1rem;
+  font-style: italic;
+}
+.rp-admin-group-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+.rp-admin-history {
+  margin-top: 1rem;
+}
+.rp-admin-history summary {
+  cursor: pointer;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+/* Dues columnes (targetes | cançó), cadascuna amb el seu scroll */
+.rp-admin-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.rp-admin-col-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  min-height: 2rem;
+}
+.rp-admin-col-head .rp-hint {
+  margin: 0;
+  white-space: nowrap;
+}
+/* «Com quedaria» a l'esquerra de la columna de la cançó; els enllaços, a la dreta */
+.rp-admin-col-head .rp-label {
+  flex: 1;
+  margin: 0;
+}
+.rp-admin-scroll {
+  height: calc(100vh - 215px);
+  min-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.3rem;
+}
+.rp-admin-preview {
+  padding: 1rem 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.rp-admin-body [data-ri] {
+  cursor: pointer;
+}
+.rp-admin-group.is-selectable {
+  cursor: pointer;
+}
+.rp-admin-group.is-selectable:hover {
+  border-color: #f3db93;
+}
+.rp-admin-group.is-focused {
+  border-color: #f2c94c;
+  border-width: 2px;
+}
+.rp-admin-group.is-accept {
+  background: #f3faf3;
+}
+.rp-admin-group.is-reject {
+  background: #fbf3f3;
+  opacity: 0.75;
+}
+/* Interruptor Accepta / Rebutja: un sol botó actiu (o cap) */
+.rp-admin-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.rp-admin-switch-opt {
+  padding: 0.22rem 0.7rem;
+  border: none;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rp-admin-switch-opt + .rp-admin-switch-opt {
+  border-left: 1px solid var(--border);
+}
+.rp-admin-switch-opt:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.rp-admin-switch-opt.is-accept.is-on {
+  background: #2e7d32;
+  color: #fff;
+}
+.rp-admin-switch-opt.is-reject.is-on {
+  background: #c62828;
+  color: #fff;
+}
+.rp-diff {
+  margin: 0;
+  max-height: 50vh;
+  overflow: auto;
+  padding: 0.5rem 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  background: var(--bg);
+  border-radius: 6px;
+  white-space: pre-wrap;
+}
+.rp-diff > div {
+  padding: 0 0.6rem;
+}
+.rp-diff-del {
+  background: #fdecea;
+  color: #b71c1c;
+}
+.rp-diff-add {
+  background: #e3f2e4;
+  color: #1b5e20;
+}
+.rp-diff-gap {
+  color: var(--muted);
+  font-style: italic;
+}
+.rp-diff-changes {
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+/* Línia destacada en obrir l'editor des d'un report (?line=N) */
+.wysiwyg-editor .wysiwyg-block-focus {
+  background: #fff3b0;
+  box-shadow: -6px 0 0 #f2c94c;
+  transition: background 0.6s;
 }

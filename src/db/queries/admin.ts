@@ -3,6 +3,7 @@ import { alias } from "drizzle-orm/sqlite-core"
 import { db, schema } from "@/db/client"
 import { SONG_STATE, songKind } from "@/lib/songKind"
 import { getAnalysisSummaries } from "./transcriptions"
+import { countPendingReports } from "./reports"
 
 // ─── GET /api/admin/stats ────────────────────────────────────
 
@@ -36,6 +37,8 @@ export async function getStats() {
     users: usersRow?.count ?? 0,
     canconers: canconersRow?.count ?? 0,
     pending: pendingRow?.count ?? 0,
+    // Reports d'errors amb alguna correcció pendent
+    reports_pending: countPendingReports(),
   }
 }
 

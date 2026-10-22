@@ -1,8 +1,9 @@
 "use client"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { getT } from "@/lib/i18n"
+import { SONG_STATE } from "@/lib/songKind"
 import { useToastStore } from "@/hooks/useToasts"
 import { usePdfProgress } from "@/hooks/usePdfProgress"
 import { requestPdf, downloadBlob } from "@/lib/pdf-client/request"
@@ -23,6 +24,7 @@ import {
 import { PublicSongCard, type PublicSongData } from "@/components/songs/PublicSongCard"
 import { SongControlsBar } from "@/components/songs/SongControlsBar"
 import { useReaderControls } from "@/components/songs/useReaderControls"
+import type { ReportContext } from "@/components/reports/useSongReport"
 
 export interface SongbookViewerSong extends PublicSongData {
   state: number
@@ -72,6 +74,17 @@ export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPrevie
 
   const song = songs[index]
   const notation = controls.flats ? ALL_FLATS : ALL_SHARPS
+
+  // Les cançons públiques es poden reportar; el report recorda des de quin cançoner
+  const reportContext = useMemo<ReportContext>(
+    () =>
+      !pdfContext
+        ? { source: "song" }
+        : "share_token" in pdfContext
+          ? { source: "share", token: pdfContext.share_token }
+          : { source: "songbook", songbook_id: pdfContext.songbook_id },
+    [pdfContext],
+  )
 
   const goTo = useCallback(
     (next: number, push = true) => {
@@ -260,6 +273,8 @@ export function SongbookViewer({ songbook, pdfContext, initialIndex, ownerPrevie
                 titleLevel={2}
                 titleHref={songHref(song)}
                 headerActions={<span className="songbook-viewer-song-num">{index + 1}</span>}
+                report={song.state === SONG_STATE.PUBLIC ? reportContext : undefined}
+                onReportOpen={stopAutoscroll}
               />
             )}
             <nav className="songbook-viewer-pager" aria-label={tv.navegacio}>

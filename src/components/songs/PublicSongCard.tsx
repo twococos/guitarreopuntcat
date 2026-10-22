@@ -1,8 +1,9 @@
 "use client"
-import { useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { PublicKeyMenu } from "@/components/songs/PublicKeyMenu"
 import {
+  transposeChord,
   transposeKey,
   transposeContent,
   respellAccidentals,
@@ -14,6 +15,10 @@ import {
 import type { Song } from "@/types/song"
 import { getT } from "@/lib/i18n"
 import { SEMITONES_MAX, SEMITONES_MIN } from "./useReaderControls"
+import { ReportButton } from "@/components/reports/ReportButton"
+import { ReportPanel } from "@/components/reports/ReportPanel"
+import { ReportableSongBody } from "@/components/reports/ReportableSongBody"
+import { useSongReport, type ReportContext } from "@/components/reports/useSongReport"
 
 export type PublicSongData = Pick<
   Song,
@@ -21,6 +26,8 @@ export type PublicSongData = Pick<
 > & {
   artist_slug: string | null
   song_slug: string | null
+  /** Per al formulari de dades del report (opcional: els cançoners no el porten). */
+  youtube_url?: string | null
 }
 
 /**
@@ -37,6 +44,8 @@ export function PublicSongCard({
   extraLine,
   titleLevel = 1,
   titleHref,
+  report,
+  onReportOpen,
 }: {
   song: PublicSongData
   semitones: number
@@ -50,6 +59,10 @@ export function PublicSongCard({
   titleLevel?: 1 | 2
   /** Enllaç del títol (dins d'un cançoner, a la pàgina pública de la cançó). */
   titleHref?: string | null
+  /** Botó «Reporta un error» (només cançons públiques). On s'ha obert, per al registre. */
+  report?: ReportContext
+  /** En obrir el report (p. ex. per aturar l'autoscroll). */
+  onReportOpen?: () => void
 }) {
   const t = getT()
   const [keyPickerOpen, setKeyPickerOpen] = useState(false)
@@ -61,6 +74,30 @@ export function PublicSongCard({
   const originalKey = respellAccidentals(song.key, notationMap)
   const transposedContent = respellContent(transposeContent(song.content, semitones), notationMap)
   const showOriginal = displayKey !== originalKey
+
+  const reporter = useSongReport({
+    songId: song.id,
+    content: song.content,
+    semitones,
+    context: report ?? { source: "song" },
+  })
+  const reporting = Boolean(report) && reporter.active
+  const cardRef = useRef<HTMLElement>(null)
+  // Tonalitat proposada al report en curs: es mostra al lloc del to
+  const keyItem = reporting ? reporter.items.findLast((it) => it.kind === "song_key") : undefined
+  const proposedKey =
+    keyItem?.kind === "song_key" ? respellAccidentals(transposeChord(keyItem.to_key, semitones), notationMap) : null
+
+  // Mentre es reporta, la resta de la pàgina queda atenuada i sense la barra de controls
+  useEffect(() => {
+    document.body.classList.toggle("report-active", reporting)
+    return () => document.body.classList.remove("report-active")
+  }, [reporting])
+
+  function openReport() {
+    onReportOpen?.()
+    reporter.open()
+  }
 
   function openKeyPicker(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation()
@@ -88,50 +125,95 @@ export function PublicSongCard({
 
   return (
     <>
-      <article className="public-song-card song" data-style="classic">
+      <article
+        ref={cardRef}
+        className={`public-song-card song${reporting ? " is-reporting" : ""}`}
+        data-style="classic"
+      >
         <div className="public-song-header">
           <div className="public-song-title-row">
-            <Title className="public-song-title">
-              {titleHref ? <Link href={titleHref} className="public-song-title-link">{song.title}</Link> : song.title}
-            </Title>
-            <div className="public-song-header-actions">
-              <button
-                ref={keyBadgeRef}
-                type="button"
-                className="public-song-key-badge song-key"
-                onClick={openKeyPicker}
-                aria-label={t.public.publicSong.controls.canviarTonalitat}
-                aria-haspopup="dialog"
-                aria-expanded={keyPickerOpen}
-                title={t.public.publicSong.controls.canviarTonalitat}
-              >
-                <span className="public-song-key-current">{displayKey}</span>
-                {showOriginal && (
-                  <span className="public-song-key-original">− Orig. {originalKey}</span>
+            <div className="public-song-heading">
+              <Title className="public-song-title">
+                {titleHref ? <Link href={titleHref} className="public-song-title-link">{song.title}</Link> : song.title}
+              </Title>
+              <p className="public-song-artist-line">
+                {artistHref ? (
+                  <Link href={artistHref} className="public-song-artist-link">
+                    {song.artist}
+                  </Link>
+                ) : (
+                  <span>{song.artist}</span>
                 )}
-              </button>
-              {headerActions}
+                {subline && <span className="public-song-subline">{subline}</span>}
+              </p>
+              {extraLine && <p className="public-song-extra-line">{extraLine}</p>}
+            </div>
+            <div className="public-song-header-side">
+              <div className="public-song-header-actions">
+                <button
+                  ref={keyBadgeRef}
+                  type="button"
+                  className="public-song-key-badge song-key"
+                  onClick={openKeyPicker}
+                  aria-label={t.public.publicSong.controls.canviarTonalitat}
+                  aria-haspopup="dialog"
+                  aria-expanded={keyPickerOpen}
+                  title={t.public.publicSong.controls.canviarTonalitat}
+                >
+                  {proposedKey ? (
+                    <>
+                      <s className="public-song-key-current rp-key-old">{displayKey}</s>
+                      <span className="public-song-key-current rp-key-new">{proposedKey}</span>
+                    </>
+                  ) : (
+                    <span className="public-song-key-current">{displayKey}</span>
+                  )}
+                  {showOriginal && (
+                    <span className="public-song-key-original">− Orig. {originalKey}</span>
+                  )}
+                </button>
+                {headerActions}
+              </div>
             </div>
           </div>
-          <p className="public-song-artist-line">
-            {artistHref ? (
-              <Link href={artistHref} className="public-song-artist-link">
-                {song.artist}
-              </Link>
-            ) : (
-              <span>{song.artist}</span>
-            )}
-            {subline && <span className="public-song-subline">{subline}</span>}
-          </p>
-          {extraLine && <p className="public-song-extra-line">{extraLine}</p>}
         </div>
 
-        <div
-          className="song-body"
-          // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{ __html: transposedContent }}
-        />
+        {report && <ReportButton onClick={openReport} hidden={reporting} />}
+
+        {reporting ? (
+          <ReportableSongBody
+            report={reporter}
+            content={song.content}
+            semitones={semitones}
+            notation={notationMap}
+            displayKey={transposeChord(song.key, semitones)}
+          />
+        ) : (
+          <div
+            className="song-body"
+            // eslint-disable-next-line react/no-danger
+            dangerouslySetInnerHTML={{ __html: transposedContent }}
+          />
+        )}
       </article>
+
+      {report && (
+        <ReportPanel
+          report={reporter}
+          anchorRef={cardRef}
+          song={{
+            title: song.title,
+            artist: song.artist,
+            album: song.album ?? null,
+            year: song.year ?? null,
+            capo: song.capo ?? null,
+            youtube_url: song.youtube_url ?? null,
+            key: song.key,
+          }}
+          semitones={semitones}
+          notation={notationMap}
+        />
+      )}
 
       <PublicKeyMenu
         open={keyPickerOpen}
