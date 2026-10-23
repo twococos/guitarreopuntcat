@@ -3,6 +3,7 @@ import { useSongbookStore } from "@/hooks/useSongbook"
 import { transposeKey, respellAccidentals } from "@/lib/transpose"
 import { getT } from "@/lib/i18n"
 import { IconX } from "@/components/shared/Icons"
+import { ArrangeButton } from "./CanconerList"
 
 export function CanconerGrid() {
   const t = getT()
@@ -11,6 +12,7 @@ export function CanconerGrid() {
   const setSelectedIdx = useSongbookStore((s) => s.setSelectedIdx)
   const openKeyMenu = useSongbookStore((s) => s.openKeyMenu)
   const remove = useSongbookStore((s) => s.removeFromCanconer)
+  const openArrange = useSongbookStore((s) => s.openArrange)
   const notation = useSongbookStore((s) => s.pdfOptions.notation)
 
   return (
@@ -23,13 +25,19 @@ export function CanconerGrid() {
             key={entry.song.id}
             className={`cg-item${isSelected ? " selected" : ""}`}
             onClick={(e) => {
-              if ((e.target as HTMLElement).closest(".cg-key, .cg-remove")) return
+              if ((e.target as HTMLElement).closest(".cg-key, .cg-remove, .cg-arrange")) return
               setSelectedIdx(idx)
             }}
           >
             <span className="cg-num">{idx + 1}</span>
-            <span className="cg-title">{entry.song.title}</span>
+            <span className="cg-title">
+              <span className="c-title-text">{entry.song.title}</span>
+              {entry.arrangement && (
+                <span className="song-kind-tag song-kind-arrangement">{t.app.songbook.songList.tipus.arrangement}</span>
+              )}
+            </span>
             <span className="cg-artist">{entry.song.artist}</span>
+            <ArrangeButton entry={entry} onOpen={() => openArrange(idx)} className="cg-arrange" />
             <span
               className="cg-key"
               title={t.app.songbook.canconerGrid.canviarTonalitatTitle}

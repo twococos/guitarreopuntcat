@@ -5,6 +5,7 @@ import { usePdfProgress } from "@/hooks/usePdfProgress"
 import { requestPdf, downloadBlob } from "@/lib/pdf-client/request"
 import { PdfProgressOverlay } from "@/components/shared/PdfProgressOverlay"
 import { getT } from "@/lib/i18n"
+import { songRefs } from "@/lib/canconerApi"
 import { IconClock, IconDownload, IconFileText } from "@/components/shared/Icons"
 
 /**
@@ -34,7 +35,7 @@ export function PdfDownloadButton({ variant }: { variant: "panel" | "preview" })
           style: canconerStyle,
           accentColor,
           options: pdfOptions,
-          songs: canconer.map((e) => ({ id: e.song.id, semitones: e.semitones })),
+          songs: songRefs(canconer),
         },
         pdfProgress.report,
       )

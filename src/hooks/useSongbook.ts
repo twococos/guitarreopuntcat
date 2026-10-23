@@ -1,7 +1,8 @@
 "use client"
 import { create } from "zustand"
 import { CHROMATIC } from "@/lib/transpose"
-import type { Song, SongSummary, CanconerStyle } from "@/types/song"
+import type { Song, SongSummary, CanconerStyle, CanconerEntry, CanconerSongRef } from "@/types/song"
+import type { QuickArrangement } from "@/lib/schemas/arrangement"
 import { type PdfOptions, PDF_OPTIONS_DEFAULTS } from "@/lib/schemas/canconer"
 
 /* ── Constants compartides ───────────────────────────────── */
@@ -58,10 +59,7 @@ function toMajorRoot(key: string): string {
 
 export type SortMode = "custom" | "title" | "artist" | "random"
 
-export interface CanconerEntry {
-  song: Song
-  semitones: number
-}
+export type { CanconerEntry }
 
 /** On ha d'anar la vista prèvia: la portada (inici del llibret), l'índex
  *  (si no n'hi ha, l'inici) o una cançó. */
@@ -95,6 +93,8 @@ export interface SongbookState {
   sortAsc: boolean
   allowedKeys: Set<string>
   keyMenu: KeyMenuState | null
+  /** Entrada oberta a l'arranjador ràpid (§22), o null. */
+  arrangeIdx: number | null
 
   /* ── Persistència ── */
   savedCanconerId: number | null
@@ -118,7 +118,7 @@ export interface SongbookState {
     accentColor: string | null
     pdfOptions: PdfOptions
     duplicateId: number
-    songs: Array<{ id: number; semitones: number }>
+    songs: CanconerSongRef[]
   } | null
 
   /* ── Actions ── */
@@ -131,6 +131,10 @@ export interface SongbookState {
   reorder: (from: number, to: number) => void
   setSemitones: (idx: number, value: number) => void
   bumpSemitones: (idx: number, delta: number) => void
+  openArrange: (idx: number) => void
+  closeArrange: () => void
+  /** Recepta de l'arranjament ràpid d'una entrada (null = l'original). */
+  setArrangement: (idx: number, qa: QuickArrangement | null) => void
   setSelectedIdx: (idx: number | null) => void
   /** Selecciona la portada (selectedIdx = null) i hi porta la prèvia. */
   selectFront: () => void
@@ -258,6 +262,7 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
   sortAsc: true,
   allowedKeys: new Set(ALL_MAJOR_KEYS),
   keyMenu: null,
+  arrangeIdx: null,
   savedCanconerId: null,
   canconerTitle: DEFAULT_CANCONER_TITLE,
   provisionalTitle: DEFAULT_CANCONER_TITLE,
@@ -347,6 +352,24 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
     if (idx < 0 || idx >= canconer.length) return
     const next = canconer.slice()
     next[idx] = { ...next[idx], semitones: ((value % 12) + 12) % 12 }
+    set({ canconer: next })
+  },
+
+  openArrange(idx) {
+    const { canconer } = get()
+    if (idx < 0 || idx >= canconer.length) return
+    set({ arrangeIdx: idx, keyMenu: null })
+  },
+
+  closeArrange() {
+    set({ arrangeIdx: null })
+  },
+
+  setArrangement(idx, qa) {
+    const { canconer } = get()
+    if (idx < 0 || idx >= canconer.length) return
+    const next = canconer.slice()
+    next[idx] = { ...next[idx], arrangement: qa }
     set({ canconer: next })
   },
 

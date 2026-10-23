@@ -1,6 +1,7 @@
 import type { Song, Canconer, CanconerSong, SongProposal, User } from "@/db/schema"
 import type { CanconerStyle } from "@/lib/schemas/canconer"
 import type { SongKind } from "@/lib/songKind"
+import type { QuickArrangement } from "@/lib/schemas/arrangement"
 
 export type { Song, Canconer, CanconerSong, SongProposal, User }
 export type { CanconerStyle }
@@ -9,10 +10,18 @@ export type { CanconerStyle }
 // `kind` el porta GET /api/songs: les pròpies no públiques s'etiqueten.
 export type SongSummary = Omit<Song, "content"> & { kind?: SongKind }
 
-// Entrada dins un cançoner: cançó + transposició
+// Entrada dins un cançoner: cançó + transposició + arranjament ràpid (§22)
 export interface CanconerEntry {
   song: Song
   semitones: number
+  arrangement?: QuickArrangement | null
+}
+
+// Referència a una cançó d'un cançoner (desar, PDF, sessionStorage)
+export interface CanconerSongRef {
+  id: number
+  semitones: number
+  arrangement?: QuickArrangement | null
 }
 
 // Forma del JSON que es passa al POST /api/canconers per guardar
@@ -21,10 +30,7 @@ export interface CanconerSavePayload {
   title: string
   style: CanconerStyle
   accent_color: string | null
-  songs: Array<{
-    id: number
-    semitones: number
-  }>
+  songs: CanconerSongRef[]
 }
 
 // Resposta de GET /api/canconers (llista)
@@ -41,7 +47,7 @@ export interface CanconerListItem {
 
 // Resposta de GET /api/canconers/:id (detall)
 export interface CanconerDetail extends CanconerListItem {
-  songs: Array<Song & { semitones: number; position: number }>
+  songs: Array<Song & { semitones: number; position: number; arrangement?: QuickArrangement | null }>
 }
 
 // Resposta de GET /api/proposals

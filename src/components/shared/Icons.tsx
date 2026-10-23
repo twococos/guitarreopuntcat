@@ -487,3 +487,51 @@ export const IconFitWidth = (p: IconProps) =>
     </>,
     p,
   )
+
+/* ── Arranjament ràpid (paleta d'eines) ── */
+
+export const IconMove = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M5 9l-3 3 3 3" />
+      <path d="M9 5l3-3 3 3" />
+      <path d="M15 19l-3 3-3-3" />
+      <path d="M19 9l3 3-3 3" />
+      <path d="M2 12h20" />
+      <path d="M12 2v20" />
+    </>,
+    p,
+  )
+
+export const IconRepeat = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M17 1l4 4-4 4" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <path d="M7 23l-4-4 4-4" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </>,
+    p,
+  )
+
+export const IconEraser = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M20 20H9L4 15a2 2 0 0 1 0-2.8L13.2 3a2 2 0 0 1 2.8 0L21 8a2 2 0 0 1 0 2.8L11 20" />
+      <path d="M8.5 9.5l6 6" />
+    </>,
+    p,
+  )
+
+export const IconGrip = (p: IconProps) =>
+  svg(
+    <>
+      <circle cx="9" cy="6" r="1.2" />
+      <circle cx="15" cy="6" r="1.2" />
+      <circle cx="9" cy="12" r="1.2" />
+      <circle cx="15" cy="12" r="1.2" />
+      <circle cx="9" cy="18" r="1.2" />
+      <circle cx="15" cy="18" r="1.2" />
+    </>,
+    p,
+  )

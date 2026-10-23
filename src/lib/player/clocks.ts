@@ -197,3 +197,132 @@ export class YouTubeClock implements MediaClock {
     // El reproductor el destrueix qui l'ha creat
   }
 }
+
+/** Marge abans del final d'un segment en què es fa el salt (el seekTo de YouTube no és instantani). */
+const PLAN_LEAD_MS = 40
+/** Temps durant el qual, després d'un salt, s'ignoren lectures velles del vídeo. */
+const PLAN_SEEK_SETTLE_MS = 1200
+
+/**
+ * Arranjament ràpid en mode vídeo (§22): el vídeo va en temps de l'original, i aquest rellotge el
+ * passa a temps virtual (els segments del pla encadenats). En arribar al final d'un segment fa
+ * saltar el vídeo a l'inici del següent; al final de l'últim, l'atura.
+ */
+export class PlanClock implements MediaClock {
+  private seg = 0
+  private last = 0
+  /** Fins quan (performance.now) s'espera que el vídeo hagi fet el salt. */
+  private settleUntil = 0
+  private timer: ReturnType<typeof setInterval> | null = null
+
+  constructor(
+    private inner: MediaClock,
+    private plan: PlaybackPlanLike,
+    private onEnd: () => void,
+  ) {
+    // Els salts no poden dependre dels frames (amb la pestanya amagada no n'hi ha)
+    this.timer = setInterval(() => {
+      if (this.inner.playing()) this.now()
+    }, 50)
+  }
+
+  now(): number {
+    const segs = this.plan.segments
+    const s = segs[this.seg]
+    if (!s) return this.last
+    const t = this.inner.now()
+    const inside = t >= s.from - 250 && t < s.to + 250
+    if (!inside) {
+      // Lectura d'abans del salt: es manté la posició
+      if (performance.now() < this.settleUntil) return this.last
+      // El vídeo és en un altre lloc (p. ex. l'usuari l'ha mogut): el segment que hi toqui
+      let i = -1
+      for (let k = this.seg; k < segs.length && i < 0; k++) if (t >= segs[k].from && t < segs[k].to) i = k
+      for (let k = 0; k < segs.length && i < 0; k++) if (t >= segs[k].from && t < segs[k].to) i = k
+      if (i < 0) {
+        // En un tros tallat: al segment següent
+        const next = segs.findIndex((x) => x.from > t)
+        if (next < 0) return this.finish()
+        this.jump(next)
+        return this.last
+      }
+      this.seg = i
+    }
+    const cur = segs[this.seg]
+    if (this.inner.playing() && t >= cur.to - PLAN_LEAD_MS) {
+      const next = segs[this.seg + 1]
+      if (!next) return this.finish()
+      if (next.from === cur.to) this.seg++ // seguit a l'original: no cal saltar
+      else this.jump(this.seg + 1)
+      return this.last
+    }
+    this.last = cur.at + Math.min(Math.max(t - cur.from, 0), cur.to - cur.from)
+    return this.last
+  }
+
+  private jump(i: number) {
+    const s = this.plan.segments[i]
+    this.seg = i
+    this.inner.seek(s.from)
+    this.last = s.at
+    this.settleUntil = performance.now() + PLAN_SEEK_SETTLE_MS
+  }
+
+  private finish(): number {
+    this.inner.pause()
+    this.seg = Math.max(this.plan.segments.length - 1, 0)
+    this.last = this.plan.duration
+    this.onEnd()
+    return this.last
+  }
+
+  playing(): boolean {
+    return this.inner.playing()
+  }
+
+  rate(): number {
+    return this.inner.rate()
+  }
+
+  play() {
+    if (this.last >= this.plan.duration - 300) this.seek(0)
+    this.inner.play()
+  }
+
+  pause() {
+    this.inner.pause()
+  }
+
+  seek(ms: number) {
+    const segs = this.plan.segments
+    if (!segs.length) return
+    let i = segs.length - 1
+    for (let k = 0; k < segs.length; k++) {
+      if (ms < segs[k].at + (segs[k].to - segs[k].from)) {
+        i = k
+        break
+      }
+    }
+    const s = segs[i]
+    const off = Math.min(Math.max(ms - s.at, 0), s.to - s.from)
+    this.seg = i
+    this.inner.seek(s.from + off)
+    this.last = s.at + off
+    this.settleUntil = performance.now() + PLAN_SEEK_SETTLE_MS
+  }
+
+  setRate(rate: number) {
+    this.inner.setRate(rate)
+  }
+
+  destroy() {
+    if (this.timer) clearInterval(this.timer)
+    this.timer = null
+  }
+}
+
+/** El que PlanClock necessita del pla (src/lib/arrangement/plan.ts), sense importar-lo. */
+export interface PlaybackPlanLike {
+  segments: { from: number; to: number; at: number }[]
+  duration: number
+}

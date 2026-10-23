@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useSongbookStore, isDefaultCanconerTitle } from "@/hooks/useSongbook"
 import { useToastStore } from "@/hooks/useToasts"
 import { useUiStore } from "@/hooks/useUi"
-import { saveCanconer } from "@/lib/canconerApi"
+import { saveCanconer, songRefs } from "@/lib/canconerApi"
 import { CanconerList } from "./CanconerList"
 import { CanconerGrid } from "./CanconerGrid"
 import { CanconerTitleInput } from "./CanconerTitleInput"
@@ -103,7 +103,7 @@ export function CanconerPanel() {
             accentColor,
             pdfOptions,
             duplicateId: duplicate.id,
-            songs: canconer.map((e) => ({ id: e.song.id, semitones: e.semitones })),
+            songs: songRefs(canconer),
           })
           return
         }
@@ -112,7 +112,7 @@ export function CanconerPanel() {
       // Si falla la petició, continuem amb el save normal
     }
 
-    const songs = canconer.map((e) => ({ id: e.song.id, semitones: e.semitones }))
+    const songs = songRefs(canconer)
     const newId = await saveCanconer(
       canconerTitle,
       canconerStyle,

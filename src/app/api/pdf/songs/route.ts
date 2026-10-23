@@ -6,6 +6,9 @@ import { canconerStyleSchema } from "@/lib/schemas/canconer"
 import { logEvent } from "@/lib/analytics/logEvent"
 import { getSessionUser } from "@/lib/session"
 import { filterViewableSongs, type SongbookContext } from "@/lib/access/songs"
+import { quickArrangementSchema } from "@/lib/schemas/arrangement"
+import { applyArrangement } from "@/lib/arrangement/apply"
+import { SONG_STATE } from "@/lib/songKind"
 
 /**
  * Dades de les cançons per al generador de PDF del client
@@ -23,6 +26,7 @@ const bodySchema = z.object({
       z.object({
         id: z.number().int().positive(),
         semitones: z.number().int().default(0),
+        arrangement: quickArrangementSchema.nullish(),
       }),
     )
     .min(1, "No has seleccionat cap cançó")
@@ -62,7 +66,7 @@ export async function POST(request: Request) {
   )
   const byId = new Map(rows.map((r) => [r.id, r]))
 
-  const songs = parsed.songs.flatMap(({ id, semitones }) => {
+  const songs = parsed.songs.flatMap(({ id, semitones, arrangement }) => {
     const s = byId.get(id)
     if (!s) return []
     return [
@@ -71,7 +75,8 @@ export async function POST(request: Request) {
         artist: s.artist,
         key: s.key,
         capo: s.capo,
-        content: s.content,
+        // Arranjament ràpid (§22): només sobre cançons públiques
+        content: arrangement && s.state === SONG_STATE.PUBLIC ? applyArrangement(s.content, arrangement) : s.content,
         semitones,
         album: s.album,
         year: s.year,

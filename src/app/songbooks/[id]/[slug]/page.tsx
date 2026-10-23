@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/session"
 import { PublicNav } from "@/components/public/PublicNav"
 import { SongbookViewer } from "@/components/songbooks/SongbookViewer"
 import { initialIndexFrom, sampleTitles, toViewerData } from "@/components/songbooks/toViewerData"
+import { playerAvailabilities } from "@/db/queries/transcriptions"
 import { getT } from "@/lib/i18n"
 
 interface Props {
@@ -55,6 +56,7 @@ export default async function PublicSongbookPage({ params, searchParams }: Props
       <PublicNav />
       <SongbookViewer
         songbook={toViewerData(c)}
+        players={playerAvailabilities(c.songs.filter((s) => s.state === 0).map((s) => s.id))}
         pdfContext={{ songbook_id: c.id }}
         initialIndex={fromIndex >= 0 ? fromIndex : initialIndexFrom(query.song)}
       />

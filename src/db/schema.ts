@@ -115,6 +115,8 @@ export const canconerSongs = sqliteTable("canconer_songs", {
     .references(() => songs.id, { onDelete: "cascade" }),
   semitones: integer("semitones").default(0),
   position: integer("position").notNull().default(0),
+  /** Arranjament ràpid (§22): recepta JSON sobre el content original (src/lib/schemas/arrangement.ts). */
+  arrangement: text("arrangement"),
 })
 
 // ─── Propostes de cançons ───────────────────────────────────

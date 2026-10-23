@@ -4,6 +4,7 @@ import { getCanconerByToken } from "@/db/queries/canconers"
 import { PublicNav } from "@/components/public/PublicNav"
 import { SongbookViewer } from "@/components/songbooks/SongbookViewer"
 import { initialIndexFrom, toViewerData } from "@/components/songbooks/toViewerData"
+import { playerAvailabilities } from "@/db/queries/transcriptions"
 import { getT } from "@/lib/i18n"
 
 interface Props {
@@ -34,6 +35,7 @@ export default async function SharedPage({ params, searchParams }: Props) {
       <PublicNav />
       <SongbookViewer
         songbook={toViewerData(canconer)}
+        players={playerAvailabilities(canconer.songs.filter((s) => s.state === 0).map((s) => s.id))}
         pdfContext={{ share_token: token }}
         initialIndex={initialIndexFrom((await searchParams).song)}
       />

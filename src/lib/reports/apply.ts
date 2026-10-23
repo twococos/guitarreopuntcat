@@ -30,7 +30,7 @@ export interface ApplyResult {
 
 /* ── Model per línia ─────────────────────────────────────── */
 
-interface LineChord {
+export interface LineChord {
   offset: number
   chord: string
   removed?: boolean
@@ -129,7 +129,7 @@ export function insertChordInText(text: string, offset: number, chord: string): 
 
 /* ── Aplicació ───────────────────────────────────────────── */
 
-interface TextEdit {
+export interface TextEdit {
   start: number
   end: number
   to: string
@@ -367,7 +367,7 @@ function overlap(a: { start: number; end: number }, b: { start: number; end: num
  * offsets originals continuïn valent. Els acords posteriors es desplacen; els
  * que queien dins el tram substituït es queden dins el text nou.
  */
-function applyTextEdits(m: LineModel, edits: TextEdit[]): void {
+export function applyTextEdits(m: LineModel, edits: TextEdit[]): void {
   const sorted = [...edits].sort((a, b) => b.start - a.start || b.end - a.end)
   for (const e of sorted) {
     // El text nou pot portar els seus propis acords

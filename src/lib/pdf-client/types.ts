@@ -1,4 +1,5 @@
 import type { CanconerStyle, PdfOptions } from "@/lib/schemas/canconer"
+import type { CanconerSongRef } from "@/types/song"
 
 /** Dades d'una cançó necessàries per maquetar-la al PDF. */
 export interface PdfSong {
@@ -20,7 +21,7 @@ export interface PdfClientInput {
   style: CanconerStyle
   accentColor: string | null
   options: PdfOptions
-  songs: Array<{ id: number; semitones: number }>
+  songs: CanconerSongRef[]
   /** Cançoner d'on surten les cançons: fa visibles les privades que en formen
    *  part (src/lib/access/songs.ts, regla 5). */
   context?: { songbook_id: number } | { share_token: string }

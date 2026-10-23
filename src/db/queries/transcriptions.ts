@@ -892,3 +892,14 @@ export function playerAvailability(songId: number): { ok: boolean } | null {
   if (!summary?.current) return null
   return { ok: summary.quality?.ok ?? false }
 }
+
+/** `playerAvailability` de diverses cançons d'un cop (visor de cançoners). */
+export function playerAvailabilities(songIds: number[]): Record<number, { ok: boolean } | null> {
+  const summaries = getAnalysisSummaries([...new Set(songIds)])
+  const out: Record<number, { ok: boolean } | null> = {}
+  for (const id of songIds) {
+    const s = summaries.get(id)
+    out[id] = s?.current ? { ok: s.quality?.ok ?? false } : null
+  }
+  return out
+}

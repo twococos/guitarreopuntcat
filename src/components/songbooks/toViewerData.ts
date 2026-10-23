@@ -1,5 +1,6 @@
 import type { PdfOptions } from "@/lib/schemas/canconer"
 import type { CanconerStyle } from "@/types/song"
+import type { QuickArrangement } from "@/lib/schemas/arrangement"
 import type { SongbookViewerData } from "./SongbookViewer"
 
 /** Forma de les consultes de cançoners (getPublicSongbook, getCanconerByToken…). */
@@ -25,6 +26,8 @@ interface SongbookQueryResult {
     spotify_url: string | null
     state: number
     semitones: number
+    arrangement?: QuickArrangement | null
+    rhythm?: string | null
   }>
 }
 
@@ -52,6 +55,8 @@ export function toViewerData(c: SongbookQueryResult): SongbookViewerData {
       spotify_url: s.spotify_url,
       state: s.state,
       semitones: s.semitones,
+      arrangement: s.arrangement ?? null,
+      rhythm: s.rhythm ?? null,
     })),
   }
 }

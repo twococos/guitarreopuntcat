@@ -6,6 +6,7 @@ import { useToastStore } from "@/hooks/useToasts"
 import { transposeKey } from "@/lib/transpose"
 import type { CanconerStyle } from "@/types/song"
 import type { PdfOptions } from "@/lib/schemas/canconer"
+import type { QuickArrangement } from "@/lib/schemas/arrangement"
 import {
   IconCheck,
   IconCopy,
@@ -46,6 +47,7 @@ interface CanconerSong {
   state: number
   semitones: number
   position: number | null
+  arrangement?: QuickArrangement | null
 }
 
 interface CanconerDetail extends CanconerListItem {
@@ -139,7 +141,7 @@ export function CanconersTab() {
         accent_color: active.accent_color,
         // Sense això, el schema posaria les opcions de PDF per defecte
         ...(active.pdf_options ? { pdf_options: active.pdf_options } : {}),
-        songs: active.songs.map((s) => ({ id: s.id, semitones: s.semitones })),
+        songs: active.songs.map((s) => ({ id: s.id, semitones: s.semitones, arrangement: s.arrangement ?? null })),
       }),
     })
     if (!res.ok) {

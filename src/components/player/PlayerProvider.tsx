@@ -19,6 +19,8 @@ import type { ControllerState, PlayerController } from "@/lib/player/controller"
 import { DEFAULT_MIX, type Mix, type PlayerMode } from "@/lib/player/options"
 import type { StyleId } from "@/lib/player/styles"
 import { indexAt } from "@/lib/player/timeline"
+import { applyArrangement } from "@/lib/arrangement/apply"
+import type { QuickArrangement } from "@/lib/schemas/arrangement"
 
 export interface PlayerSong {
   id: number
@@ -28,6 +30,8 @@ export interface PlayerSong {
   capo: number
   /** Estil fixat per l'admin (`songs.rhythm`). */
   rhythm: string | null
+  /** Arranjament ràpid del cançoner (§22): sona i es veu l'arranjament. */
+  arrangement?: QuickArrangement | null
 }
 
 export interface PlayerUiState extends ControllerState {
@@ -70,6 +74,8 @@ interface PlayerContextValue {
   actions: PlayerActions
   subscribeFrame: (cb: (t: number) => void) => () => void
   song: PlayerSong
+  /** El que es veu: el content, o el content arranjat (noms de les seccions de la cronologia). */
+  displayContent: string
   semitones: number
   flats: boolean
 }
@@ -110,6 +116,7 @@ function initialState(song: PlayerSong): PlayerUiState {
     detected: null,
     rate: 1,
     timeline: null,
+    unsynced: 0,
     following: true,
     videoCollapsed: false,
     settingsOpen: false,
@@ -156,6 +163,18 @@ export function PlayerProvider({
   }, [])
 
   const open = useStore(store, (s) => s.open)
+
+  // Una altra cançó (visor de cançoners: el mateix provider per a totes): s'apaga i es reinicia
+  const songKey = `${song.id}|${song.arrangement ? JSON.stringify(song.arrangement) : ""}`
+  const lastSongKey = useRef(songKey)
+  useEffect(() => {
+    if (lastSongKey.current === songKey) return
+    lastSongKey.current = songKey
+    ctrlRef.current?.destroy()
+    ctrlRef.current = null
+    store.setState(initialState(song))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [songKey])
 
   // Un sol bucle de frames per a tots els subscriptors, només amb el reproductor obert
   useEffect(() => {
@@ -208,6 +227,7 @@ export function PlayerProvider({
             youtubeId: song.youtubeId,
             capo: song.capo,
             fixedStyle: store.getState().fixedStyle,
+            arrangement: song.arrangement ? { content: song.content, qa: song.arrangement } : null,
             onChange: set,
           },
           ctx,
@@ -316,9 +336,10 @@ export function PlayerProvider({
     return () => window.removeEventListener("keydown", onKey)
   }, [open, actions])
 
+  const displayContent = useMemo(() => applyArrangement(song.content, song.arrangement), [song.content, song.arrangement])
   const value = useMemo<PlayerContextValue>(
-    () => ({ store, actions, subscribeFrame, song, semitones, flats }),
-    [store, actions, subscribeFrame, song, semitones, flats],
+    () => ({ store, actions, subscribeFrame, song, displayContent, semitones, flats }),
+    [store, actions, subscribeFrame, song, displayContent, semitones, flats],
   )
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
@@ -350,9 +371,9 @@ export function usePlayerActions(): PlayerActions {
   return usePlayerContext().actions
 }
 
-export function usePlayerView(): { song: PlayerSong; semitones: number; flats: boolean } {
-  const { song, semitones, flats } = usePlayerContext()
-  return { song, semitones, flats }
+export function usePlayerView(): { song: PlayerSong; displayContent: string; semitones: number; flats: boolean } {
+  const { song, displayContent, semitones, flats } = usePlayerContext()
+  return { song, displayContent, semitones, flats }
 }
 
 /** `cb(t)` a cada frame mentre el reproductor és obert (t = ms de l'àudio original). */

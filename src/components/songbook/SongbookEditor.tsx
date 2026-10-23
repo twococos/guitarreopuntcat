@@ -14,6 +14,7 @@ import { SongList } from "./SongList"
 import { CanconerPanel } from "./CanconerPanel"
 import { DetailPanel, PreviewToggleButton } from "./DetailPanel"
 import { KeyMenu } from "./KeyMenu"
+import { QuickArrangeDialog } from "./arrange/QuickArrangeDialog"
 import { OverwriteToast } from "./OverwriteToast"
 import { ProposeLoginToast } from "./ProposeLoginToast"
 import { NewSongButton } from "./NewSongButton"
@@ -21,7 +22,8 @@ import { ResizeHandles } from "./ResizeHandles"
 import { AppHeader } from "./AppHeader"
 import { getT } from "@/lib/i18n"
 import type { CSSProperties } from "react"
-import type { CanconerListItem, CanconerStyle } from "@/types/song"
+import type { CanconerEntry, CanconerListItem, CanconerSongRef, CanconerStyle } from "@/types/song"
+import { songRefs } from "@/lib/canconerApi"
 import type { PdfOptions } from "@/lib/schemas/canconer"
 import type { Song } from "@/types/song"
 
@@ -35,7 +37,7 @@ interface InProgressPayload {
   accentColor: string | null
   pdfOptions: PdfOptions
   previewActive: boolean
-  songs: Array<{ id: number; semitones: number }>
+  songs: CanconerSongRef[]
 }
 
 export function SongbookEditor() {
@@ -175,7 +177,7 @@ export function SongbookEditor() {
       accentColor: s.accentColor,
       pdfOptions: s.pdfOptions,
       previewActive: s.previewActive,
-      songs: s.canconer.map((e) => ({ id: e.song.id, semitones: e.semitones })),
+      songs: songRefs(s.canconer),
     }
     try {
       sessionStorage.setItem(IN_PROGRESS_STORAGE_KEY, JSON.stringify(payload))
@@ -189,15 +191,15 @@ export function SongbookEditor() {
       const data = JSON.parse(raw) as InProgressPayload
       if (data?.v !== 1) return
       const entries = await Promise.all(
-        data.songs.map(async ({ id, semitones }) => {
+        data.songs.map(async ({ id, semitones, arrangement }): Promise<CanconerEntry | null> => {
           const res = await fetch(`/api/songs/${id}`)
           if (!res.ok) return null
           const song = (await res.json()) as Song
-          return { song, semitones }
+          return { song, semitones, arrangement: arrangement ?? null }
         }),
       )
       const validEntries = entries.filter(
-        (e): e is { song: Song; semitones: number } => e !== null,
+        (e): e is CanconerEntry => e !== null,
       )
       // Reutilitzem loadExistingCanconer per restaurar tots els camps de cop.
       // Si savedCanconerId era null, passem -1 i tot seguit el reposem a null.
@@ -262,18 +264,18 @@ export function SongbookEditor() {
         style?: CanconerStyle
         accent_color?: string | null
         pdf_options?: PdfOptions | null
-        songs: Array<{ id: number; semitones: number }>
+        songs: CanconerSongRef[]
       }
       const entries = (
         await Promise.all(
-          data.songs.map(async ({ id, semitones }) => {
+          data.songs.map(async ({ id, semitones, arrangement }): Promise<CanconerEntry | null> => {
             const res = await fetch(`/api/songs/${id}`)
             if (!res.ok) return null
             const song = (await res.json()) as Song
-            return { song, semitones }
+            return { song, semitones, arrangement: arrangement ?? null }
           }),
         )
-      ).filter((e): e is { song: Song; semitones: number } => e !== null)
+      ).filter((e): e is CanconerEntry => e !== null)
       loadExistingCanconer({
         id: data.id ?? -1,
         title: data.title,
@@ -335,6 +337,7 @@ export function SongbookEditor() {
         <PreviewToggleButton />
       </main>
       <KeyMenu />
+      <QuickArrangeDialog />
       <OverwriteToast />
       <ProposeLoginToast />
       <ToastHost />

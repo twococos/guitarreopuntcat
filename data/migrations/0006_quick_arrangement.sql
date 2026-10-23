@@ -1,0 +1,1 @@
+ALTER TABLE `canconer_songs` ADD `arrangement` text;

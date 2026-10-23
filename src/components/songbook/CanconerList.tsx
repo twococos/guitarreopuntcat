@@ -34,6 +34,7 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
   const bump = useSongbookStore((s) => s.bumpSemitones)
   const remove = useSongbookStore((s) => s.removeFromCanconer)
   const openKeyMenu = useSongbookStore((s) => s.openKeyMenu)
+  const openArrange = useSongbookStore((s) => s.openArrange)
   const notation = useSongbookStore((s) => s.pdfOptions.notation)
 
   const currentKey = respellAccidentals(transposeKey(entry.song.key, entry.semitones), notation)
@@ -52,7 +53,7 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
       style={style}
       className={`${selected ? "selected" : ""} ${isDragging ? "dragging" : ""}`.trim()}
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest(".c-transpose, .c-remove")) return
+        if ((e.target as HTMLElement).closest(".c-transpose, .c-remove, .c-arrange")) return
         setSelected(idx)
       }}
       {...attributes}
@@ -60,13 +61,17 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
     >
       <span className="c-num">{idx + 1}</span>
       <span className="c-title">
-        {entry.song.title}
+        <span className="c-title-text">{entry.song.title}</span>
         {kind && kind !== "public" && (
           <span className={`song-kind-tag song-kind-${kind}`}>{t.app.songbook.songList.tipus[kind]}</span>
+        )}
+        {entry.arrangement && (
+          <span className="song-kind-tag song-kind-arrangement">{t.app.songbook.songList.tipus.arrangement}</span>
         )}
       </span>
       <span className="c-artist">{entry.song.artist}</span>
       <div className="c-transpose" onPointerDown={(e) => e.stopPropagation()}>
+        <ArrangeButton entry={entry} onOpen={() => openArrange(idx)} className="c-arrange" />
         <button
           className="c-pm c-btn-down"
           title={t.app.songbook.canconerList.menosUnSemitoTitle}
@@ -117,6 +122,41 @@ function SortableItem({ entry, idx }: { entry: CanconerEntry; idx: number }) {
         <IconX />
       </button>
     </li>
+  )
+}
+
+/**
+ * Botó «Arranjar» (arranjament ràpid, §22): només a les cançons publicades; si l'entrada ja té
+ * arranjament, «Edita l'arranjament». Surt en passar el cursor per la fila (o amb la fila
+ * seleccionada), flotant a l'esquerra de la tonalitat: no ocupa columna, així totes les files
+ * mantenen la mateixa graella. Que la cançó està arranjada ho diu l'etiqueta del títol.
+ */
+export function ArrangeButton({
+  entry,
+  onOpen,
+  className,
+}: {
+  entry: CanconerEntry
+  onOpen: () => void
+  className: string
+}) {
+  const t = getT()
+  const tq = t.app.songbook.quickArrange
+  if (entry.song.state !== 0) return null
+  const active = Boolean(entry.arrangement)
+  return (
+    <button
+      type="button"
+      className={`${className}${active ? " is-active" : ""}`}
+      title={active ? tq.botoActiuTitle : tq.botoTitle}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        onOpen()
+      }}
+    >
+      {active ? tq.botoEdita : tq.boto}
+    </button>
   )
 }
 

@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid"
 import { db, schema } from "@/db/client"
 import { mapCanconer, mapSong } from "./utils"
 import type { CanconerSave } from "@/lib/schemas/canconer"
+import { parseArrangement } from "@/lib/schemas/arrangement"
 import { filterViewableSongs, type Viewer } from "@/lib/access/songs"
 import { slugify } from "@/lib/slugify"
 import { SONG_STATE } from "@/lib/songKind"
@@ -72,10 +73,12 @@ function loadCanconerSongs(canconerId: number) {
       state: schema.songs.state,
       ownerId: schema.songs.ownerId,
       originalSongId: schema.songs.originalSongId,
+      rhythm: schema.songs.rhythm,
       createdAt: schema.songs.createdAt,
       updatedAt: schema.songs.updatedAt,
       semitones: schema.canconerSongs.semitones,
       position: schema.canconerSongs.position,
+      arrangement: schema.canconerSongs.arrangement,
     })
     .from(schema.canconerSongs)
     .innerJoin(schema.songs, eq(schema.songs.id, schema.canconerSongs.songId))
@@ -88,10 +91,12 @@ function loadCanconerSongs(canconerId: number) {
 type CanconerSongRow = ReturnType<typeof loadCanconerSongs>[number]
 
 function mapCanconerSongs(rows: CanconerSongRow[]) {
-  return rows.map((s) => ({
+  return rows.map(({ arrangement, ...s }) => ({
     ...mapSong(s),
     semitones: s.semitones ?? 0,
     position: s.position,
+    // Arranjament ràpid (§22): només sobre cançons públiques
+    arrangement: s.state === SONG_STATE.PUBLIC ? parseArrangement(arrangement) : null,
   }))
 }
 
@@ -205,6 +210,10 @@ export async function saveOrUpdateCanconer(user: NonNullable<Viewer>, data: Canc
         .all()
     : []
   const allowed = new Set(filterViewableSongs(rows, user).map((r) => r.id))
+  // Arranjament ràpid (§22): només es desa sobre cançons públiques
+  const publicIds = new Set(rows.filter((r) => r.state === SONG_STATE.PUBLIC).map((r) => r.id))
+  const arrangementOf = (s: (typeof songs)[number]) =>
+    s.arrangement && publicIds.has(s.id) ? JSON.stringify(s.arrangement) : null
   if (id !== undefined) {
     for (const r of db
       .select({ songId: schema.canconerSongs.songId })
@@ -242,6 +251,7 @@ export async function saveOrUpdateCanconer(user: NonNullable<Viewer>, data: Canc
             songId: songs[i].id,
             semitones: songs[i].semitones ?? 0,
             position: i,
+            arrangement: arrangementOf(songs[i]),
           })
           .run()
       }
@@ -268,6 +278,7 @@ export async function saveOrUpdateCanconer(user: NonNullable<Viewer>, data: Canc
             songId: songs[i].id,
             semitones: songs[i].semitones ?? 0,
             position: i,
+            arrangement: arrangementOf(songs[i]),
           })
           .run()
       }
@@ -386,7 +397,12 @@ export function copySongbookAsPublic(id: number, adminId: number) {
         .run().lastInsertRowid,
     )
     const songs = tx
-      .select({ songId: schema.canconerSongs.songId, semitones: schema.canconerSongs.semitones, position: schema.canconerSongs.position })
+      .select({
+        songId: schema.canconerSongs.songId,
+        semitones: schema.canconerSongs.semitones,
+        position: schema.canconerSongs.position,
+        arrangement: schema.canconerSongs.arrangement,
+      })
       .from(schema.canconerSongs)
       .where(eq(schema.canconerSongs.canconerId, id))
       .all()

@@ -12,7 +12,9 @@
 import type { AnalysisCompact } from "../schemas/transcriber"
 import type { SyncResult } from "../transcriber/sync"
 import { arrange, type Groove } from "./arrange"
-import { AudioClock, YouTubeClock, type MediaClock } from "./clocks"
+import { arrangeContent, type QuickArrangement } from "../arrangement/apply"
+import { buildPlaybackPlan, virtualizeTimeline, type PlaybackPlan } from "../arrangement/plan"
+import { AudioClock, PlanClock, YouTubeClock, type MediaClock } from "./clocks"
 import { AccompanimentEngine } from "./engine"
 import { DEFAULT_MIX, type Mix, type PlayerMode } from "./options"
 import { STYLES, defaultStyle, effectiveStyle, isStyleId, type StyleId } from "./styles"
@@ -35,6 +37,8 @@ export interface ControllerState {
   detected: { style: StyleId; confidence: number } | null
   rate: number
   timeline: Timeline | null
+  /** Arranjament ràpid: seccions sense sincronitzar (no sonen). */
+  unsynced: number
 }
 
 export interface ControllerOptions {
@@ -43,6 +47,9 @@ export interface ControllerOptions {
   capo: number
   /** Estil fixat per l'admin (`songs.rhythm`). */
   fixedStyle: string | null
+  /** Arranjament ràpid (§22): el content original i la recepta. La cronologia passa a ser la del
+   *  content arranjat (temps virtual) i, en mode vídeo, el rellotge fa els salts. */
+  arrangement?: { content: string; qa: QuickArrangement } | null
   onChange: (patch: Partial<ControllerState>) => void
 }
 
@@ -60,6 +67,9 @@ export class PlayerController {
   private mode: PlayerMode
   private clock: MediaClock | null = null
   private ytClock: YouTubeClock | null = null
+  /** Arranjament ràpid: pla de segments i el rellotge de vídeo que hi salta. */
+  private plan: PlaybackPlan | null = null
+  private planClock: PlanClock | null = null
   private yt: YTPlayer | null = null
   private videoEl: HTMLElement | null = null
   private semitones = 0
@@ -98,7 +108,16 @@ export class PlayerController {
       return
     }
     if (this.destroyed) return
-    const tl = buildTimeline(data.analysis, data.sync)
+    let tl = buildTimeline(data.analysis, data.sync)
+    const arr = this.opts.arrangement
+    if (arr) {
+      const arranged = arrangeContent(arr.content, arr.qa)
+      const plan = buildPlaybackPlan(tl, arranged)
+      if (plan.segments.length) {
+        this.plan = plan
+        tl = virtualizeTimeline(tl, plan, arranged)
+      }
+    }
     this.timeline = tl
     const rhythm = data.analysis.rhythm
     this.groove = rhythm?.groove ?? null
@@ -109,7 +128,14 @@ export class PlayerController {
     this.style = eff.id
     if (this.mode === "solo") this.rearrange()
     // A punt amb les dades: el vídeo pot trigar (i l'usuari ja pot passar a "només acompanyament")
-    this.opts.onChange({ timeline: tl, style: eff.id, styleSource: eff.source, detected, status: "ready" })
+    this.opts.onChange({
+      timeline: tl,
+      style: eff.id,
+      styleSource: eff.source,
+      detected,
+      status: "ready",
+      unsynced: this.plan?.unsynced.length ?? 0,
+    })
     // En mode vídeo, el rellotge arriba quan el vídeo és a punt (setVideoElement / startVideo)
     if (this.mode === "video") await this.startVideo()
     else this.useSolo()
@@ -138,8 +164,11 @@ export class PlayerController {
       }
       this.yt = player
       this.ytClock = new YouTubeClock(player)
+      if (this.plan) {
+        this.planClock = new PlanClock(this.ytClock, this.plan, () => this.opts.onChange({ playing: false }))
+      }
       if (this.mode === "video") {
-        this.clock = this.ytClock
+        this.clock = this.videoClock()
         this.applyMode()
         if (this.pendingPos !== null) this.clock.seek(this.pendingPos)
         this.pendingPos = null
@@ -190,7 +219,7 @@ export class PlayerController {
         void this.startVideo()
         return
       }
-      this.clock = this.ytClock
+      this.clock = this.videoClock()
       this.clock.seek(pos)
       this.applyMode()
       if (wasPlaying) this.clock.play()
@@ -200,6 +229,11 @@ export class PlayerController {
       if (wasPlaying) this.play()
     }
     this.opts.onChange({ mode, playing: this.clock?.playing() ?? false })
+  }
+
+  /** Rellotge del mode vídeo: el del vídeo o, amb arranjament, el que hi fa els salts. */
+  private videoClock(): MediaClock {
+    return this.planClock ?? (this.ytClock as YouTubeClock)
   }
 
   /** En mode vídeo el motor no programa res; en mode sol segueix el rellotge de l'àudio. */
@@ -317,6 +351,7 @@ export class PlayerController {
     document.removeEventListener("visibilitychange", this.onVisibility)
     this.engine.destroy()
     this.clock?.destroy()
+    this.planClock?.destroy()
     try {
       this.yt?.destroy()
     } catch {

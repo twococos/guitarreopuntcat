@@ -1,4 +1,4 @@
-import type { CanconerStyle } from "@/types/song"
+import type { CanconerEntry, CanconerSongRef, CanconerStyle } from "@/types/song"
 import type { PdfOptions } from "@/lib/schemas/canconer"
 
 /**
@@ -10,7 +10,7 @@ export async function saveCanconer(
   style: CanconerStyle,
   accentColor: string | null,
   pdfOptions: PdfOptions,
-  songs: Array<{ id: number; semitones: number }>,
+  songs: CanconerSongRef[],
   existingId?: number | null,
 ): Promise<number | null> {
   try {
@@ -19,7 +19,7 @@ export async function saveCanconer(
       style: CanconerStyle
       accent_color: string | null
       pdf_options: PdfOptions
-      songs: Array<{ id: number; semitones: number }>
+      songs: CanconerSongRef[]
       id?: number
     } = { title, style, accent_color: accentColor, pdf_options: pdfOptions, songs }
     if (existingId != null) body.id = existingId
@@ -35,4 +35,9 @@ export async function saveCanconer(
   } catch {
     return null
   }
+}
+
+/** Entrades del cançoner → referències per desar-lo (o portar-lo a una altra pàgina). */
+export function songRefs(entries: CanconerEntry[]): CanconerSongRef[] {
+  return entries.map((e) => ({ id: e.song.id, semitones: e.semitones, arrangement: e.arrangement ?? null }))
 }

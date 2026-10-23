@@ -43,6 +43,13 @@
       "when": 1792698074578,
       "tag": "0005_rhythm",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792759299174,
+      "tag": "0006_quick_arrangement",
+      "breakpoints": true
     }
   ]
 }

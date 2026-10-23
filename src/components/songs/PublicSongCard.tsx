@@ -48,6 +48,7 @@ export function PublicSongCard({
   report,
   onReportOpen,
   body,
+  displayContent,
 }: {
   song: PublicSongData
   semitones: number
@@ -70,6 +71,8 @@ export function PublicSongCard({
   onReportOpen?: () => void
   /** Cos alternatiu (el reproductor hi posa el sincronitzat). En mode report mana el report. */
   body?: ReactNode
+  /** Content que es mostra (arranjament ràpid, §22). El report sempre treballa sobre l'original. */
+  displayContent?: string
 }) {
   const t = getT()
   const [keyPickerOpen, setKeyPickerOpen] = useState(false)
@@ -79,7 +82,7 @@ export function PublicSongCard({
   const notationMap = flats ? ALL_FLATS : ALL_SHARPS
   const displayKey = respellAccidentals(transposeKey(song.key, semitones), notationMap)
   const originalKey = respellAccidentals(song.key, notationMap)
-  const transposedContent = respellContent(transposeContent(song.content, semitones), notationMap)
+  const transposedContent = respellContent(transposeContent(displayContent ?? song.content, semitones), notationMap)
   const showOriginal = displayKey !== originalKey
 
   const reporter = useSongReport({

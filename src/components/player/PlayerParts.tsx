@@ -15,17 +15,18 @@ import { RATE_RANGE } from "@/lib/player/options"
 import { STYLE_IDS, type StyleId } from "@/lib/player/styles"
 import { indexAt } from "@/lib/player/timeline"
 import { usePlayer, usePlayerActions, usePlayerFrame, usePlayerView } from "./PlayerProvider"
+import { IconPause, IconPlay } from "@/components/shared/Icons"
 
-/** Nom de cada bloc <sec> del content. */
+/** Nom de cada bloc <sec> del content que es veu (amb arranjament ràpid, l'arranjat). */
 function useSectionNames(): Map<number, string> {
-  const { song } = usePlayerView()
+  const { displayContent } = usePlayerView()
   return useMemo(() => {
     const m = new Map<number, string>()
-    parse(song.content.replace(/\r/g, "")).blocks.forEach((b, i) => {
+    parse(displayContent.replace(/\r/g, "")).blocks.forEach((b, i) => {
       if (b.kind === "section") m.set(i, b.name.replace(/<[^>]*>/g, "").trim())
     })
     return m
-  }, [song.content])
+  }, [displayContent])
 }
 
 /** Acord que es veu (transposat i amb la notació triada). */
@@ -389,6 +390,69 @@ export function PlayerSettings() {
           <option value={1} />
         </datalist>
       </label>
+    </div>
+  )
+}
+
+/**
+ * Reproductor plegat (columna del visor de cançoners): l'acord que sona i el que ve, la secció
+ * i play/pausa. És el mínim per tocar-hi sense mirar el panell.
+ */
+export function PlayerMini() {
+  const tp = getT().public.player
+  const timeline = usePlayer((s) => s.timeline)
+  const playing = usePlayer((s) => s.playing)
+  const loading = usePlayer((s) => s.status === "loading")
+  const actions = usePlayerActions()
+  const show = useShowChord()
+  const names = useSectionNames()
+  const nowRef = useRef<HTMLSpanElement>(null)
+  const nextRef = useRef<HTMLSpanElement>(null)
+  const secRef = useRef<HTMLSpanElement>(null)
+  const last = useRef({ now: "", next: "", sec: "" })
+
+  usePlayerFrame((now) => {
+    const tl = timeline
+    if (!tl) return
+    const L = last.current
+    const ci = indexAt(tl.chords, now)
+    const cur = ci >= 0 ? tl.chords[ci].label : null
+    const nowTxt = show(cur)
+    let nextTxt = ""
+    for (let k = ci + 1; k < tl.chords.length; k++) {
+      const l = tl.chords[k].label
+      if (l && l !== cur) {
+        nextTxt = show(l)
+        break
+      }
+    }
+    const si = indexAt(tl.sections.map((s) => ({ t: s.start })), now)
+    const secTxt = si >= 0 && now <= tl.sections[si].end + 1500 ? (names.get(tl.sections[si].block) ?? "") : ""
+    if (nowRef.current && nowTxt !== L.now) nowRef.current.textContent = L.now = nowTxt
+    if (nextRef.current && nextTxt !== L.next) nextRef.current.textContent = L.next = nextTxt
+    if (secRef.current && secTxt !== L.sec) secRef.current.textContent = L.sec = secTxt
+  })
+
+  return (
+    <div className="player-mini">
+      <button
+        type="button"
+        className={`player-mini-play${playing ? " is-playing" : ""}`}
+        onClick={actions.toggle}
+        disabled={loading}
+        aria-label={playing ? tp.pausa : tp.play}
+        title={playing ? tp.pausa : tp.play}
+      >
+        {playing ? <IconPause /> : <IconPlay />}
+      </button>
+      <span ref={nowRef} className="player-chord-now player-mini-now" title={tp.acordAra}>
+        —
+      </span>
+      <span className="player-mini-next" title={tp.seguent}>
+        <small>{tp.seguent}</small>
+        <span ref={nextRef} />
+      </span>
+      <span ref={secRef} className="player-mini-sec" />
     </div>
   )
 }

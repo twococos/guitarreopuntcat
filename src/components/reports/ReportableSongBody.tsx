@@ -11,26 +11,13 @@ import type { ReportItem } from "@/lib/schemas/report"
 import { IconChevronLeft, IconX } from "@/components/shared/Icons"
 import { ChordPicker, ReportPopover, SectionPicker, TextPicker } from "./ReportPopovers"
 import type { MarkKind, SongReport } from "./useSongReport"
-
-interface Pos {
-  block: number
-  offset: number
-  /** Posició dins el text que ha afegit l'ítem `item` d'aquest report (no és al content). */
-  ins?: { item: number; offset: number }
-}
+import { caretBox, caretFromPoint, selectionBoxes, wordBounds, type Pos, type Sel } from "./selection"
 
 /** Afegeix un acord al text nou d'un ítem de lletra (si en té). */
 function withChord(item: ReportItem, offset: number, chord: string): ReportItem {
   if (item.kind === "lyric_replace") return { ...item, to: insertChordInText(item.to, offset, chord) }
   if (item.kind === "lyric_add_line") return { ...item, text: insertChordInText(item.text, offset, chord) }
   return item
-}
-
-interface Sel {
-  block: number
-  start: number
-  end: number
-  text: string
 }
 
 type Popover =
@@ -45,7 +32,6 @@ type Popover =
   | { type: "sectionMissingBody"; x: number; y: number; block: number; position: "before" | "after"; name: string }
 
 const DRAG_THRESHOLD = 5
-const WORD_CHAR = /[\p{L}\p{N}'’·-]/u
 
 /** Modes en què es toquen acords, se selecciona lletra o es toquen títols de secció. */
 const CHORD_MODES: readonly MarkKind[] = ["chord_wrong", "chord_extra", "chord_move"]
@@ -53,43 +39,6 @@ const TEXT_MODES: readonly MarkKind[] = ["lyric_fix", "lyric_extra"]
 const SECTION_MODES: readonly MarkKind[] = ["section_rename", "section_remove"]
 /** Modes en què un cursor segueix el ratolí per marcar on aniria la cosa nova. */
 const CARET_MODES: readonly MarkKind[] = ["chord_missing", "lyric_missing"]
-
-/**
- * Cursor (en coordenades del contenidor) a una posició de text: la vora
- * esquerra del caràcter que hi ha a l'offset, o la dreta de l'últim si és al
- * final. Si la línia no té text, al principi de la línia.
- */
-function caretBox(wrap: HTMLElement, pos: Pos) {
-  const origin = wrap.getBoundingClientRect()
-  const selector = pos.ins
-    ? `ins[data-item="${pos.ins.item}"] .rp-it`
-    : `.rp-line[data-b="${pos.block}"] .rp-t`
-  const offset = pos.ins ? pos.ins.offset : pos.offset
-  let fallback: { left: number; top: number; height: number } | null = null
-  for (const t of wrap.querySelectorAll<HTMLElement>(selector)) {
-    const node = t.firstChild
-    if (!node || node.nodeType !== Node.TEXT_NODE) continue
-    const o = Number(t.dataset.o)
-    const len = node.textContent?.length ?? 0
-    if (offset < o || offset > o + len || len === 0) continue
-    const r = document.createRange()
-    const atEnd = offset === o + len
-    r.setStart(node, atEnd ? len - 1 : offset - o)
-    r.setEnd(node, atEnd ? len : offset - o + 1)
-    const rect = [...r.getClientRects()].find((c) => c.width > 0)
-    if (!rect) continue
-    const box = { left: (atEnd ? rect.right : rect.left) - origin.left, top: rect.top - origin.top, height: rect.height }
-    if (!atEnd) return box
-    fallback = box
-  }
-  if (fallback) return fallback
-  const line = pos.ins
-    ? wrap.querySelector<HTMLElement>(`ins[data-item="${pos.ins.item}"]`)
-    : wrap.querySelector<HTMLElement>(`.rp-line[data-b="${pos.block}"]`)
-  if (!line) return null
-  const r = line.getBoundingClientRect()
-  return { left: r.left - origin.left, top: r.top - origin.top, height: r.height || 16 }
-}
 
 /**
  * Què es veu en color a cada mode. La resta queda en gris, i les correccions
@@ -108,45 +57,6 @@ const EMPHASIS: Record<MarkKind, ("chords" | "lyrics" | "sections")[]> = {
   section_remove: ["sections"],
   section_add: ["sections", "lyrics"],
   section_missing: ["sections", "lyrics"],
-}
-
-/**
- * Caixetes de la selecció de lletra, en coordenades del contenidor: una per
- * línia visual (una línia de la cançó pot ocupar-ne més d'una en pantalla).
- * Només es mesuren els trossos de text, no els acords que hi ha a sobre.
- */
-function selectionBoxes(wrap: HTMLElement, sel: Sel) {
-  const origin = wrap.getBoundingClientRect()
-  const rects: DOMRect[] = []
-  for (const t of wrap.querySelectorAll<HTMLElement>(`.rp-line[data-b="${sel.block}"] .rp-t`)) {
-    const node = t.firstChild
-    if (!node || node.nodeType !== Node.TEXT_NODE) continue
-    const o = Number(t.dataset.o)
-    const s = Math.max(sel.start, o)
-    const e = Math.min(sel.end, o + (node.textContent?.length ?? 0))
-    if (s >= e) continue
-    const r = document.createRange()
-    r.setStart(node, s - o)
-    r.setEnd(node, e - o)
-    for (const cr of r.getClientRects()) if (cr.width > 0.5) rects.push(cr)
-  }
-  const lines: { left: number; right: number; top: number; bottom: number }[] = []
-  for (const r of rects) {
-    const l = lines.find((b) => Math.abs(b.top - r.top) < r.height / 2)
-    if (l) {
-      l.left = Math.min(l.left, r.left)
-      l.right = Math.max(l.right, r.right)
-      l.bottom = Math.max(l.bottom, r.bottom)
-    } else {
-      lines.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom })
-    }
-  }
-  return lines.map((b) => ({
-    left: b.left - origin.left - 3,
-    top: b.top - origin.top - 1,
-    width: b.right - b.left + 6,
-    height: b.bottom - b.top + 2,
-  }))
 }
 
 /**
@@ -259,16 +169,8 @@ export function ReportableSongBody({
 
   const posFromPoint = useCallback(
     (x: number, y: number): Pos | null => {
-      const d = document as Document & {
-        caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null
-        caretRangeFromPoint?: (x: number, y: number) => Range | null
-      }
-      if (d.caretPositionFromPoint) {
-        const p = d.caretPositionFromPoint(x, y)
-        return p ? locate(p.offsetNode, p.offset) : null
-      }
-      const r = d.caretRangeFromPoint?.(x, y)
-      return r ? locate(r.startContainer, r.startOffset) : null
+      const p = caretFromPoint(x, y)
+      return p ? locate(p.node, p.offset) : null
     },
     [locate],
   )
@@ -278,12 +180,8 @@ export function ReportableSongBody({
     (pos: Pos): Sel | null => {
       const m = lyric(pos.block)
       if (!m) return null
-      let start = Math.min(pos.offset, m.text.length)
-      let end = start
-      while (start > 0 && WORD_CHAR.test(m.text[start - 1])) start--
-      while (end < m.text.length && WORD_CHAR.test(m.text[end])) end++
-      if (start === end) return null
-      return { block: pos.block, start, end, text: m.text.slice(start, end) }
+      const w = wordBounds(m.text, pos.offset)
+      return w ? { block: pos.block, ...w, text: m.text.slice(w.start, w.end) } : null
     },
     [lyric],
   )

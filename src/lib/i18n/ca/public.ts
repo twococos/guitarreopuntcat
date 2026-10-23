@@ -160,6 +160,11 @@ export const public_ = {
     volta: (n: number, total: number) => `${n}/${total}`,
     videoAmaga: "Amaga el vídeo",
     videoMostra: "Mostra el vídeo",
+    plega: "Plega el reproductor",
+    desplega: "Desplega el reproductor",
+    seguent: "Després",
+    senseSincronia: (n: number) =>
+      n === 1 ? "Una secció de l'arranjament no està sincronitzada i no sona." : `${n} seccions de l'arranjament no estan sincronitzades i no sonen.`,
     estils: {
       pop: "Pop (rasgueig)",
       balada: "Balada arpegiada",
@@ -360,6 +365,10 @@ export const public_ = {
     seguent: "Següent",
     navegacio: "Navegació del cançoner",
     privadaTitle: "Cançó privada: només es veu dins d'aquest cançoner",
+    arranjament: "Arranjament",
+    arranjamentTitle: "Aquesta cançó té un arranjament ràpid dins del cançoner (seccions reordenades, repetides o tretes)",
+    plegaIndex: "Plega l'índex",
+    desplegaIndex: "Desplega l'índex",
   },
 
   pdfDialog: {

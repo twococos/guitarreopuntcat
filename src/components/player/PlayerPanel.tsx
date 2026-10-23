@@ -13,7 +13,7 @@
 import { useSession } from "next-auth/react"
 import { getT } from "@/lib/i18n"
 import { IconPause, IconPlay, IconSettings, IconX, IconChevronDown, IconChevronUp } from "@/components/shared/Icons"
-import { ModeSwitch, NowPlaying, PlayerSettings, SectionChips } from "./PlayerParts"
+import { ModeSwitch, NowPlaying, PlayerMini, PlayerSettings, SectionChips } from "./PlayerParts"
 import { usePlayer, usePlayerActions } from "./PlayerProvider"
 
 /** El reproductor no surt si la sincronització és dolenta, llevat dels admins (amb avís). */
@@ -67,9 +67,11 @@ function StatusLine() {
   const tp = getT().public.player
   const status = usePlayer((s) => s.status)
   const error = usePlayer((s) => s.error)
+  const unsynced = usePlayer((s) => s.unsynced)
   if (status === "loading") return <p className="player-status">{tp.carregant}</p>
   if (error === "load") return <p className="player-status is-error">{tp.errorCarrega}</p>
   if (error === "video") return <p className="player-status">{tp.errorVideo}</p>
+  if (unsynced > 0) return <p className="player-status">{tp.senseSincronia(unsynced)}</p>
   return null
 }
 
@@ -89,7 +91,19 @@ function FollowButton({ compact = false }: { compact?: boolean }) {
   )
 }
 
-export function PlayerPanel({ warn }: { warn: boolean }) {
+/**
+ * `folded` / `onFold` (visor de cançoners, escriptori): el panell es plega cap avall i en queda
+ * `PlayerMini`. El vídeo no es desmunta (continua sonant), només s'amaga.
+ */
+export function PlayerPanel({
+  warn,
+  folded = false,
+  onFold,
+}: {
+  warn: boolean
+  folded?: boolean
+  onFold?: () => void
+}) {
   const tp = getT().public.player
   const mode = usePlayer((s) => s.mode)
   const videoOk = usePlayer((s) => s.videoOk)
@@ -98,13 +112,28 @@ export function PlayerPanel({ warn }: { warn: boolean }) {
   const showVideo = mode === "video" && videoOk
 
   return (
-    <aside className="player-panel" aria-label={tp.titol}>
+    <aside className={`player-panel${folded ? " is-folded" : ""}`} aria-label={tp.titol}>
       <div className="player-panel-head">
         <span className="player-title">{tp.titol}</span>
-        <button type="button" className="player-icon-btn" onClick={actions.close} aria-label={tp.tancar} title={tp.tancar}>
-          <IconX />
-        </button>
+        <span className="player-panel-head-actions">
+          {onFold && (
+            <button
+              type="button"
+              className="player-icon-btn"
+              onClick={onFold}
+              aria-expanded={!folded}
+              aria-label={folded ? tp.desplega : tp.plega}
+              title={folded ? tp.desplega : tp.plega}
+            >
+              {folded ? <IconChevronUp /> : <IconChevronDown />}
+            </button>
+          )}
+          <button type="button" className="player-icon-btn" onClick={actions.close} aria-label={tp.tancar} title={tp.tancar}>
+            <IconX />
+          </button>
+        </span>
       </div>
+      {folded && <PlayerMini />}
       <ModeSwitch />
       <div className={`player-video-box${showVideo ? "" : " is-hidden"}${collapsed ? " is-collapsed" : ""}`}>
         <div className="player-video" ref={actions.setVideoElement} />

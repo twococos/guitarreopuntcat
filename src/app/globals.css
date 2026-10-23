@@ -20,6 +20,7 @@
      E. visibilitat    → tipus de cançó, cançoners públics, diàlegs d'admin
      F. reports        → reportar errors d'una cançó i pestanya Errors de l'admin
      G. reproductor    → «Toca-la»: panell, franja, vídeo i cos sincronitzat
+     H. arranjament    → arranjament ràpid: botó «Arranja» i diàleg de l'arranjador
    ════════════════════════════════════════════════════════════ */
 
 @import "../styles/song.css";
@@ -415,7 +416,10 @@ select:focus {
 }
 #canconer-list li {
   display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1fr) minmax(0, 38%) auto auto;
+  /* La columna dels controls fa sempre 76px (−, tonalitat, +; o «Edita» a la portada): cada fila
+     és una graella pròpia i, si variés, l'artista (i «Índex») no quedarien alineats. El botó
+     d'arranjar hi flota a sobre i no compta. */
+  grid-template-columns: 1.5rem minmax(0, 1fr) minmax(0, 34%) 76px auto;
   align-items: center;
   gap: 0.4rem;
   padding: 0.45rem 0.6rem;
@@ -474,6 +478,7 @@ select:focus {
 /* «Edita»: com el botó de tonalitat (.c-key), però en verd. */
 .c-edit {
   grid-column: 4;
+  justify-self: end;
   width: 76px;
   height: 20px;
   border-radius: 5px;
@@ -511,11 +516,22 @@ select:focus {
   font-family: monospace;
 }
 .c-title {
+  display: flex;
+  align-items: center;
   font-weight: 600;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* El títol es retalla; les etiquetes (privada, arranjament) es veuen sempre */
+.c-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.c-title .song-kind-tag,
+.cg-title .song-kind-tag {
+  flex-shrink: 0;
 }
 .c-artist {
   font-size: 0.72rem;
@@ -527,8 +543,10 @@ select:focus {
 }
 
 .c-transpose {
+  position: relative;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 3px;
   flex-shrink: 0;
 }
@@ -708,10 +726,12 @@ select:focus {
   text-align: right;
 }
 .cg-title {
+  display: flex;
+  align-items: center;
   font-weight: 600;
   flex: 1;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .cg-artist {
@@ -10265,4 +10285,898 @@ body.report-active .player-strip,
 body.report-active .player-sheet,
 body.report-active .player-video-box {
   visibility: hidden;
+}
+
+/* ════════════════════════════════════════════════════════════
+   H. ARRANJAMENT RÀPID (§22) — botó «Arranja» i diàleg
+   ════════════════════════════════════════════════════════════ */
+
+/* Botó a la llista i la graella del cançoner: pastel blau, vora una mica més fosca */
+.c-arrange,
+.cg-arrange {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 6px;
+  margin-right: 4px;
+  border-radius: 5px;
+  border: 1px solid #b9d3ee;
+  background: #eef4fb;
+  color: #2a6db0;
+  font-size: 0.66rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0;
+  flex-shrink: 0;
+  transition:
+    opacity 0.15s,
+    background 0.12s,
+    border-color 0.12s;
+}
+.c-arrange {
+  position: absolute;
+  right: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 0;
+  pointer-events: none;
+  box-shadow: 0 0 0 4px #fdf4f3;
+}
+#canconer-list li:hover .c-arrange,
+#canconer-list li.selected .c-arrange,
+.c-arrange:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cg-arrange {
+  display: none;
+}
+#canconer-grid .cg-item:hover .cg-arrange,
+.cg-arrange:focus-visible {
+  display: inline-flex;
+  opacity: 1;
+}
+.c-arrange:hover,
+.cg-arrange:hover {
+  border-color: #6fa3d8;
+  background: #dceaf8;
+}
+.cg-arrange {
+  height: 18px;
+  padding: 0 5px;
+  margin-right: 0;
+  align-self: center;
+}
+
+/* ── Diàleg ── */
+body.qa-dialog-open {
+  overflow: hidden !important;
+}
+.qa-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 20, 20, 0.55);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.18s ease;
+}
+.qa-dialog {
+  width: min(880px, 94vw);
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  animation: optionsPanelIn 0.18s ease;
+}
+.qa-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.qa-head-text {
+  flex: 1;
+  min-width: 0;
+}
+.qa-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.qa-song {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qa-song strong {
+  color: var(--text);
+}
+.qa-editor-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.78rem;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.qa-editor-link:hover {
+  border-color: #6fa3d8;
+  color: #2a6db0;
+}
+.qa-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+.qa-close:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.qa-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* Paleta d'eines (com un programa de dibuix) */
+.qa-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0.75rem 0.5rem;
+  border-right: 1px solid var(--border);
+  background: #fafaf8;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+.qa-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 64px;
+  padding: 0.45rem 0.25rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+.qa-tool:hover:not(:disabled) {
+  background: #eef4fb;
+}
+.qa-tool.is-active {
+  background: #eef4fb;
+  border-color: #b9d3ee;
+  color: #2a6db0;
+}
+.qa-tool:disabled {
+  color: #c4c4c4;
+  cursor: default;
+}
+.qa-tool-icon {
+  width: 20px;
+  height: 20px;
+}
+.qa-tool-label {
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+.qa-palette-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.qa-canvas {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 0.9rem 1.4rem 1.5rem;
+}
+.qa-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+.qa-lost {
+  font-size: 0.78rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 8px;
+  background: #fff8e1;
+  border: 1px solid #f3dc8f;
+}
+
+/* Targetes de secció: vora que envolta tot el cos, interrompuda pel títol */
+.qa-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  font-size: 15px;
+}
+.qa-sec {
+  position: relative;
+  min-width: 0;
+  border: 1.5px solid #d6dde6;
+  border-radius: 12px;
+  padding: 0.35rem 1rem 0.75rem 1.6rem;
+  background: var(--surface);
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s,
+    background 0.12s;
+}
+.qa-sec.is-edited {
+  border-style: dashed;
+}
+.qa-sec-name {
+  padding: 0 0.45rem;
+  margin-left: -0.6rem;
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: #2a6db0;
+}
+.qa-sec.is-dragging {
+  z-index: 2;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+  border-color: #6fa3d8;
+}
+[data-tool="move"] .qa-sec {
+  cursor: grab;
+  touch-action: none;
+}
+[data-tool="move"] .qa-sec:hover,
+[data-tool="repeat"] .qa-sec:hover {
+  border-color: #6fa3d8;
+  background: #f7fafd;
+}
+[data-tool="repeat"] .qa-sec {
+  cursor: copy;
+}
+[data-tool="remove"] .qa-sec {
+  cursor: pointer;
+}
+[data-tool="remove"] .qa-sec:hover:not(.is-locked) {
+  border-color: #e3a29b;
+  background: #fdf4f3;
+}
+[data-tool="remove"] .qa-sec:hover:not(.is-locked) .qa-body {
+  text-decoration: line-through;
+  text-decoration-color: #c62828;
+}
+[data-tool="remove"] .qa-sec.is-locked {
+  cursor: not-allowed;
+}
+
+.qa-body-wrap {
+  position: relative;
+}
+.qa-body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.qa-body .rp-line {
+  position: relative;
+}
+.qa-body .rp-chip {
+  display: inline-block;
+  padding: 0 3px;
+  margin: 0 -3px;
+  border-radius: 4px;
+}
+.qa-body .rp-del,
+.qa-body .rp-old {
+  color: #c62828;
+  text-decoration: line-through;
+  text-decoration-color: #c62828;
+  text-decoration-thickness: 2px;
+  opacity: 0.75;
+}
+.qa-body .rp-line.is-erased {
+  background: repeating-linear-gradient(-45deg, transparent 0 6px, rgba(198, 40, 40, 0.06) 6px 12px);
+}
+/* Marge per ratllar el vers sencer (només amb la goma) */
+.qa-gutter {
+  position: absolute;
+  left: -1.35rem;
+  top: 0.15em;
+  bottom: 0.15em;
+  width: 0.9rem;
+  border-radius: 4px;
+  display: none;
+}
+.qa-body.is-erasing {
+  cursor: text;
+  touch-action: none;
+}
+.qa-body.is-erasing .qa-gutter {
+  display: block;
+  cursor: pointer;
+  background: #f1f1ef;
+}
+.qa-body.is-erasing .qa-gutter:hover {
+  background: #f6c9c4;
+}
+.qa-body.is-erasing .rp-line.is-erased .qa-gutter {
+  background: #e57373;
+}
+.qa-body.is-erasing ch[data-ci] .rp-chip {
+  cursor: pointer;
+}
+.qa-body.is-erasing ch[data-ci] .rp-chip:hover {
+  background: #fde2df;
+  box-shadow: 0 0 0 1px #f0b4ad;
+}
+.qa-sel-box {
+  border-color: #c62828;
+  background: rgba(198, 40, 40, 0.06);
+}
+
+/* Seccions tretes (sota l'estructura) */
+.qa-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0.9rem;
+  padding: 0.6rem 0.6rem;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+}
+.qa-tray-label {
+  width: 100%;
+}
+.qa-tray-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-right: 4px;
+}
+.qa-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid #b9d3ee;
+  background: #eef4fb;
+  color: #2a6db0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: grab;
+  touch-action: none;
+}
+.qa-chip.is-removed {
+  cursor: pointer;
+  border-style: dashed;
+  border-color: #c9c9c6;
+  background: var(--surface);
+  color: var(--muted);
+}
+.qa-chip.is-removed:hover {
+  color: #2a6db0;
+  border-color: #6fa3d8;
+  background: #eef4fb;
+}
+
+/* Peu: accions */
+.qa-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0.7rem 1.1rem;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.qa-actions,
+.qa-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.qa-confirm span {
+  font-size: 0.8rem;
+  max-width: 260px;
+}
+.qa-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.qa-btn:hover {
+  border-color: #b4b4b4;
+}
+.qa-btn-ghost {
+  border-color: transparent;
+  color: var(--muted);
+}
+.qa-btn-primary {
+  background: #2a6db0;
+  border-color: #2a6db0;
+  color: #fff;
+}
+.qa-btn-primary:hover {
+  background: #235d97;
+  border-color: #235d97;
+}
+.qa-btn-danger {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+@media (max-width: 720px) {
+  .qa-dialog {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+  }
+  .qa-main {
+    flex-direction: column;
+  }
+  .qa-palette {
+    flex-direction: row;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    padding: 0.4rem;
+  }
+  .qa-palette-sep {
+    width: 1px;
+    height: auto;
+    margin: 6px 4px;
+  }
+  .qa-canvas {
+    padding: 0.75rem 0.9rem 1.2rem;
+  }
+  .qa-foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .qa-actions,
+  .qa-confirm {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}
+
+/* ── Visor de cançoners amb el reproductor (§21, §22) ───────
+   Columna esquerra: índex a dalt i reproductor a sota, tots dos plegables
+   (l'índex cap amunt, el reproductor cap avall). La barra de controls es
+   centra amb la columna de la cançó (vores calculades a SongbookViewer). */
+.songbook-viewer .public-song-floating-bar {
+  left: var(--sbv-bar-left, 1rem);
+  right: var(--sbv-bar-right, 1rem);
+  transition:
+    left 0.25s ease,
+    right 0.25s ease;
+}
+.songbook-viewer-side {
+  position: sticky;
+  top: 4.75rem;
+  max-height: calc(100vh - 6rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+.songbook-viewer-side .songbook-viewer-index {
+  position: static;
+  max-height: none;
+  min-height: 0;
+  flex: 0 1 auto;
+}
+.songbook-viewer-index-head {
+  display: none;
+}
+.songbook-viewer-arranged {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #b9d3ee;
+  background: #eef4fb;
+  color: #2a6db0;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* La franja del reproductor (pantalles estretes) també es centra amb la cançó */
+.songbook-viewer .player-strip {
+  left: calc(50% + var(--sbv-bar-left, 0px) / 2 - var(--sbv-bar-right, 0px) / 2);
+  width: min(720px, calc(100% - var(--sbv-bar-left, 0px) - var(--sbv-bar-right, 0px) - 1rem));
+}
+
+/* Reproductor plegat: acord, el que ve, secció i play/pausa */
+.player-panel-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+.player-mini {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 0.7rem;
+  row-gap: 0.1rem;
+}
+.player-mini-play {
+  grid-row: span 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+.player-mini-play:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.player-mini-now {
+  grid-row: span 2;
+  font-size: 1.6rem;
+}
+.player-mini-next {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 0;
+}
+.player-mini-next small {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.player-mini-sec {
+  font-size: 0.78rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 1180px) {
+  .songbook-viewer.has-player .songbook-viewer-layout {
+    grid-template-columns: 320px minmax(0, 820px);
+  }
+  /* L'índex i el reproductor es reparteixen l'alçada de la columna */
+  .songbook-viewer.has-player .songbook-viewer-side {
+    height: calc(100vh - 6rem);
+  }
+  .songbook-viewer.has-player .songbook-viewer-index {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .songbook-viewer.has-player .songbook-viewer-index-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .songbook-viewer-index.is-foldable .songbook-viewer-index-head {
+    display: grid;
+    grid-template-columns: 1.6rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.5rem 0.55rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .songbook-viewer.has-player .songbook-viewer-index.is-folded {
+    flex: 0 0 auto;
+  }
+  .songbook-viewer-index.is-folded .songbook-viewer-index-head {
+    border-bottom: 0;
+  }
+  .songbook-viewer-index.is-folded .songbook-viewer-index-list {
+    display: none;
+  }
+  .songbook-viewer-index-head .songbook-viewer-index-num {
+    color: var(--songbook-accent, var(--accent));
+    font-weight: 700;
+  }
+  .songbook-viewer-index-head .songbook-viewer-index-title {
+    font-weight: 700;
+  }
+
+  .songbook-viewer.has-player .player-panel {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .songbook-viewer.has-player .player-panel .player-settings {
+    margin-top: auto;
+  }
+  .songbook-viewer.has-player .player-panel.is-folded {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+  /* Plegat: només la capçalera i el mini; el vídeo continua muntat (i sonant), amagat */
+  .player-panel.is-folded > :not(.player-panel-head):not(.player-mini):not(.player-video-box) {
+    display: none;
+  }
+  .player-panel.is-folded .player-video-box {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* Pantalles estretes: franja sobre la barra i vídeo flotant (com a la pàgina de la cançó) */
+@media (max-width: 1179px) {
+  .songbook-viewer.has-player {
+    padding-bottom: 11rem;
+  }
+  .player-mini {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .songbook-viewer-side {
+    position: static;
+    max-height: none;
+    display: block;
+  }
+  .songbook-viewer-side .songbook-viewer-index {
+    position: sticky;
+  }
+}
+
+/* ── Arranjador: grups d'eines, estructura i mode actiu ── */
+.qa-palette-group {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0.35rem 0 0.1rem;
+  color: #2a6db0;
+}
+.qa-palette-group.is-lyrics {
+  margin-top: 0.4rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+  color: #c62828;
+}
+[data-group="lyrics"] .qa-tool.is-active {
+  background: #fdecea;
+  border-color: #f0b4ad;
+  color: #c62828;
+}
+
+/* Indicació de l'eina: diu clarament si toca seccions o lletra */
+.qa-hint {
+  position: sticky;
+  top: -0.9rem;
+  z-index: 3;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: -0.9rem -1.4rem 0.9rem;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  background: #f4f8fc;
+}
+.qa-hint strong {
+  flex-shrink: 0;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  color: #fff;
+  background: #2a6db0;
+}
+.qa-hint.is-lyrics {
+  background: #fdf4f3;
+}
+.qa-hint.is-lyrics strong {
+  background: #c62828;
+}
+
+/* Mode seccions: la targeta sencera és l'objectiu; la lletra, una mica apagada */
+[data-group="sections"] .qa-body {
+  color: #6b6b6b;
+}
+[data-group="sections"] .qa-sec {
+  border-color: #b9d3ee;
+}
+/* Mode lletra: les targetes passen a segon pla i la lletra, a primer */
+[data-group="lyrics"] .qa-sec {
+  border-color: #e6e6e3;
+  background: #fff;
+}
+[data-group="lyrics"] .qa-sec-name {
+  color: #9a9a9a;
+}
+.qa-sec.is-flash {
+  box-shadow: 0 0 0 3px #b9d3ee;
+}
+
+/* Estructura: índex vertical de seccions, a la dreta de la lletra */
+.qa-structure {
+  width: 220px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 0.85rem 0.75rem 1rem;
+  border-left: 1px solid var(--border);
+  background: #fafaf8;
+}
+.qa-structure-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.qa-structure-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.qa-structure-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 3px;
+  border: 1px solid #d6e3f1;
+  border-radius: 8px;
+  background: var(--surface);
+}
+.qa-structure-row.is-edited {
+  border-style: dashed;
+}
+.qa-structure-row.is-dragging {
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  border-color: #6fa3d8;
+}
+.qa-structure-grip {
+  display: inline-flex;
+  padding: 4px 2px;
+  font-size: 0.95rem;
+  color: #a9b8c8;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.qa-structure-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 4px 2px;
+  border: none;
+  background: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #2a6db0;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qa-structure-name:hover {
+  text-decoration: underline;
+}
+.qa-structure-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #c62828;
+}
+.qa-structure-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.qa-structure-row:hover .qa-structure-btn,
+.qa-structure-btn:focus-visible {
+  opacity: 1;
+}
+.qa-structure-btn:hover:not(:disabled) {
+  background: #eef4fb;
+  color: #2a6db0;
+}
+.qa-structure-btn.is-danger:hover:not(:disabled) {
+  background: #fdecea;
+  color: #c62828;
+}
+.qa-structure-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.25;
+}
+.qa-dialog {
+  width: min(1040px, 96vw);
+}
+
+@media (max-width: 900px) {
+  .qa-main {
+    flex-wrap: wrap;
+  }
+  .qa-structure {
+    width: 100%;
+    max-height: 30vh;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .qa-structure-btn {
+    opacity: 1;
+  }
 }

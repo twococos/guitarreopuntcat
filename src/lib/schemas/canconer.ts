@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { quickArrangementSchema } from "./arrangement"
 
 /* ── Estils visuals del cançoner ──────────────────────────── */
 
@@ -146,6 +147,7 @@ export const canconerSaveSchema = z.object({
     z.object({
       id: z.number().int(),
       semitones: z.number().int().default(0),
+      arrangement: quickArrangementSchema.nullish(),
     }),
   ),
 })
