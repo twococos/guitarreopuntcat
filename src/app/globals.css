@@ -21,6 +21,7 @@
      F. reports        → reportar errors d'una cançó i pestanya Errors de l'admin
      G. reproductor    → «Toca-la»: panell, franja, vídeo i cos sincronitzat
      H. arranjament    → arranjament ràpid: botó «Arranja» i diàleg de l'arranjador
+     I. inici-app      → overlay d'inici de /app (obre o crea un cançoner)
    ════════════════════════════════════════════════════════════ */
 
 @import "../styles/song.css";
@@ -11178,5 +11179,324 @@ body.qa-dialog-open {
   }
   .qa-structure-btn {
     opacity: 1;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   I. INICI-APP — overlay d'inici de /app (amb sessió i sense
+   cap cançoner en curs). Deixa la capçalera (z-index 100) usable.
+   ════════════════════════════════════════════════════════════ */
+
+.start-overlay {
+  position: fixed;
+  inset: var(--header-h) 0 0 0;
+  z-index: 95;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8vh 1rem 2rem;
+  overflow-y: auto;
+  background: rgba(247, 247, 245, 0.45);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  animation: start-overlay-in 0.2s ease-out;
+}
+@keyframes start-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.start-overlay-card {
+  position: relative;
+  width: min(580px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.14);
+  padding: 2rem 2rem 1.75rem;
+}
+.start-overlay-card--public {
+  width: min(680px, 100%);
+}
+.start-overlay-card:not(.start-overlay-card--choose) {
+  padding-top: 3rem;
+}
+
+.start-overlay-title {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 1.1rem;
+  text-align: center;
+}
+.start-overlay-hint {
+  margin: -0.6rem 0 1.1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.start-overlay-back {
+  position: absolute;
+  top: 0.9rem;
+  left: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.3rem 0.6rem 0.3rem 0.35rem;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.start-overlay-back:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text);
+}
+.start-overlay-back svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Tria: dos botons grans */
+.start-overlay-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.start-overlay-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 1.6rem 1rem 1.4rem;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.start-overlay-choice:hover,
+.start-overlay-choice:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 6px 22px rgba(192, 57, 43, 0.14);
+  transform: translateY(-1px);
+  outline: none;
+}
+.start-overlay-choice-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+}
+.start-overlay-choice-icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+.start-overlay-choice-label {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.start-overlay-choice-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Camps i botons */
+input.start-overlay-input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  font-size: 1.05rem;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+}
+input.start-overlay-input:focus {
+  border-color: var(--accent);
+}
+input.start-overlay-input--small {
+  padding: 0.55rem 0.85rem;
+  font-size: 0.92rem;
+  margin-bottom: 0.75rem;
+}
+.start-overlay-error {
+  margin-top: 0.45rem;
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+.start-overlay-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 1.1rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.start-overlay-primary:hover:not(:disabled) {
+  background: var(--accent-hv);
+}
+.start-overlay-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.start-overlay-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: transparent;
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.start-overlay-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.start-overlay-secondary svg,
+.start-overlay-primary svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.start-overlay-empty {
+  padding: 1rem 0.5rem;
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.92rem;
+  list-style: none;
+}
+
+/* Obre: llista dels cançoners propis */
+.start-overlay-list {
+  list-style: none;
+  max-height: min(46vh, 420px);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.start-overlay-list li + li {
+  border-top: 1px solid var(--border);
+}
+.start-overlay-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.65rem 0.95rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+.start-overlay-item:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+}
+.start-overlay-item:disabled {
+  cursor: progress;
+}
+.start-overlay-item-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.start-overlay-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Públics: barra amb l'aspecte de l'hero i resultats en llista fixa */
+.start-overlay-search {
+  margin-bottom: 0.85rem;
+}
+.start-overlay-results {
+  max-height: min(50vh, 460px);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.35rem 0;
+}
+.start-overlay-result {
+  padding-right: 0.8rem;
+}
+.start-overlay-result-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding: 0.35rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 0.8rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.start-overlay-result-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.start-overlay-result-btn.is-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.start-overlay-result-btn.is-primary:hover:not(:disabled) {
+  background: var(--accent-hv);
+  color: #fff;
+}
+.start-overlay-result-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+.start-overlay-result-btn svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .start-overlay-card {
+    padding: 1.5rem 1rem 1.25rem;
+  }
+  .start-overlay-choices {
+    grid-template-columns: 1fr;
+  }
+  .start-overlay-result {
+    flex-wrap: wrap;
   }
 }

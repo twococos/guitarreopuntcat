@@ -30,6 +30,7 @@ export function CanconerPanel() {
   const resetCanconer = useSongbookStore((s) => s.resetCanconer)
   const showToast = useToastStore((s) => s.show)
   const setLoginPopup = useUiStore((s) => s.setLoginPopup)
+  const setStartOverlay = useUiStore((s) => s.setStartOverlay)
 
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   // Visibilitat del cançoner desat (null: no desat o encara no se sap)
@@ -133,6 +134,8 @@ export function CanconerPanel() {
     resetCanconer()
     setConfirmDiscard(false)
     showToast(t.app.songbook.canconerPanel.toastDescartat)
+    // Sense res a mitges, torna a demanar què obrir o crear
+    if (isLoggedIn) setStartOverlay(true)
   }
 
   return (

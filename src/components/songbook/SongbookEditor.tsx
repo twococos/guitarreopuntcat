@@ -8,6 +8,7 @@ import {
   isDefaultCanconerTitle,
 } from "@/hooks/useSongbook"
 import { useColumnSizesStore } from "@/hooks/useColumnSizes"
+import { useUiStore } from "@/hooks/useUi"
 import { UserWidget } from "@/components/UserWidget"
 import { ToastHost } from "@/components/Toast"
 import { SongList } from "./SongList"
@@ -20,6 +21,7 @@ import { ProposeLoginToast } from "./ProposeLoginToast"
 import { NewSongButton } from "./NewSongButton"
 import { ResizeHandles } from "./ResizeHandles"
 import { AppHeader } from "./AppHeader"
+import { StartOverlay, type LoadCanconerPayload } from "./start/StartOverlay"
 import { getT } from "@/lib/i18n"
 import type { CSSProperties } from "react"
 import type { CanconerEntry, CanconerListItem, CanconerSongRef, CanconerStyle } from "@/types/song"
@@ -47,6 +49,8 @@ export function SongbookEditor() {
   const loadExistingCanconer = useSongbookStore((s) => s.loadExistingCanconer)
   const setProvisionalTitle = useSongbookStore((s) => s.setProvisionalTitle)
   const previewActive = useSongbookStore((s) => s.previewActive)
+  const startOverlayOpen = useUiStore((s) => s.startOverlayOpen)
+  const setStartOverlay = useUiStore((s) => s.setStartOverlay)
   const leftWidth = useColumnSizesStore((s) => s.leftWidth)
   const rightWidth = useColumnSizesStore((s) => s.rightWidth)
   const hydrateColumnSizes = useColumnSizesStore((s) => s.hydrate)
@@ -70,6 +74,10 @@ export function SongbookEditor() {
     //    Biblioteca). Amb `append: true`, s'afegeix al cançoner en curs.
     // 3) "canconer_in_progress" (autoguardat de sessió anterior).
     // 4) Estat per defecte, amb títol generat segons cançoners existents.
+    //    Amb sessió, l'overlay d'inici demana obrir o crear un cançoner.
+    // El store sobreviu a la navegació: l'overlay es decideix a cada muntatge.
+    setStartOverlay(false)
+
     const loadRaw = sessionStorage.getItem("load_canconer")
     if (loadRaw) {
       sessionStorage.removeItem("load_canconer")
@@ -108,6 +116,7 @@ export function SongbookEditor() {
     if (session?.user?.active) {
       void setDefaultTitle()
     }
+    setStartOverlay(true)
     hydratedRef.current = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -255,39 +264,37 @@ export function SongbookEditor() {
 
   async function loadFromSession(raw: string) {
     try {
-      // `id` absent: és una còpia d'un cançoner d'algú altre (visor públic),
-      // que es desarà com a cançoner nou. Les cançons que no es poden veure
-      // fora d'aquell cançoner (privades de l'autor) no s'hi copien.
-      const data = JSON.parse(raw) as {
-        id?: number
-        title: string
-        style?: CanconerStyle
-        accent_color?: string | null
-        pdf_options?: PdfOptions | null
-        songs: CanconerSongRef[]
-      }
-      const entries = (
-        await Promise.all(
-          data.songs.map(async ({ id, semitones, arrangement }): Promise<CanconerEntry | null> => {
-            const res = await fetch(`/api/songs/${id}`)
-            if (!res.ok) return null
-            const song = (await res.json()) as Song
-            return { song, semitones, arrangement: arrangement ?? null }
-          }),
-        )
-      ).filter((e): e is CanconerEntry => e !== null)
-      loadExistingCanconer({
-        id: data.id ?? -1,
-        title: data.title,
-        style: data.style ?? "classic",
-        accentColor: data.accent_color ?? null,
-        pdfOptions: data.pdf_options ?? null,
-        entries,
-      })
-      if (data.id === undefined) useSongbookStore.setState({ savedCanconerId: null })
+      await loadCanconerPayload(JSON.parse(raw) as LoadCanconerPayload)
     } catch {
       // Ignore parse/fetch errors
     }
+  }
+
+  /** Carrega un cançoner a l'editor (de la Biblioteca, del visor públic o
+   *  de l'overlay d'inici). Llança si alguna petició falla. */
+  async function loadCanconerPayload(data: LoadCanconerPayload) {
+    // `id` absent: és una còpia d'un cançoner d'algú altre (visor públic),
+    // que es desarà com a cançoner nou. Les cançons que no es poden veure
+    // fora d'aquell cançoner (privades de l'autor) no s'hi copien.
+    const entries = (
+      await Promise.all(
+        data.songs.map(async ({ id, semitones, arrangement }): Promise<CanconerEntry | null> => {
+          const res = await fetch(`/api/songs/${id}`)
+          if (!res.ok) return null
+          const song = (await res.json()) as Song
+          return { song, semitones, arrangement: arrangement ?? null }
+        }),
+      )
+    ).filter((e): e is CanconerEntry => e !== null)
+    loadExistingCanconer({
+      id: data.id ?? -1,
+      title: data.title,
+      style: data.style ?? "classic",
+      accentColor: data.accent_color ?? null,
+      pdfOptions: data.pdf_options ?? null,
+      entries,
+    })
+    if (data.id === undefined) useSongbookStore.setState({ savedCanconerId: null })
   }
 
   async function setDefaultTitle() {
@@ -340,6 +347,9 @@ export function SongbookEditor() {
       <QuickArrangeDialog />
       <OverwriteToast />
       <ProposeLoginToast />
+      {startOverlayOpen && session?.user?.active && (
+        <StartOverlay onLoad={loadCanconerPayload} />
+      )}
       <ToastHost />
     </>
   )
