@@ -39,8 +39,12 @@
 @font-face { font-family: "Gelasio"; src: url("/fonts/Gelasio-700i.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
 @font-face { font-family: "Caladea"; src: url("/fonts/Caladea-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "Caladea"; src: url("/fonts/Caladea-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Caladea"; src: url("/fonts/Caladea-400i.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Caladea"; src: url("/fonts/Caladea-700i.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
 @font-face { font-family: "Cousine"; src: url("/fonts/Cousine-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "Cousine"; src: url("/fonts/Cousine-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Cousine"; src: url("/fonts/Cousine-400i.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Cousine"; src: url("/fonts/Cousine-700i.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
 @font-face { font-family: "Inconsolata"; src: url("/fonts/Inconsolata-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "Inconsolata"; src: url("/fonts/Inconsolata-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
 @font-face { font-family: "Anton"; src: url("/fonts/Anton-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
@@ -49,6 +53,8 @@
 @font-face { font-family: "Inter"; src: url("/fonts/Inter-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
 @font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-400i.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-700i.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
 @font-face { font-family: "Caveat"; src: url("/fonts/Caveat-400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "Caveat"; src: url("/fonts/Caveat-700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
 
@@ -222,4 +228,61 @@ sec::before {
 
 sec::after {
   content: " —";
+}
+
+/* ── Diagrames d'acords ─────────────────────────────────────
+   Generats per src/lib/chords/diagram.ts: nom (HTML), graella en
+   SVG de path/rect plens (el PDF la calca vectorial) i, si la
+   finestra no comença al trast 1, el número del trast a l'esquerra
+   de la primera fila. La mida es tria amb --chord-w i el color de
+   la graella amb --chord-ink (gris fosc al PDF; la web el posa
+   una mica més clar al popover). */
+
+.chord-diagram {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  break-inside: avoid;
+}
+
+.chord-name {
+  font-family: var(--song-body-font);
+  font-weight: 700;
+  font-size: calc(var(--chord-w, 56px) * 0.24);
+  line-height: 1.2;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.chord-grid {
+  position: relative;
+  color: var(--chord-ink, #444);
+}
+
+.chord-svg {
+  display: block;
+  width: var(--chord-w, 56px);
+  height: auto;
+}
+
+.chord-fr {
+  position: absolute;
+  right: 92%;
+  margin-top: calc(var(--chord-w, 56px) * -0.04);
+  font-family: var(--song-body-font);
+  font-size: calc(var(--chord-w, 56px) * 0.16);
+  line-height: 1;
+  color: #555;
+  white-space: nowrap;
+}
+
+/* Fila de diagrames a l'inici de la cançó (PDF, opció «Símbols a cada cançó»). */
+.song-chords {
+  --chord-w: 40px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  margin: -0.4rem 0 0.8rem;
+  padding-left: 0.6rem;
 }

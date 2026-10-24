@@ -58,6 +58,15 @@ export const ALL_FLATS: AccidentalMap = {
   "A#": true,
 }
 
+/** Preset per defecte del cançoner: F# en sostingut i la resta en bemoll (Db, Eb, Ab, Bb). */
+export const DEFAULT_ACCIDENTALS: AccidentalMap = {
+  "C#": true,
+  "D#": true,
+  "F#": false,
+  "G#": true,
+  "A#": true,
+}
+
 /** Equivalent bemoll de cada nota negra (forma en sostingut → bemoll). */
 export const SHARP_TO_FLAT: Record<EnharmonicNote, string> = {
   "C#": "Db",
@@ -87,6 +96,27 @@ export function respellContent(content: string, map: AccidentalMap): string {
     /(<ch>)([^<]+)(<\/ch>)/g,
     (_, open: string, chord: string, close: string) =>
       `${open}${respellAccidentals(chord, map)}${close}`,
+  )
+}
+
+/* ── Notació DoReMi ──────────────────────────────────────── */
+
+const SOLFEGE: Record<string, string> = { C: "Do", D: "Re", E: "Mi", F: "Fa", G: "Sol", A: "La", B: "Si" }
+
+/**
+ * Passa les notes d'una cadena (acord o key) a DoReMi: `C#m/G#` → `Do#m/Sol#`.
+ * S'aplica l'últim, després de transposar i de triar les alteracions. Només
+ * canvia les lletres que fan de nota: l'inici i la que segueix una barra.
+ */
+export function toSolfege(text: string): string {
+  return text.replace(/(^|\/|\s)([A-G])/g, (_, pre: string, n: string) => pre + SOLFEGE[n])
+}
+
+/** Variant de `toSolfege` per a contingut amb tags <ch>...</ch>. */
+export function solfegeContent(content: string): string {
+  return content.replace(
+    /(<ch>)([^<]+)(<\/ch>)/g,
+    (_, open: string, chord: string, close: string) => `${open}${toSolfege(chord)}${close}`,
   )
 }
 

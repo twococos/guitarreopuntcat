@@ -5,6 +5,8 @@ import {
   transposeContent,
   respellAccidentals,
   respellContent,
+  toSolfege,
+  solfegeContent,
   ALL_SHARPS,
   type AccidentalMap,
 } from "@/lib/transpose"
@@ -157,6 +159,10 @@ export interface RenderSongHtmlOptions {
   qrUrl?: string | null
   /** Notació enharmònica del render. Default: tot sostinguts. */
   notation?: AccidentalMap
+  /** Notació DoReMi (Do, Re, Mi…) a acords i tonalitat. */
+  solfege?: boolean
+  /** Diagrames dels acords de la cançó (src/lib/chords), en una fila sota la capçalera. */
+  chordDiagramsHtml?: string | null
 }
 
 /**
@@ -170,9 +176,11 @@ export interface RenderSongHtmlOptions {
 export function renderSongHtml(opts: RenderSongHtmlOptions): string {
   const t = getT()
   const map = opts.notation ?? ALL_SHARPS
-  const displayKey = respellAccidentals(transposeKey(opts.key, opts.semitones), map)
-  const originalKey = respellAccidentals(opts.key, map)
-  const transposedContent = respellContent(transposeContent(opts.content, opts.semitones), map)
+  const spell = (k: string) => (opts.solfege ? toSolfege(k) : k)
+  const displayKey = spell(respellAccidentals(transposeKey(opts.key, opts.semitones), map))
+  const originalKey = spell(respellAccidentals(opts.key, map))
+  const respelled = respellContent(transposeContent(opts.content, opts.semitones), map)
+  const transposedContent = opts.solfege ? solfegeContent(respelled) : respelled
   const showOriginal = displayKey !== originalKey
 
   const numberHtml = opts.number != null ? `<span class="song-number">${opts.number}</span>` : ""
@@ -217,6 +225,7 @@ export function renderSongHtml(opts: RenderSongHtmlOptions): string {
     </header>
     ${qrHtml}
   </div>
+  ${opts.chordDiagramsHtml ? `<div class="song-chords">${opts.chordDiagramsHtml}</div>` : ""}
   <div class="song-body">${transposedContent}</div>
 </article>`
 }

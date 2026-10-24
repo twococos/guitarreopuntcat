@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { quickArrangementSchema } from "./arrangement"
+import { DEFAULT_ACCIDENTALS } from "@/lib/transpose"
 
 /* ── Estils visuals del cançoner ──────────────────────────── */
 
@@ -96,20 +97,24 @@ const fontScaleSchema = z.preprocess(
   z.number().min(FONT_SCALE_MIN).max(FONT_SCALE_MAX).default(FONT_SCALE_DEFAULT),
 )
 
+/** Amplada (mm) de la columna d'acords a l'esquerra. */
+export const CHORDS_LEFT_WIDTH_MIN = 8
+export const CHORDS_LEFT_WIDTH_MAX = 40
+
 /** Plataforma d'enllaç/QR. "none" desactiva la funció corresponent. */
 export const LINK_PLATFORMS = ["none", "youtube", "spotify"] as const
 export type LinkPlatform = (typeof LINK_PLATFORMS)[number]
 
 export const pdfOptionsSchema = z.object({
   page_breaks: z.boolean().default(true),
-  columns: z.number().int().min(1).max(3).default(1),
+  columns: z.number().int().min(1).max(3).default(2),
   show_index: z.boolean().default(true),
   show_cover: z.boolean().default(true),
   cover_subtitle: z.string().max(200).nullable().default(null),
-  book_format: z.boolean().default(false),
-  margin_top: z.number().min(0).max(50).default(20),
+  book_format: z.boolean().default(true),
+  margin_top: z.number().min(0).max(50).default(25),
   margin_right: z.number().min(0).max(50).default(18),
-  margin_bottom: z.number().min(0).max(50).default(20),
+  margin_bottom: z.number().min(0).max(50).default(22),
   margin_left: z.number().min(0).max(50).default(18),
   font_scale: fontScaleSchema,
   // Enllaç clicable al títol i codi QR són independents: cadascú apunta a
@@ -128,7 +133,22 @@ export const pdfOptionsSchema = z.object({
       "G#": z.boolean(),
       "A#": z.boolean(),
     })
-    .default({ "C#": false, "D#": false, "F#": false, "G#": false, "A#": false }),
+    .default(DEFAULT_ACCIDENTALS),
+  // Acords (src/lib/chords): glossari després de l'índex i diagrames a l'inici de cada cançó.
+  chord_glossary: z.boolean().default(true),
+  song_chords: z.boolean().default(false),
+  // Modes del cos: només lletra, o acords a l'esquerra de cada vers en comptes de damunt.
+  lyrics_only: z.boolean().default(false),
+  chords_left: z.boolean().default(false),
+  // Columna d'acords (amb chords_left): alineació (a la dreta, contra la lletra, o a
+  // l'esquerra) i amplada en mm. Si els acords d'un vers no hi caben, salten de línia.
+  chords_left_align: z.enum(["left", "right"]).default("right"),
+  chords_left_width: z.number().min(CHORDS_LEFT_WIDTH_MIN).max(CHORDS_LEFT_WIDTH_MAX).default(16),
+  // Treu els títols de secció; les tornades es distingeixen amb negreta o cursiva.
+  hide_sections: z.boolean().default(false),
+  chorus_style: z.enum(["bold", "italic"]).default("bold"),
+  // Notació DoReMi (Do, Re, Mi…) en comptes de la anglesa (C, D, E…).
+  solfege: z.boolean().default(false),
 })
 
 export type PdfOptions = z.infer<typeof pdfOptionsSchema>

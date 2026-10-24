@@ -19,3 +19,7 @@ Els TTF estan normalitzats amb `node scripts/normalize-fonts.mjs` (glifs
 alineats a 4 bytes, sense canviar cap contorn). És imprescindible perquè
 `@pdf-lib/fontkit` els pugui incrustar sense perdre glifs: qualsevol font
 nova ha de passar per l'script.
+
+Les cursives de Cousine, Caladea i JetBrains Mono (`*-400i`, `*-700i`) són
+per a les tornades en cursiva quan s'amaguen els títols de secció al PDF.
+Inconsolata i Caveat no en tenen a Google Fonts.

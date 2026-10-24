@@ -12,6 +12,7 @@ import {
   OrderSection,
   KeysSection,
   NotationSection,
+  ChordsSection,
   LinksSection,
 } from "./sections"
 import type { ReactElement } from "react"
@@ -21,7 +22,7 @@ import type { ReactElement } from "react"
  *  `side: "right"` són les que cal mirar amb la llista del cançoner:
  *  el panell passa a sobre de la vista prèvia i la llista queda nítida. */
 
-export type OptionsCategoryId = "structure" | "style" | "body" | "order" | "keys" | "notation" | "links"
+export type OptionsCategoryId = "structure" | "style" | "body" | "order" | "keys" | "notation" | "chords" | "links"
 
 /** Categoria de la portada (la primera): la usa l'ítem «Portada» de la llista. */
 export const COVER_CATEGORY_ID: OptionsCategoryId = "structure"
@@ -42,6 +43,7 @@ function categories(): OptionsCategory[] {
     { id: "order", title: d.ordreCancons, side: "right", Body: OrderSection },
     { id: "keys", title: d.tonalitatPermeses, side: "right", Body: KeysSection },
     { id: "notation", title: d.formatAlteracions, side: "left", Body: NotationSection },
+    { id: "chords", title: d.catAcords, side: "left", Body: ChordsSection },
     { id: "links", title: d.enllacosIQr, side: "left", Body: LinksSection },
   ]
 }

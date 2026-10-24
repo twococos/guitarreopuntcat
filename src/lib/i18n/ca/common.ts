@@ -91,5 +91,10 @@ export const common = {
     index: "Índex",
     generatEl: (data: string) => `Generat el ${data}`,
     marca: "guitarreo.cat",
+    glossari: "Acords",
+  },
+  // Diagrames d'acords (src/lib/chords/diagram.ts): web i PDF.
+  chords: {
+    trast: (n: number) => `${n}fr`,
   },
 } as const

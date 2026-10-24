@@ -176,6 +176,19 @@ function withBass(shape: Shape, bass: number): Shape {
   return shape
 }
 
+/** Trast de cada corda (de greu a aguda, -1 = no sona) per a un acord ja analitzat. */
+function fretsOf(chord: ParsedChord): Shape {
+  const shape = shapeFor(chord.root, chord.quality)
+  return chord.bass !== null ? withBass(shape, chord.bass) : shape
+}
+
+/** Trast de cada corda (de greu a aguda, -1 = no sona), o null si l'acord no s'entén.
+ *  És la mateixa posició que sona al reproductor; la fan servir els diagrames. */
+export function fretsFor(label: string): number[] | null {
+  const chord = parseChord(label)
+  return chord ? [...fretsOf(chord)] : null
+}
+
 const cache = new Map<string, Voicing | null>()
 
 export function voicingFor(label: string): Voicing | null {
@@ -184,8 +197,7 @@ export function voicingFor(label: string): Voicing | null {
   const chord = parseChord(label)
   let v: Voicing | null = null
   if (chord) {
-    let shape = shapeFor(chord.root, chord.quality)
-    if (chord.bass !== null) shape = withBass(shape, chord.bass)
+    const shape = fretsOf(chord)
     const strings = shape.map((f, i) => (f < 0 ? null : TUNING[i] + f))
     const sounding = strings.map((n, i) => (n === null ? -1 : i)).filter((i) => i >= 0)
     const root = sounding[0]

@@ -19,6 +19,7 @@ import { ReportButton } from "@/components/reports/ReportButton"
 import { ReportPanel } from "@/components/reports/ReportPanel"
 import { ReportableSongBody } from "@/components/reports/ReportableSongBody"
 import { useSongReport, type ReportContext } from "@/components/reports/useSongReport"
+import { ChordHoverLayer } from "@/components/chords/ChordHoverLayer"
 
 export type PublicSongData = Pick<
   Song,
@@ -211,6 +212,8 @@ export function PublicSongCard({
           )
         )}
       </article>
+
+      <ChordHoverLayer containerRef={cardRef} disabled={reporting} />
 
       {report && (
         <ReportPanel

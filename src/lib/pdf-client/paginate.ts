@@ -15,10 +15,10 @@ import type { ProgressFn } from "./types"
  *
  * Unitats atòmiques (mai es parteixen): capçalera de cançó, cada
  * `.pdf-unit` (una línia, o un títol de secció + la línia següent) i
- * cada fila de l'índex.
+ * cada fila de l'índex i cada diagrama del glossari d'acords.
  */
 
-export type PageKind = "cover" | "toc" | "blank" | "song"
+export type PageKind = "cover" | "toc" | "glossary" | "blank" | "song"
 
 export interface BookPage {
   el: HTMLElement
@@ -105,6 +105,31 @@ class Paginator {
       for (const r of rest) tbody.appendChild(r)
       page.content.appendChild(cont)
       rows = rest
+    }
+  }
+
+  /* ── Glossari d'acords ─────────────────────────────────── */
+
+  /** Com l'índex, però parteix per diagrames (la graella flueix en files). */
+  layoutGlossary(glossary: HTMLElement): void {
+    let page = this.newPage("glossary")
+    page.content.appendChild(glossary)
+    let items = Array.from(glossary.querySelectorAll<HTMLElement>(".glossary-grid > .chord-diagram"))
+    for (;;) {
+      let k = this.firstOverflow(items, page, null)
+      if (k === -1) return
+      if (k === 0) k = 1
+      if (k >= items.length) return
+      const rest = items.slice(k)
+      page = this.newPage("glossary")
+      const cont = this.frame.doc.createElement("div")
+      cont.className = "chord-glossary is-cont"
+      cont.innerHTML = `<div class="glossary-grid"></div>`
+      const grid = cont.querySelector(".glossary-grid")
+      if (!grid) return
+      for (const it of rest) grid.appendChild(it)
+      page.content.appendChild(cont)
+      items = rest
     }
   }
 
@@ -260,8 +285,12 @@ export async function paginate(
   const toc = staging.querySelector<HTMLElement>(":scope > .toc")
   if (toc) p.layoutToc(toc)
 
+  // ── Glossari d'acords ──
+  const glossary = staging.querySelector<HTMLElement>(":scope > .chord-glossary")
+  if (glossary) p.layoutGlossary(glossary)
+
   // ── Mode llibre: la primera cançó ha de caure en pàgina física senar
-  // (dreta en impressió a doble cara). Comptem portada + índex.
+  // (dreta en impressió a doble cara). Comptem portada + índex + glossari.
   if (options.book_format && p.pages.length % 2 === 1) p.newPage("blank")
 
   // ── Cançons ──

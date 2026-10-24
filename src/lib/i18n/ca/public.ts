@@ -111,6 +111,7 @@ export const public_ = {
     comencaCanconerHint:
       "Crea un llibret amb les teves cançons preferides, transposa-les i exporta-les en PDF.",
     celleta: (n: number) => `Celleta ${n}`,
+    diagramaAcord: (acord: string) => `Com es fa ${acord} a la guitarra`,
   },
 
   // Reproductor «Toca-la» (src/components/player/)

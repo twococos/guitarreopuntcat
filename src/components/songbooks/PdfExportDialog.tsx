@@ -10,11 +10,12 @@ import {
   StyleSection,
   BodySection,
   NotationSection,
+  ChordsSection,
   LinksSection,
 } from "@/components/songbook/options/sections"
 import { IconChevronRight, IconClock, IconFileText, IconX } from "@/components/shared/Icons"
 
-type DialogCategoryId = "structure" | "style" | "body" | "notation" | "links"
+type DialogCategoryId = "structure" | "style" | "body" | "notation" | "chords" | "links"
 
 /** Portada sense títol ni subtítol: al visor públic són de l'autor. */
 function CoverSection() {
@@ -28,6 +29,7 @@ function dialogCategories(): AccordionCategory<DialogCategoryId>[] {
     { id: "style", title: d.estilCanconer, Body: StyleSection },
     { id: "body", title: d.cos, Body: BodySection },
     { id: "notation", title: d.formatAlteracions, Body: NotationSection },
+    { id: "chords", title: d.catAcords, Body: ChordsSection },
     { id: "links", title: d.enllacosIQr, Body: LinksSection },
   ]
 }

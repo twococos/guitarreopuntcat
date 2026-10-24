@@ -1,6 +1,14 @@
 import { buildQrSvg } from "./qr"
 import { renderSongHtml } from "@/components/song/SongView"
-import { transposeKey, respellAccidentals, ALL_SHARPS } from "@/lib/transpose"
+import {
+  transposeKey,
+  transposeContent,
+  respellAccidentals,
+  respellContent,
+  toSolfege,
+  ALL_SHARPS,
+} from "@/lib/transpose"
+import { chordDiagramHtml, collectChords, sortChords } from "@/lib/chords/diagram"
 import type { CanconerStyle, PdfOptions } from "@/lib/schemas/canconer"
 import { getT } from "@/lib/i18n"
 import type { PdfSong } from "./types"
@@ -15,8 +23,10 @@ import type { PdfSong } from "./types"
 export interface BookParts {
   coverHtml: string | null
   tocHtml: string | null
+  /** Glossari d'acords del llibre (va després de l'índex). */
+  glossaryHtml: string | null
   songHtmls: string[]
-  /** Classes del <body> (with-breaks / no-breaks / book-format). */
+  /** Classes del <body> (with-breaks / no-breaks / book-format / lyrics-only / chords-left). */
   bodyClass: string
   /** Variables CSS inline del <body>. */
   bodyStyle: string
@@ -39,6 +49,54 @@ function resolveLinkUrl(
   return sp ?? yt ?? null
 }
 
+/** Com es posen els acords al cos: damunt la lletra (el normal), cap, o a l'esquerra del vers. */
+export type ChordsMode = "above" | "none" | "left"
+
+const CHORD_RE = /<ch>([^<]*)<\/ch>/g
+
+/** Text d'una línia sense acords; els espais que només separaven acords es col·lapsen. */
+function lyricOf(line: string): string {
+  return line.replace(CHORD_RE, "").replace(/(\S) {2,}/g, "$1 ").replace(/\s+$/, "")
+}
+
+const isSectionLine = (l: string) => /<sec>/.test(l)
+/** Seccions que són tornada (no la pre-tornada): es marquen quan s'amaguen els títols. */
+const CHORUS_RE = /^\s*(tornada|chorus|estribillo)/i
+const isBlankLine = (l: string) => l.replace(/<[^>]*>/g, "").trim() === "" && !/<ch>/.test(l)
+
+/**
+ * «Només lletra»: treu els acords, les línies que només en tenien, els títols
+ * de secció que es queden sense lletra (Intro, Instrumental…) i les línies en
+ * blanc que queden repetides (o a l'inici o al final).
+ */
+export function stripChords(lines: string[]): string[] {
+  const out: string[] = []
+  for (const l of lines) {
+    const hadChords = /<ch>/.test(l)
+    const lyric = lyricOf(l)
+    if (hadChords && lyric.replace(/<[^>]*>/g, "").trim() === "") continue
+    if (isBlankLine(lyric) && (out.length === 0 || isBlankLine(out[out.length - 1]))) continue
+    out.push(lyric)
+  }
+  // Títols sense lletra fins al títol següent: fora, amb els blancs que els segueixen
+  // (el d'abans es queda i separa la secció anterior de la següent).
+  const kept: string[] = []
+  for (let i = 0; i < out.length; i++) {
+    if (isSectionLine(out[i])) {
+      let j = i + 1
+      while (j < out.length && isBlankLine(out[j])) j++
+      if (j >= out.length || isSectionLine(out[j])) {
+        i = j - 1
+        continue
+      }
+    }
+    kept.push(out[i])
+  }
+  while (kept.length && isBlankLine(kept[0])) kept.shift()
+  while (kept.length && isBlankLine(kept[kept.length - 1])) kept.pop()
+  return kept
+}
+
 /**
  * Parteix el contingut d'una cançó (un sol bloc `pre-wrap` amb `\n`) en
  * unitats paginables: una `.pdf-line` per línia, i cada títol de secció
@@ -47,25 +105,70 @@ function resolveLinkUrl(
  * Els `<sec>` reben el text "— X —" real: al PDF no hi ha pseudo-elements
  * (`::before`/`::after` no són al DOM), així que el CSS del frame els
  * anul·la i aquí posem el mateix text.
+ *
+ * Amb `mode = "left"`, cada vers és una graella: els acords de la línia en
+ * una columna a l'esquerra (de `leftWidthMm`) i la lletra al
+ * costat. Els versos sense acords porten la columna buida perquè la lletra
+ * quedi alineada, i les línies només d'acords surten seguides a tota
+ * l'amplada (no a la columna). Amb `"none"`, vegeu `stripChords`.
+ *
+ * Amb `hideSections`, els títols de secció no surten (ni els blancs que
+ * quedarien repetits) i les línies de les tornades porten `.pdf-chorus`
+ * (negreta o cursiva segons la classe del body).
  */
-export function splitSongBody(content: string): string {
-  const lines = content.replace(/\r\n?/g, "\n").replace(/\n+$/, "").split("\n")
-  const lineHtml = (l: string): string => {
+export function splitSongBody(
+  content: string,
+  mode: ChordsMode = "above",
+  hideSections = false,
+  leftWidthMm = 16,
+): string {
+  let lines = content.replace(/\r\n?/g, "\n").replace(/\n+$/, "").split("\n")
+  if (mode === "none") lines = stripChords(lines)
+
+  const rows: { l: string; chorus: boolean }[] = []
+  let inChorus = false
+  for (const l of lines) {
+    const sec = /<sec>([\s\S]*?)<\/sec>/.exec(l)
+    if (sec) inChorus = CHORUS_RE.test(sec[1])
+    if (hideSections) {
+      if (sec) continue
+      if (isBlankLine(l) && (rows.length === 0 || isBlankLine(rows[rows.length - 1].l))) continue
+    }
+    rows.push({ l, chorus: hideSections && inChorus && !isBlankLine(l) })
+  }
+  lines = rows.map((r) => r.l)
+
+  const chordsOf = (l: string) => [...l.matchAll(CHORD_RE)].map((m) => m[1].trim()).filter(Boolean).join(" ")
+  // Sense cap acord a la cançó, no cal columna.
+  const gutter = mode === "left" && lines.some((l) => chordsOf(l) !== "")
+
+  const lineHtml = (i: number): string => {
+    const l = lines[i]
     const withDashes = l.replace(/<sec>([\s\S]*?)<\/sec>/g, "<sec>— $1 —</sec>")
-    const isBlank = l.replace(/<[^>]*>/g, "").trim() === "" && !/<ch>/.test(l)
-    return isBlank
-      ? `<div class="pdf-line pdf-blank"><br></div>`
-      : `<div class="pdf-line">${withDashes}</div>`
+    if (isBlankLine(l)) return `<div class="pdf-line pdf-blank"><br></div>`
+    const chorus = rows[i].chorus ? " pdf-chorus" : ""
+    if (gutter && !isSectionLine(l)) {
+      // Línia només d'acords (intro, instrumental): seguits a tota l'amplada, no a la columna.
+      if (lyricOf(l).trim() === "") {
+        return `<div class="pdf-line pdf-chords-only${chorus}"><span class="pdf-left-ch">${chordsOf(l).replace(/ /g, "  ")}</span></div>`
+      }
+      return (
+        `<div class="pdf-line has-left${chorus}" style="--left-ch-w: ${leftWidthMm}mm">` +
+        `<span class="pdf-left-ch">${chordsOf(l)}</span>` +
+        `<span class="pdf-left-ly">${lyricOf(withDashes)}</span></div>`
+      )
+    }
+    return `<div class="pdf-line${chorus}">${withDashes}</div>`
   }
   const units: string[] = []
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
-    if (/<sec>/.test(line) && i + 1 < lines.length) {
-      units.push(`<div class="pdf-unit">${lineHtml(line)}${lineHtml(lines[i + 1])}</div>`)
+    if (isSectionLine(line) && i + 1 < lines.length) {
+      units.push(`<div class="pdf-unit">${lineHtml(i)}${lineHtml(i + 1)}</div>`)
       i++
     } else {
-      const blank = lineHtml(line).includes("pdf-blank")
-      units.push(`<div class="pdf-unit${blank ? " pdf-unit-blank" : ""}">${lineHtml(line)}</div>`)
+      const blank = isBlankLine(line)
+      units.push(`<div class="pdf-unit${blank ? " pdf-unit-blank" : ""}">${lineHtml(i)}</div>`)
     }
   }
   return units.join("")
@@ -82,6 +185,16 @@ export async function buildBookParts(
   const safeTitle = escHtml(title)
   const date = new Date().toLocaleDateString("ca-ES")
   const notationMap = options.notation ?? ALL_SHARPS
+  const spell = (k: string) => (options.solfege ? toSolfege(k) : k)
+  const chordsMode: ChordsMode = options.lyrics_only ? "none" : options.chords_left ? "left" : "above"
+
+  // ── Acords de cada cançó (transposats i amb les alteracions triades, en
+  // notació anglesa: és el que s'analitza per fer el diagrama) ──
+  const withDiagrams = !options.lyrics_only && (options.song_chords || options.chord_glossary)
+  const songChords = songs.map((s) =>
+    withDiagrams ? collectChords(respellContent(transposeContent(s.content, s.semitones), notationMap)) : [],
+  )
+  const diagram = (c: string) => chordDiagramHtml(c, spell(c))
 
   // ── Link (títol) i QR per cançó, independents ──
   const linkUrls = songs.map((s) => resolveLinkUrl(options.link_platform, s.youtubeUrl, s.spotifyUrl))
@@ -113,7 +226,7 @@ export async function buildBookParts(
     <h2>${escHtml(t.common.pdfDocument.index)}</h2>
     <table><tbody>${songs
       .map((s, i) => {
-        const displayKey = respellAccidentals(transposeKey(s.key, s.semitones), notationMap)
+        const displayKey = spell(respellAccidentals(transposeKey(s.key, s.semitones), notationMap))
         return (
           `<tr data-song-idx="${i + 1}">` +
           `<td class="toc-num">${i + 1}</td>` +
@@ -128,8 +241,30 @@ export async function buildBookParts(
   </div>`
     : null
 
+  // ── Glossari d'acords ──
+  // Tots els acords del llibre, ordenats per arrel. Els que no tenen
+  // diagrama (N.C., notació estranya) no hi surten.
+  const glossaryItems =
+    options.chord_glossary && !options.lyrics_only
+      ? sortChords([...new Set(songChords.flat())])
+          .map(diagram)
+          .filter((h): h is string => h !== null)
+      : []
+  const glossaryHtml = glossaryItems.length
+    ? `<div class="chord-glossary">
+    <h2>${escHtml(t.common.pdfDocument.glossari)}</h2>
+    <div class="glossary-grid">${glossaryItems.join("")}</div>
+  </div>`
+    : null
+
   // ── Cançons ──
   const songHtmls = songs.map((s, i) => {
+    const chordDiagramsHtml = options.song_chords
+      ? songChords[i]
+          .map(diagram)
+          .filter((h): h is string => h !== null)
+          .join("")
+      : ""
     const html = renderSongHtml({
       title: s.title,
       artist: s.artist,
@@ -146,6 +281,8 @@ export async function buildBookParts(
       qrSvg: qrSvgs[i],
       qrUrl: qrSvgs[i] ? qrUrls[i] : null,
       notation: notationMap,
+      solfege: options.solfege,
+      chordDiagramsHtml,
     })
     // renderSongHtml acaba amb `<div class="song-body">CONTINGUT</div></article>`:
     // substituïm el contingut pel partit en unitats.
@@ -153,7 +290,7 @@ export async function buildBookParts(
     const start = html.lastIndexOf(bodyOpen)
     const end = html.lastIndexOf("</div>")
     const body = html.slice(start + bodyOpen.length, end)
-    const split = html.slice(0, start + bodyOpen.length) + splitSongBody(body) + html.slice(end)
+    const split = html.slice(0, start + bodyOpen.length) + splitSongBody(body, chordsMode, options.hide_sections, options.chords_left_width) + html.slice(end)
     return `<section class="song-page" id="song-${i + 1}" data-song-idx="${i + 1}">${split}</section>`
   })
 
@@ -165,9 +302,15 @@ export async function buildBookParts(
     .filter(Boolean)
     .join("; ")
 
-  const bodyClass = [options.page_breaks ? "with-breaks" : "no-breaks", options.book_format ? "book-format" : ""]
+  const bodyClass = [
+    options.page_breaks ? "with-breaks" : "no-breaks",
+    options.book_format ? "book-format" : "",
+    chordsMode === "none" ? "lyrics-only" : chordsMode === "left" ? "chords-left" : "",
+    chordsMode === "left" && options.chords_left_align === "right" ? "chords-left-right" : "",
+    options.hide_sections ? `chorus-${options.chorus_style}` : "",
+  ]
     .filter(Boolean)
     .join(" ")
 
-  return { coverHtml, tocHtml, songHtmls, bodyClass, bodyStyle }
+  return { coverHtml, tocHtml, glossaryHtml, songHtmls, bodyClass, bodyStyle }
 }

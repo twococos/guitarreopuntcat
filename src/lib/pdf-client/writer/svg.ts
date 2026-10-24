@@ -38,7 +38,8 @@ export function drawSvgEl(svg: SVGSVGElement, ctx: PageCtx, opacity: number): vo
       scale: s * PX_TO_PT,
       ...(fill ? { color: fill.color, ...alphaOpt(fill.alpha * opacity) } : {}),
       ...(stroke
-        ? { borderColor: stroke.color, borderWidth: strokeWidth, ...borderAlphaOpt(stroke.alpha * opacity) }
+        ? // El gruix és en unitats del viewBox: s'escala com el camí.
+          { borderColor: stroke.color, borderWidth: strokeWidth * s * PX_TO_PT, ...borderAlphaOpt(stroke.alpha * opacity) }
         : {}),
     })
   })

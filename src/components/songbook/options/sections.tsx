@@ -5,7 +5,8 @@ import { AccentPicker } from "../AccentPicker"
 import { CanconerTitleInput } from "../CanconerTitleInput"
 import { useOptionsSource } from "./OptionsSource"
 import { getT } from "@/lib/i18n"
-import { IconShuffle } from "@/components/shared/Icons"
+import { IconShuffle, IconAlignLeft, IconAlignRight } from "@/components/shared/Icons"
+import { DelayedTooltip } from "@/components/shared/DelayedTooltip"
 import {
   CANCONER_STYLES,
   STYLE_LABELS,
@@ -15,6 +16,8 @@ import {
   FONT_SCALE_MAX,
   FONT_SCALE_STEP,
   LINK_PLATFORMS,
+  CHORDS_LEFT_WIDTH_MIN,
+  CHORDS_LEFT_WIDTH_MAX,
   type CanconerStyle,
   type LinkPlatform,
 } from "@/lib/schemas/canconer"
@@ -22,6 +25,7 @@ import {
   ENHARMONIC_NOTES,
   ALL_SHARPS,
   ALL_FLATS,
+  DEFAULT_ACCIDENTALS,
   SHARP_TO_FLAT,
   type AccidentalMap,
 } from "@/lib/transpose"
@@ -154,20 +158,23 @@ function KeyFilterGrid() {
 /* ── OptToggle ───────────────────────────────────────────────
  *  Interruptor (switch) que llisca cap a la dreta agafant el color
  *  --accent quan està actiu i queda --muted quan està desactivat.
- *  Substitueix les caselles de verificació clàssiques. */
+ *  Substitueix les caselles de verificació clàssiques. Amb `hint`, la
+ *  explicació surt en deixar-hi el ratolí 0,5 s (DelayedTooltip). */
 
 function OptToggle({
   checked,
   onChange,
   label,
   disabled,
+  hint,
 }: {
   checked: boolean
   onChange: (v: boolean) => void
   label: string
   disabled?: boolean
+  hint?: string
 }) {
-  return (
+  const row = (
     <label className={`switch-row${disabled ? " is-disabled" : ""}`}>
       <button
         type="button"
@@ -182,6 +189,7 @@ function OptToggle({
       <span className="switch-row-label">{label}</span>
     </label>
   )
+  return hint ? <DelayedTooltip text={hint}>{row}</DelayedTooltip> : row
 }
 
 /* ── StructureSection (Portada) ──────────────────────────────
@@ -361,9 +369,9 @@ export function BodySection() {
       <OptToggle
         checked={opts.book_format}
         onChange={(v) => setOpt("book_format", v)}
-        label={t.app.songbook.detailPanel.imprimirDoubleCara}
+        label={t.app.songbook.detailPanel.formatLlibre}
+        hint={t.app.songbook.detailPanel.formatLlibreHint}
       />
-      <p className="opt-hint">{t.app.songbook.detailPanel.formatLlibreHint}</p>
 
       <h4 className="options-subsection">{t.app.songbook.detailPanel.marges}</h4>
       <MarginsBox />
@@ -419,20 +427,27 @@ export function KeysSection() {
 
 /* ── NotationSection ───────────────────────────────────────── */
 
-type NotationMode = "sharps" | "flats" | "custom"
+type NotationMode = "default" | "sharps" | "flats" | "custom"
+
+const NOTATION_PRESETS: Record<Exclude<NotationMode, "custom">, AccidentalMap> = {
+  default: DEFAULT_ACCIDENTALS,
+  sharps: ALL_SHARPS,
+  flats: ALL_FLATS,
+}
 
 /** Deriva el mode del desplegable a partir del mapa de notació. */
 function modeFromMap(map: AccidentalMap): NotationMode {
-  const all = ENHARMONIC_NOTES
-  if (all.every((n) => !map[n])) return "sharps"
-  if (all.every((n) => map[n])) return "flats"
+  for (const [mode, preset] of Object.entries(NOTATION_PRESETS)) {
+    if (ENHARMONIC_NOTES.every((n) => map[n] === preset[n])) return mode as NotationMode
+  }
   return "custom"
 }
 
-/** Control de notació enharmònica: desplegable (sostinguts/bemolls/
- *  personalitzat) + 5 toggles per nota negra quan el mode és personalitzat.
- *  Es desa dins pdfOptions.notation i afecta el render (acords + tonalitat)
- *  a la vista prèvia i al PDF. */
+/** Control de notació enharmònica: desplegable (per defecte/sostinguts/
+ *  bemolls/personalitzat) + els 5 interruptors per nota negra, sempre
+ *  visibles perquè es vegi què fa cada preset. Tocar-ne un passa a
+ *  «Personalitzat». Es desa dins pdfOptions.notation i afecta el render
+ *  (acords + tonalitat) a la vista prèvia i al PDF. */
 export function NotationSection() {
   const t = getT()
   const { pdfOptions, setPdfOption: setOpt } = useOptionsSource()
@@ -445,19 +460,17 @@ export function NotationSection() {
   const mode: NotationMode = customLocked ? "custom" : modeFromMap(notation)
 
   function onModeChange(next: NotationMode) {
-    if (next === "sharps") {
-      setCustomLocked(false)
-      setOpt("notation", ALL_SHARPS)
-    } else if (next === "flats") {
-      setCustomLocked(false)
-      setOpt("notation", ALL_FLATS)
-    } else {
-      // "custom": manté el mapa actual (hereta l'últim mode) i fixa la marca.
+    if (next === "custom") {
+      // Manté el mapa actual (hereta l'últim mode) i fixa la marca.
       setCustomLocked(true)
+    } else {
+      setCustomLocked(false)
+      setOpt("notation", NOTATION_PRESETS[next])
     }
   }
 
   function toggleNote(note: (typeof ENHARMONIC_NOTES)[number]) {
+    setCustomLocked(true)
     setOpt("notation", { ...notation, [note]: !notation[note] })
   }
 
@@ -469,33 +482,212 @@ export function NotationSection() {
           value={mode}
           onChange={(e) => onModeChange(e.target.value as NotationMode)}
         >
+          <option value="default">{t.app.songbook.detailPanel.notacioPerDefecte}</option>
           <option value="sharps">{t.app.songbook.detailPanel.notacioSostinguts}</option>
           <option value="flats">{t.app.songbook.detailPanel.notacioBemolls}</option>
           <option value="custom">{t.app.songbook.detailPanel.notacioPersonalitzat}</option>
         </select>
       </label>
-      {mode === "custom" && (
-        <div className="accidental-switches">
-          {ENHARMONIC_NOTES.map((note) => {
-            const isFlat = notation[note]
-            return (
-              <button
-                key={note}
-                type="button"
-                className={`accidental-switch${isFlat ? " is-flat" : ""}`}
-                onClick={() => toggleNote(note)}
-                role="switch"
-                aria-checked={isFlat}
-                title={`${note} ⇄ ${SHARP_TO_FLAT[note]}`}
-              >
-                <span className="accidental-switch-side accidental-switch-sharp">{note}</span>
-                <span className="accidental-switch-side accidental-switch-flat">
-                  {SHARP_TO_FLAT[note]}
-                </span>
-                <span className="accidental-switch-knob" aria-hidden="true" />
-              </button>
-            )
-          })}
+      <div className="accidental-switches">
+        {ENHARMONIC_NOTES.map((note) => {
+          const isFlat = notation[note]
+          return (
+            <button
+              key={note}
+              type="button"
+              className={`accidental-switch${isFlat ? " is-flat" : ""}`}
+              onClick={() => toggleNote(note)}
+              role="switch"
+              aria-checked={isFlat}
+              title={`${note} ⇄ ${SHARP_TO_FLAT[note]}`}
+            >
+              <span className="accidental-switch-side accidental-switch-sharp">{note}</span>
+              <span className="accidental-switch-side accidental-switch-flat">
+                {SHARP_TO_FLAT[note]}
+              </span>
+              <span className="accidental-switch-knob" aria-hidden="true" />
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ── TwoWaySwitch ───────────────────────────────────────────
+ *  Interruptor de dues cares (com els de les alteracions): la cara activa
+ *  en color d'accent i el pom a sobre. `value` false = esquerra. */
+
+function TwoWaySwitch({
+  left,
+  right,
+  value,
+  onChange,
+  disabled,
+}: {
+  left: string
+  right: string
+  value: boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      className={`accidental-switch two-way-switch${value ? " is-flat" : ""}`}
+      onClick={() => onChange(!value)}
+      disabled={disabled}
+    >
+      <span className="accidental-switch-side accidental-switch-sharp">{left}</span>
+      <span className="accidental-switch-side accidental-switch-flat">{right}</span>
+      <span className="accidental-switch-knob" aria-hidden="true" />
+    </button>
+  )
+}
+
+/* ── MmField ─────────────────────────────────────────────────
+ *  Número en mm. Mentre s'escriu es guarda l'esborrany i només s'aplica
+ *  quan és dins del rang (així es pot escriure «12» passant per «1»);
+ *  en sortir del camp torna al valor vigent. */
+
+function MmField({
+  value,
+  min,
+  max,
+  onChange,
+  disabled,
+  label,
+}: {
+  value: number
+  min: number
+  max: number
+  onChange: (v: number) => void
+  disabled?: boolean
+  label: string
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  return (
+    <label className="opt-num-field" title={label}>
+      <input
+        type="number"
+        className="opt-num-input"
+        min={min}
+        max={max}
+        value={draft ?? value}
+        disabled={disabled}
+        aria-label={label}
+        onChange={(e) => {
+          setDraft(e.target.value)
+          const v = Number(e.target.value)
+          if (e.target.value !== "" && v >= min && v <= max) onChange(v)
+        }}
+        onBlur={() => setDraft(null)}
+      />
+      <span>mm</span>
+    </label>
+  )
+}
+
+/* ── ChordsSection ─────────────────────────────────────────── */
+
+/** Acords i seccions: glossari i diagrames per cançó, com van els acords al
+ *  cos, la notació i els títols de secció. «Només lletra» desactiva el que
+ *  depèn dels acords. */
+export function ChordsSection() {
+  const d = getT().app.songbook.detailPanel
+  const { pdfOptions: opts, setPdfOption: setOpt } = useOptionsSource()
+  const noChords = opts.lyrics_only
+  const alignDisabled = noChords || !opts.chords_left
+
+  return (
+    <div className="options-section">
+      <div className="switch-row-pair">
+        <OptToggle
+          checked={opts.chord_glossary}
+          onChange={(v) => setOpt("chord_glossary", v)}
+          label={d.glossariAcords}
+          hint={d.glossariAcordsHint}
+          disabled={noChords}
+        />
+        <OptToggle
+          checked={opts.song_chords}
+          onChange={(v) => setOpt("song_chords", v)}
+          label={d.simbolsCadaCanco}
+          hint={d.simbolsCadaCancoHint}
+          disabled={noChords}
+        />
+      </div>
+      <OptToggle
+        checked={opts.lyrics_only}
+        onChange={(v) => setOpt("lyrics_only", v)}
+        label={d.nomesLletra}
+        hint={d.nomesLletraHint}
+      />
+      <div className="opt-inline-row">
+        <OptToggle
+          checked={opts.chords_left}
+          onChange={(v) => setOpt("chords_left", v)}
+          label={d.acordsEsquerra}
+          hint={d.acordsEsquerraHint}
+          disabled={noChords}
+        />
+        <div className="align-btns" role="radiogroup" aria-label={d.alineacioAcords}>
+          {(["left", "right"] as const).map((a) => (
+            <button
+              key={a}
+              type="button"
+              role="radio"
+              aria-checked={opts.chords_left_align === a}
+              className={`align-btn${opts.chords_left_align === a ? " active" : ""}`}
+              onClick={() => setOpt("chords_left_align", a)}
+              disabled={alignDisabled}
+              title={a === "left" ? d.alineacioEsquerra : d.alineacioDreta}
+              aria-label={a === "left" ? d.alineacioEsquerra : d.alineacioDreta}
+            >
+              {a === "left" ? <IconAlignLeft /> : <IconAlignRight />}
+            </button>
+          ))}
+        </div>
+        <MmField
+          value={opts.chords_left_width}
+          min={CHORDS_LEFT_WIDTH_MIN}
+          max={CHORDS_LEFT_WIDTH_MAX}
+          onChange={(v) => setOpt("chords_left_width", v)}
+          disabled={alignDisabled}
+          label={d.ampladaAcords}
+        />
+      </div>
+      <DelayedTooltip text={d.notacioHint}>
+        <div className={`opt-inline-row${noChords ? " is-disabled" : ""}`}>
+          <span className="opt-inline-label">{d.notacio}</span>
+          <TwoWaySwitch
+            left={d.notacioCde}
+            right={d.notacioDoReMi}
+            value={opts.solfege}
+            onChange={(v) => setOpt("solfege", v)}
+            disabled={noChords}
+          />
+        </div>
+      </DelayedTooltip>
+      <div className="opt-inline-row">
+        <OptToggle
+          checked={opts.hide_sections}
+          onChange={(v) => setOpt("hide_sections", v)}
+          label={d.treureSeccions}
+          hint={d.treureSeccionsHint}
+        />
+      </div>
+      {opts.hide_sections && (
+        <div className="opt-inline-row opt-sub-row">
+          <span className="opt-inline-label">{d.tornades}</span>
+          <TwoWaySwitch
+            left={d.tornadesNegreta}
+            right={d.tornadesCursiva}
+            value={opts.chorus_style === "italic"}
+            onChange={(v) => setOpt("chorus_style", v ? "italic" : "bold")}
+          />
         </div>
       )}
     </div>

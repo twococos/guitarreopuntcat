@@ -26,7 +26,7 @@ import { getT } from "@/lib/i18n"
 import type { CSSProperties } from "react"
 import type { CanconerEntry, CanconerListItem, CanconerSongRef, CanconerStyle } from "@/types/song"
 import { songRefs } from "@/lib/canconerApi"
-import type { PdfOptions } from "@/lib/schemas/canconer"
+import { pdfOptionsSchema, PDF_OPTIONS_DEFAULTS, type PdfOptions } from "@/lib/schemas/canconer"
 import type { Song } from "@/types/song"
 
 /* ── Forma serialitzada del cançoner en curs (sessionStorage) ─ */
@@ -218,7 +218,7 @@ export function SongbookEditor() {
         provisionalTitle: data.canconerTitle,
         canconerStyle: data.canconerStyle,
         accentColor: data.accentColor,
-        pdfOptions: data.pdfOptions,
+        pdfOptions: pdfOptionsSchema.safeParse(data.pdfOptions ?? {}).data ?? PDF_OPTIONS_DEFAULTS,
         previewActive: data.previewActive,
         canconer: validEntries,
         selectedIdx: validEntries.length > 0 ? 0 : null,

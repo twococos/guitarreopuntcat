@@ -3,7 +3,7 @@ import { create } from "zustand"
 import { CHROMATIC } from "@/lib/transpose"
 import type { Song, SongSummary, CanconerStyle, CanconerEntry, CanconerSongRef } from "@/types/song"
 import type { QuickArrangement } from "@/lib/schemas/arrangement"
-import { type PdfOptions, PDF_OPTIONS_DEFAULTS } from "@/lib/schemas/canconer"
+import { type PdfOptions, PDF_OPTIONS_DEFAULTS, pdfOptionsSchema } from "@/lib/schemas/canconer"
 
 /* ── Constants compartides ───────────────────────────────── */
 
@@ -558,7 +558,8 @@ export const useSongbookStore = create<SongbookState>((set, get) => ({
       provisionalTitle: title,
       canconerStyle: style,
       accentColor: accentColor,
-      pdfOptions: pdfOptions ?? PDF_OPTIONS_DEFAULTS,
+      // Passa per l'esquema: les opcions afegides després de desar-lo hi entren amb el seu default.
+      pdfOptions: pdfOptionsSchema.safeParse(pdfOptions ?? {}).data ?? PDF_OPTIONS_DEFAULTS,
       canconer: entries,
       selectedIdx: entries.length > 0 ? 0 : null,
       sortMode: "custom",

@@ -535,3 +535,27 @@ export const IconGrip = (p: IconProps) =>
     </>,
     p,
   )
+
+/** Alineació de text a l'esquerra (com als processadors de text). */
+export const IconAlignLeft = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M4 6h16" />
+      <path d="M4 10h10" />
+      <path d="M4 14h16" />
+      <path d="M4 18h10" />
+    </>,
+    p,
+  )
+
+/** Alineació de text a la dreta. */
+export const IconAlignRight = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M4 6h16" />
+      <path d="M10 10h10" />
+      <path d="M4 14h16" />
+      <path d="M10 18h10" />
+    </>,
+    p,
+  )

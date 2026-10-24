@@ -22,6 +22,7 @@
      G. reproductor    → «Toca-la»: panell, franja, vídeo i cos sincronitzat
      H. arranjament    → arranjament ràpid: botó «Arranja» i diàleg de l'arranjador
      I. inici-app      → overlay d'inici de /app (obre o crea un cançoner)
+     J. acords         → popover del diagrama d'un acord i tooltip amb retard
    ════════════════════════════════════════════════════════════ */
 
 @import "../styles/song.css";
@@ -1527,13 +1528,6 @@ body.options-overlay-active.options-side-right #panel-canconer {
 }
 .opt-select option {
   background: var(--surface);
-}
-.opt-hint {
-  font-size: 0.72rem;
-  color: var(--muted);
-  line-height: 1.45;
-  margin-top: 0.15rem;
-  margin-bottom: 0.35rem;
 }
 .pdf-cols-group {
   display: grid;
@@ -11499,4 +11493,152 @@ input.start-overlay-input--small {
   .start-overlay-result {
     flex-wrap: wrap;
   }
+}
+
+/* ════════════════════════════════════════════════════════════
+   J. ACORDS — popover del diagrama (ChordHoverLayer) i tooltip
+   amb retard (DelayedTooltip). El diagrama en si és a song.css.
+   ════════════════════════════════════════════════════════════ */
+
+.song-body ch {
+  cursor: default;
+}
+
+.chord-popover {
+  /* Ha de coincidir amb POPOVER_W de ChordHoverLayer (gruix de línia exacte). */
+  --chord-w: 88px;
+  --chord-ink: #666;
+  position: fixed;
+  z-index: 1200;
+  transform: translate(-50%, -100%);
+  padding: 0.5rem 0.9rem 0.6rem 1.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.14);
+  pointer-events: none;
+  animation: chord-popover-in 0.12s ease-out;
+}
+.chord-popover.is-below {
+  transform: translate(-50%, 0);
+}
+.chord-popover.is-pinned {
+  pointer-events: auto;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+.chord-popover .chord-name {
+  font-size: 1.05rem;
+  margin-bottom: 0.15rem;
+}
+@keyframes chord-popover-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.delayed-tooltip-anchor {
+  display: block;
+}
+.delayed-tooltip {
+  position: fixed;
+  z-index: 1300;
+  max-width: 300px;
+  padding: 0.5rem 0.7rem;
+  background: #2b2b2b;
+  color: #fff;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  animation: chord-popover-in 0.12s ease-out;
+}
+.delayed-tooltip.is-above {
+  transform: translateY(-100%);
+}
+
+/* Controls del panell «Acords i seccions» (options/sections.tsx). */
+.switch-row-pair > .delayed-tooltip-anchor {
+  flex: 1;
+  min-width: 0;
+}
+.opt-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.opt-inline-row.is-disabled {
+  opacity: 0.5;
+}
+.opt-sub-row {
+  padding-left: 2.6rem;
+}
+.opt-inline-label {
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+.two-way-switch {
+  flex: 0 0 auto;
+  width: 150px;
+  height: 30px;
+}
+.two-way-switch:disabled {
+  cursor: not-allowed;
+}
+.align-btns {
+  display: inline-flex;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.align-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  border: 0;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.align-btn + .align-btn {
+  border-left: 1.5px solid var(--border);
+}
+.align-btn.active {
+  color: var(--accent);
+  background: #fdf4f3;
+}
+.align-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.opt-num-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.opt-num-input {
+  width: 3.4rem;
+  height: 26px;
+  padding: 0 0.3rem;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8rem;
+  text-align: center;
+}
+.opt-num-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.opt-num-input:disabled {
+  opacity: 0.4;
 }

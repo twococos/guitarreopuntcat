@@ -194,6 +194,23 @@ body.pdf-preview-spread .pdf-preview-spacer { display: block; }
 }
 .toc a { color: inherit; text-decoration: none; }
 
+/* ── Glossari d'acords ─────────────────────────────────── */
+.chord-glossary { padding-top: 2rem; }
+.chord-glossary.is-cont { padding-top: 0; }
+.chord-glossary h2 {
+  font-family: var(--song-title-font, "Gelasio", serif);
+  color: var(--accent);
+  font-size: 1.6rem;
+  margin-bottom: 1.5rem;
+}
+.glossary-grid {
+  --chord-w: 58px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 0;
+}
+.glossary-grid .chord-diagram { width: 16.66%; }
+
 /* ── Cançons ───────────────────────────────────────────── */
 .song-page { padding-top: 1rem; }
 .song-page.is-cont { padding-top: 0; }
@@ -204,9 +221,31 @@ body.pdf-preview-spread .pdf-preview-spacer { display: block; }
   column-fill: balance;
 }
 .song-page .song-body.is-fill { column-fill: auto; }
+/* 100% = 0.81rem (el 90% de l'escala d'abans, 0.9rem). */
 .song-page .song {
-  --song-body-size: calc(0.9rem * var(--pdf-font-scale, 1));
+  --song-body-size: calc(0.81rem * var(--pdf-font-scale, 1));
 }
+/* Sense acords damunt la lletra, les línies no han de fer-los lloc. */
+body.lyrics-only .song-page .song,
+body.chords-left .song-page .song { --song-body-line: 1.45; }
+/* Acords a l'esquerra: columna d'acords (amplada comuna a la cançó) + lletra. */
+.pdf-line.has-left {
+  display: grid;
+  grid-template-columns: var(--left-ch-w, 6ch) minmax(0, 1fr);
+  column-gap: 1.2ch;
+}
+.pdf-left-ch { font-weight: 700; color: var(--accent); white-space: normal; overflow-wrap: anywhere; }
+body.chords-left-right .pdf-left-ch { text-align: right; }
+.pdf-chords-only .pdf-left-ch { white-space: pre-wrap; }
+/* Títols de secció amagats: les tornades en negreta o en cursiva. Inconsolata
+   (estil bold) i Caveat (handwritten) no tenen cursiva: la primera la manlleva
+   de JetBrains Mono i la segona passa a negreta. */
+body.chorus-bold .pdf-chorus { font-weight: 700; }
+body.chorus-italic .pdf-chorus { font-style: italic; }
+body[data-style="bold"].chorus-italic .pdf-chorus { font-family: "JetBrains Mono", monospace; }
+body[data-style="handwritten"].chorus-italic .pdf-chorus { font-style: normal; font-weight: 700; }
+/* Diagrames a l'inici de cada cançó: la mida segueix la lletra. */
+.song-page .song-chords { --chord-w: calc(46px * var(--pdf-font-scale, 1)); }
 .song-page .song-head { break-inside: avoid; }
 .pdf-unit, .pdf-line { break-inside: avoid; }
 .pdf-unit.is-dropped { display: none; }
@@ -292,7 +331,7 @@ export async function createBookFrame(
           `position:absolute;top:0;left:0;width:${Math.ceil(PAGE_W_PX)}px;height:${Math.ceil(PAGE_H_PX)}px;border:0;pointer-events:none;transform-origin:top left`
         : `position:fixed;left:-30000px;top:0;width:${Math.ceil(PAGE_W_PX) + 40}px;height:${Math.ceil(PAGE_H_PX)}px;border:0;visibility:hidden;pointer-events:none`
 
-  const staging = [parts.coverHtml ?? "", parts.tocHtml ?? "", ...parts.songHtmls].join("\n")
+  const staging = [parts.coverHtml ?? "", parts.tocHtml ?? "", parts.glossaryHtml ?? "", ...parts.songHtmls].join("\n")
   iframe.srcdoc = `<!DOCTYPE html>
 <html lang="ca"><head><meta charset="UTF-8">
 <link rel="stylesheet" href="/api/pdf/styles">
