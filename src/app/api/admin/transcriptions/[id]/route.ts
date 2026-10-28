@@ -7,7 +7,7 @@ import { jobAction } from "@/db/queries/transcriptions"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-/** `{ action: "cancel" | "retry" }` */
+/** `{ action: "cancel" | "retry" | "top" }` («top»: processa-la ara) */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin()
   if (auth instanceof NextResponse) return auth

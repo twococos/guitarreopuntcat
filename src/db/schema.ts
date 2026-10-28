@@ -173,6 +173,11 @@ export const transcriptionJobs = sqliteTable(
     artist: text("artist"),
     language: text("language"),
     lyricsText: text("lyrics_text"),
+    // Metadades de Spotify (pestanya «Importar cançons»): passen a la cançó que es crea
+    spotifyUrl: text("spotify_url"),
+    album: text("album"),
+    year: integer("year"),
+    durationS: real("duration_s"), // durada a Spotify, només per mostrar-la
     songId: integer("song_id").references(() => songs.id, { onDelete: "cascade" }),
     status: text("status", { enum: ["queued", "running", "done", "failed", "cancelled"] })
       .notNull()
@@ -180,7 +185,7 @@ export const transcriptionJobs = sqliteTable(
     priority: integer("priority").notNull().default(0),
     workerId: integer("worker_id").references(() => transcriptionWorkers.id, { onDelete: "set null" }),
     leaseUntil: text("lease_until"),
-    attempts: integer("attempts").notNull().default(0),
+    attempts: integer("attempts").notNull().default(0), // assignacions a un worker (els alliberaments no compten)
     notBefore: text("not_before"), // no es reintenta abans d'aquesta data
     error: text("error"),
     resultSongId: integer("result_song_id").references(() => songs.id, { onDelete: "set null" }),
@@ -198,6 +203,13 @@ export const transcriptionJobs = sqliteTable(
     workerIdx: index("transcription_jobs_worker_idx").on(t.workerId, t.status, t.finishedAt),
   }),
 )
+
+// Opcions globals de l'aplicació (clau → valor en text). Vegeu src/db/queries/settings.ts.
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
+})
 
 // Última anàlisi de cada cançó (se sobreescriu en reprocessar). És la sortida
 // de la màquina i no s'edita mai: la sincronització amb el content es calcula

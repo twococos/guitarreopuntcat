@@ -14,6 +14,7 @@ interface JobRow {
   title: string | null
   artist: string | null
   song_id: number | null
+  spotify_url: string | null
   status: JobStatus
   worker_name: string | null
   attempts: number
@@ -23,7 +24,18 @@ interface JobRow {
   result_proposal_id: number | null
   elapsed_seconds: number | null
   stats: Record<string, unknown> | null
+  created_at: string | null
+  finished_at: string | null
 }
+
+interface QueueRow extends JobRow {
+  /** Ordre de sortida (null: ja és en curs). */
+  position: number | null
+  deferred: boolean
+}
+
+type QueueOrder = "fifo" | "lifo"
+type FinishedStatus = "done" | "failed" | "cancelled"
 
 type LeaderboardKey = "songs" | "total_time" | "speed"
 
@@ -48,15 +60,16 @@ interface WorkerRow {
 }
 
 interface QueueState {
-  jobs: JobRow[]
+  queue: QueueRow[]
+  queue_order: QueueOrder
   counts: Partial<Record<JobStatus, number>>
   workers: WorkerRow[]
   leaderboards: Leaderboards | null
 }
 
-type EnqueueResult = { status: "queued" | "duplicate" | "error" }
-
 const REFRESH_MS = 10_000
+const FINISHED_PAGE = 50
+const FINISHED_MAX = 500
 
 const STATUS_BADGE: Record<JobStatus, string> = {
   queued: "badge-user",
@@ -83,41 +96,38 @@ function formatDuration(seconds: number | null): string {
   return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`
 }
 
-/** "url[, títol, artista]" per línia. */
-function parseLines(text: string) {
-  return text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => {
-      const [url, title, artist] = l.split(",").map((p) => p.trim())
-      return {
-        mode: "new" as const,
-        source_url: url,
-        ...(title ? { title } : {}),
-        ...(artist ? { artist } : {}),
-      }
-    })
-}
-
 export function TranscriptionsTab() {
   const t = getT()
   const tt = t.admin.transcriptionsTab
   const router = useRouter()
   const toast = useToastStore.getState().show
-  const [state, setState] = useState<QueueState>({ jobs: [], counts: {}, workers: [], leaderboards: null })
+  const [state, setState] = useState<QueueState>({
+    queue: [],
+    queue_order: "fifo",
+    counts: {},
+    workers: [],
+    leaderboards: null,
+  })
+  const [finished, setFinished] = useState<JobRow[]>([])
+  const [finishedStatus, setFinishedStatus] = useState<FinishedStatus | null>(null)
+  const [finishedWorker, setFinishedWorker] = useState<number | null>(null)
+  const [finishedLimit, setFinishedLimit] = useState(FINISHED_PAGE)
   const [openStats, setOpenStats] = useState<Set<number>>(new Set())
   const [period, setPeriod] = useState<"all" | "month">("all")
-  const [lines, setLines] = useState("")
-  const [busy, setBusy] = useState(false)
   const [workerName, setWorkerName] = useState("")
   const [newToken, setNewToken] = useState<{ name: string; token: string } | null>(null)
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/transcriptions")
-    if (!res.ok) return
-    setState((await res.json()) as QueueState)
-  }, [])
+    const params = new URLSearchParams({ limit: String(finishedLimit) })
+    if (finishedStatus) params.set("status", finishedStatus)
+    if (finishedWorker) params.set("worker", String(finishedWorker))
+    const [queueRes, finishedRes] = await Promise.all([
+      fetch("/api/admin/transcriptions"),
+      fetch(`/api/admin/transcriptions/finished?${params}`),
+    ])
+    if (queueRes.ok) setState((await queueRes.json()) as QueueState)
+    if (finishedRes.ok) setFinished(((await finishedRes.json()) as { jobs: JobRow[] }).jobs)
+  }, [finishedLimit, finishedStatus, finishedWorker])
 
   useEffect(() => {
     load()
@@ -125,45 +135,35 @@ export function TranscriptionsTab() {
     return () => clearInterval(timer)
   }, [load])
 
-  async function enqueue(body: unknown): Promise<unknown> {
-    setBusy(true)
-    try {
-      const res = await fetch("/api/admin/transcriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) throw new Error()
-      return (await res.json()) as unknown
-    } catch {
-      toast(t.admin.toasts.errorEncuar, { type: "error" })
-      return null
-    } finally {
-      setBusy(false)
-      load()
-    }
-  }
-
-  async function handleEnqueue() {
-    const jobs = parseLines(lines)
-    if (jobs.length === 0) return
-    const data = (await enqueue({ jobs })) as { results: EnqueueResult[] } | null
-    if (!data) return
-    const count = (s: EnqueueResult["status"]) => data.results.filter((r) => r.status === s).length
-    toast(t.admin.toasts.transcripcionsEncuades(count("queued"), count("duplicate"), count("error")), {
-      type: count("error") > 0 ? "error" : "success",
-      durationMs: 5000,
+  async function patchQueue(body: unknown): Promise<unknown> {
+    const res = await fetch("/api/admin/transcriptions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     })
-    if (count("error") === 0) setLines("")
+    if (!res.ok) {
+      toast(t.admin.toasts.errorAccio, { type: "error" })
+      return null
+    }
+    return (await res.json()) as unknown
   }
 
-  async function handleAnalyzeMissing(missing: true | "rhythm") {
-    if (!confirm(missing === "rhythm" ? tt.confirmAnalitzarSenseRitme : tt.confirmAnalitzarFalten)) return
-    const data = (await enqueue({ analyzeMissing: missing })) as { queued: number } | null
-    if (data) toast(t.admin.toasts.transcripcionsEncuades(data.queued, 0, 0), { type: "success" })
+  async function handleQueueOrder(order: QueueOrder) {
+    if (order === state.queue_order) return
+    setState((s) => ({ ...s, queue_order: order }))
+    await patchQueue({ queue_order: order })
+    load()
   }
 
-  async function handleJobAction(id: number, action: "cancel" | "retry") {
+  async function handleCancelQueued() {
+    const n = state.queue.filter((j) => j.status === "queued").length
+    if (n === 0 || !confirm(tt.confirmCancellaCua(n))) return
+    const data = (await patchQueue({ cancel_queued: true })) as { cancelled: number } | null
+    if (data) toast(tt.cuaCancellada(data.cancelled), { type: "success" })
+    load()
+  }
+
+  async function handleJobAction(id: number, action: "cancel" | "retry" | "top") {
     const res = await fetch(`/api/admin/transcriptions/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -226,43 +226,52 @@ export function TranscriptionsTab() {
     return formatSeconds(value)
   }
 
+  /** Títol (enllaç al vídeo), artista, Spotify i error. */
+  function songCell(j: JobRow) {
+    return (
+      <td>
+        <a href={j.source_url} target="_blank" rel="noreferrer">
+          {j.title || tt.sensTitol}
+        </a>
+        {j.artist && <span style={{ color: "var(--muted)" }}> — {j.artist}</span>}
+        {j.spotify_url && (
+          <a className="queue-spotify" href={j.spotify_url} target="_blank" rel="noreferrer">
+            {tt.spotify}
+          </a>
+        )}
+        {j.error && (
+          <div className="transcriptions-error" title={j.error}>
+            {j.error}
+          </div>
+        )}
+      </td>
+    )
+  }
+
   const statuses: JobStatus[] = ["queued", "running", "done", "failed", "cancelled"]
+  const finishedStatuses: FinishedStatus[] = ["done", "failed", "cancelled"]
   const boards = state.leaderboards?.periods[period]
+  const queuedCount = state.queue.filter((j) => j.status === "queued").length
+  const firstQueuedId = state.queue.find((j) => j.position === 1)?.id
 
   return (
     <div className="transcriptions-tab">
       <section className="transcriptions-section">
-        <h3>{tt.encuarTitol}</h3>
-        <p className="transcriptions-hint">{tt.encuarHint}</p>
-        <textarea
-          className="transcriptions-textarea"
-          rows={4}
-          placeholder={tt.encuarPlaceholder}
-          value={lines}
-          onChange={(e) => setLines(e.target.value)}
-          disabled={busy}
-        />
         <div className="panel-toolbar">
-          <button className="btn-xs success" onClick={handleEnqueue} disabled={busy || !lines.trim()}>
-            {tt.encuar}
-          </button>
-          <button className="btn-xs" onClick={() => handleAnalyzeMissing(true)} disabled={busy} title={tt.analitzarFaltenTitle}>
-            {tt.analitzarFalten}
-          </button>
-          <button
-            className="btn-xs"
-            onClick={() => handleAnalyzeMissing("rhythm")}
-            disabled={busy}
-            title={tt.analitzarSenseRitmeTitle}
-          >
-            {tt.analitzarSenseRitme}
-          </button>
-        </div>
-      </section>
-
-      <section className="transcriptions-section">
-        <div className="panel-toolbar">
-          <h3>{tt.cuaTitol}</h3>
+          <h3>{tt.cuaTitol(state.queue.length)}</h3>
+          <div className="queue-order" role="group" aria-label={tt.ordre}>
+            {(["fifo", "lifo"] as const).map((o) => (
+              <button
+                key={o}
+                className={`btn-xs ${state.queue_order === o ? "success" : ""}`}
+                onClick={() => handleQueueOrder(o)}
+                title={o === "fifo" ? tt.fifoTitle : tt.lifoTitle}
+                aria-pressed={state.queue_order === o}
+              >
+                {o === "fifo" ? tt.fifo : tt.lifo}
+              </button>
+            ))}
+          </div>
           {statuses.map((s) => (
             <span key={s} className={`badge ${STATUS_BADGE[s]}`}>
               {tt.statusLabels[s]}: {state.counts[s] ?? 0}
@@ -271,14 +280,100 @@ export function TranscriptionsTab() {
           <button className="btn-xs" onClick={load}>
             {tt.actualitzar}
           </button>
+          <button className="btn-xs danger" onClick={handleCancelQueued} disabled={queuedCount === 0}>
+            {tt.cancellaCua}
+          </button>
         </div>
-        {state.jobs.length === 0 ? (
-          <p className="transcriptions-hint">{tt.capFeina}</p>
+        {state.queue.length === 0 ? (
+          <p className="transcriptions-hint">{tt.capFeinaCua}</p>
+        ) : (
+          <table className="queue-table">
+            <thead>
+              <tr>
+                <th>{tt.colPosicio}</th>
+                <th>{tt.colCanco}</th>
+                <th>{tt.colMode}</th>
+                <th>{tt.colEstat}</th>
+                <th>{tt.colWorker}</th>
+                <th>{tt.colIntents}</th>
+                <th>{tt.colEntrada}</th>
+                <th>{tt.colAccions}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.queue.map((j) => (
+                <tr key={j.id} className={j.status === "running" ? "queue-running" : j.deferred ? "queue-deferred" : ""}>
+                  <td className="queue-position">{j.position ?? "▶"}</td>
+                  {songCell(j)}
+                  <td>{j.mode === "new" ? tt.modeNew : tt.modeAnalyze}</td>
+                  <td>
+                    <span className={`badge ${STATUS_BADGE[j.status]}`}>{tt.statusLabels[j.status]}</span>
+                    {j.deferred && j.not_before && (
+                      <div className="transcriptions-hint">{tt.ajornada(formatDate(j.not_before))}</div>
+                    )}
+                  </td>
+                  <td style={{ fontSize: ".8rem" }}>{j.worker_name ?? "—"}</td>
+                  <td style={{ textAlign: "center" }}>{j.attempts}</td>
+                  <td style={{ fontSize: ".8rem" }}>{formatDate(j.created_at)}</td>
+                  <td className="td-actions">
+                    {j.status === "queued" && j.id !== firstQueuedId && (
+                      <button className="btn-xs" onClick={() => handleJobAction(j.id, "top")} title={tt.processaAraTitle}>
+                        {tt.processaAra}
+                      </button>
+                    )}
+                    {j.mode === "analyze" && j.song_id !== null && (
+                      <button className="btn-xs" onClick={() => router.push(`/app/editor?id=${j.song_id}`)}>
+                        {tt.obrir}
+                      </button>
+                    )}
+                    <button className="btn-xs danger" onClick={() => handleJobAction(j.id, "cancel")}>
+                      {tt.cancellar}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="transcriptions-section">
+        <div className="panel-toolbar">
+          <h3>{tt.processadesTitol}</h3>
+          <button
+            className={`btn-xs ${finishedStatus === null ? "success" : ""}`}
+            onClick={() => setFinishedStatus(null)}
+          >
+            {tt.filtreTotes}
+          </button>
+          {finishedStatuses.map((s) => (
+            <button
+              key={s}
+              className={`btn-xs ${finishedStatus === s ? "success" : ""}`}
+              onClick={() => setFinishedStatus(s)}
+            >
+              {tt.statusLabels[s]} ({state.counts[s] ?? 0})
+            </button>
+          ))}
+          <select
+            value={finishedWorker ?? ""}
+            onChange={(e) => setFinishedWorker(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">{tt.filtreWorker}</option>
+            {state.workers.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {finished.length === 0 ? (
+          <p className="transcriptions-hint">{tt.capFeinaProcessada}</p>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>#</th>
+                <th>{tt.colAcabada}</th>
                 <th>{tt.colCanco}</th>
                 <th>{tt.colMode}</th>
                 <th>{tt.colEstat}</th>
@@ -289,24 +384,11 @@ export function TranscriptionsTab() {
               </tr>
             </thead>
             <tbody>
-              {state.jobs.map((j) => (
+              {finished.map((j) => (
                 <Fragment key={j.id}>
                   <tr>
-                    <td style={{ color: "var(--muted)" }}>{j.id}</td>
-                    <td>
-                      <a href={j.source_url} target="_blank" rel="noreferrer">
-                        {j.title || tt.sensTitol}
-                      </a>
-                      {j.artist && <span style={{ color: "var(--muted)" }}> — {j.artist}</span>}
-                      {j.error && (
-                        <div className="transcriptions-error" title={j.error}>
-                          {j.error}
-                        </div>
-                      )}
-                      {j.status === "queued" && j.not_before && (
-                        <div className="transcriptions-hint">{tt.reintentA(formatDate(j.not_before))}</div>
-                      )}
-                    </td>
+                    <td style={{ fontSize: ".8rem" }}>{formatDate(j.finished_at)}</td>
+                    {songCell(j)}
                     <td>{j.mode === "new" ? tt.modeNew : tt.modeAnalyze}</td>
                     <td>
                       <span className={`badge ${STATUS_BADGE[j.status]}`}>{tt.statusLabels[j.status]}</span>
@@ -333,11 +415,6 @@ export function TranscriptionsTab() {
                           {tt.obrir}
                         </button>
                       )}
-                      {(j.status === "queued" || j.status === "running") && (
-                        <button className="btn-xs danger" onClick={() => handleJobAction(j.id, "cancel")}>
-                          {tt.cancellar}
-                        </button>
-                      )}
                       {(j.status === "failed" || j.status === "cancelled") && (
                         <button className="btn-xs" onClick={() => handleJobAction(j.id, "retry")}>
                           {tt.reintentar}
@@ -356,6 +433,13 @@ export function TranscriptionsTab() {
               ))}
             </tbody>
           </table>
+        )}
+        {finished.length >= finishedLimit && finishedLimit < FINISHED_MAX && (
+          <div className="panel-toolbar queue-more">
+            <button className="btn-xs" onClick={() => setFinishedLimit((n) => Math.min(n + FINISHED_PAGE, FINISHED_MAX))}>
+              {tt.carregaMes}
+            </button>
+          </div>
         )}
       </section>
 

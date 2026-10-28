@@ -7,7 +7,7 @@
                           aquí, edita src/styles/song.css)
      2. style.css      → layout principal, columnes, toasts, login
      3. editor.css     → pàgina /app/editor
-     4. admin.css      → pàgina /app/admin
+     4. admin.css      → pàgina /app/admin (transcripcions, cua i importar cançons)
      5. library.css    → pàgina /app/library
      6. shared.css     → visor de cançoners (/songbooks, /c/[token])
      7. public-song    → pàgina /songs/[artist]/[song]
@@ -2855,6 +2855,280 @@ body:has(.public-nav) {
 .leaderboard-value {
   color: var(--muted);
   white-space: nowrap;
+}
+
+/* ─── Admin: cua de transcripcions ─── */
+.queue-order {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.queue-position {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.queue-running td {
+  background: #fffbea;
+}
+.queue-running .queue-position {
+  color: #856404;
+}
+.queue-deferred td {
+  opacity: 0.6;
+}
+.queue-spotify {
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #1a8f4a;
+  text-decoration: none;
+}
+.queue-spotify:hover {
+  text-decoration: underline;
+}
+.queue-more {
+  margin-top: 0.75rem;
+}
+
+/* ─── Admin: importar cançons (Spotify → YouTube → cua) ─── */
+.import-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 960px;
+  margin-bottom: 1.5rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius);
+  background: #d1f0e0;
+  color: #1a6b3c;
+  font-size: 0.85rem;
+}
+.import-notice.is-error {
+  background: #fdecea;
+  color: #8a2a1f;
+}
+.import-notice span {
+  flex: 1;
+}
+
+.import-bar {
+  position: relative;
+  max-width: 720px;
+}
+.import-bar-input {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.import-bar-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 4px 20px rgba(192, 57, 43, 0.15);
+}
+.import-bar-input svg {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.import-bar-input input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.95rem;
+}
+.import-bar-status {
+  color: var(--muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.import-results {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  max-height: 420px;
+  overflow-y: auto;
+}
+.import-results-empty {
+  padding: 0.6rem 0.75rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.import-result {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.import-result:hover:not(:disabled) {
+  background: var(--bg);
+}
+.import-result.is-added {
+  cursor: default;
+  opacity: 0.55;
+}
+.import-result img,
+.import-track img,
+.import-cover-empty {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--border);
+}
+.import-cover-empty {
+  display: inline-block;
+}
+.import-result-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+}
+.import-result-text span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.import-result-side {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.import-progress {
+  margin: 0;
+}
+.import-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+}
+.import-table {
+  max-width: 1200px;
+}
+.import-table td {
+  vertical-align: top;
+}
+.import-row.is-checked td {
+  background: #f3fbf6;
+}
+.import-track,
+.import-video {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+.import-track a,
+.import-video a {
+  color: inherit;
+}
+.import-video img {
+  width: 96px;
+  height: 54px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--border);
+}
+.import-meta {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.import-flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+.import-flags .badge {
+  text-decoration: none;
+}
+.import-delta,
+.import-confidence,
+.import-tag {
+  font-size: 0.68rem;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.import-delta.is-good,
+.import-confidence.is-high {
+  background: #d1f0e0;
+  color: #1a6b3c;
+}
+.import-delta.is-warn,
+.import-confidence.is-medium {
+  background: #fff3cd;
+  color: #856404;
+}
+.import-delta.is-bad,
+.import-confidence.is-low {
+  background: #fdecea;
+  color: #8a2a1f;
+}
+.import-tag {
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.import-alternatives td {
+  background: var(--bg);
+}
+.import-alternatives ul {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.import-alternatives label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.import-alternatives input[type="radio"] {
+  margin-top: 1.2rem;
+}
+.import-paste {
+  margin-bottom: 0;
+}
+.import-paste input {
+  flex: 1 1 280px;
+  max-width: 420px;
 }
 
 #stats-grid {

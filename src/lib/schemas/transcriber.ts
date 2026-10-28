@@ -153,6 +153,11 @@ export const enqueueJobSchema = z.object({
   language: z.string().max(10).optional(),
   lyrics_text: z.string().max(20000).optional(),
   song_id: z.number().int().positive().optional(),
+  // Metadades de Spotify (pestanya «Importar cançons»)
+  spotify_url: z.string().url().max(300).optional(),
+  album: z.string().trim().max(300).optional(),
+  year: z.number().int().min(1000).max(2100).optional(),
+  duration_s: z.number().positive().max(36000).optional(),
 })
 
 export type EnqueueJob = z.infer<typeof enqueueJobSchema>
@@ -164,7 +169,18 @@ export const enqueueBodySchema = z.union([
   z.object({ analyzeMissing: z.union([z.literal(true), z.literal("rhythm")]), priority: z.number().int().default(0) }),
 ])
 
-export const jobActionSchema = z.object({ action: z.enum(["cancel", "retry"]) })
+export const jobActionSchema = z.object({ action: z.enum(["cancel", "retry", "top"]) })
+
+export const queueSettingsSchema = z.union([
+  z.object({ queue_order: z.enum(["fifo", "lifo"]) }),
+  z.object({ cancel_queued: z.literal(true) }),
+])
+
+export const finishedQuerySchema = z.object({
+  status: z.enum(["done", "failed", "cancelled"]).optional(),
+  worker: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(50),
+})
 
 export const createWorkerSchema = z.object({ name: z.string().trim().min(1).max(100) })
 export const updateWorkerSchema = z.object({ active: z.boolean() })

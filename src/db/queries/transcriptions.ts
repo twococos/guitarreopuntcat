@@ -12,6 +12,7 @@ import { youtubeVideoId } from "@/lib/youtube"
 import { getOrCreateTranscriberUser } from "@/lib/transcriber/transcriberUser"
 import { generateWorkerToken, hashWorkerToken } from "@/lib/transcriber/auth.server"
 import { findExistingSongByArtistTitle } from "./proposals"
+import { getQueueOrder, type QueueOrder } from "./settings"
 import { SONG_STATE } from "@/lib/songKind"
 import { syncAnalysis, type SyncQuality } from "@/lib/transcriber/sync"
 
@@ -39,22 +40,44 @@ type ProposalResult = z.infer<typeof proposalResultSchema>
 /**
  * Les feines amb el lease caducat tornen a la cua (o fallen si ja s'han
  * esgotat els intents). El worker ha deixat d'enviar heartbeats: s'ha penjat,
- * s'ha quedat sense xarxa o s'ha apagat. Compta com a intent perquè una cançó
- * que fa petar el worker (p. ex. sense memòria) no el bloquegi indefinidament.
+ * s'ha quedat sense xarxa o s'ha apagat. L'intent (comptat en el claim) es
+ * manté, perquè una cançó que fa petar el worker (p. ex. sense memòria) no el
+ * bloquegi indefinidament.
  * Es crida en cada claim i en cada consulta de l'admin: no cal cap temporitzador.
  */
 export function expireLeases(): void {
   db.run(sql`
     UPDATE transcription_jobs
-    SET attempts = attempts + 1,
-        status = CASE WHEN attempts + 1 >= ${MAX_ATTEMPTS} THEN 'failed' ELSE 'queued' END,
-        finished_at = CASE WHEN attempts + 1 >= ${MAX_ATTEMPTS} THEN datetime('now') ELSE NULL END,
+    SET status = CASE WHEN attempts >= ${MAX_ATTEMPTS} THEN 'failed' ELSE 'queued' END,
+        finished_at = CASE WHEN attempts >= ${MAX_ATTEMPTS} THEN datetime('now') ELSE NULL END,
         worker_id = NULL,
         lease_until = NULL,
         started_at = NULL,
         error = 'El worker ha deixat de respondre'
     WHERE status = 'running' AND lease_until < datetime('now')
   `)
+}
+
+// ─── Ordre de la cua ────────────────────────────────────────
+
+/** Feines en cua que ja es poden agafar (sense `not_before` o ja passat). */
+const availableNow = or(isNull(schema.transcriptionJobs.notBefore), lte(schema.transcriptionJobs.notBefore, NOW))
+
+/** L'ordre en què els workers agafen les feines. El llistat de l'admin fa servir el mateix. */
+function queueOrderBy(order: QueueOrder) {
+  return [
+    desc(schema.transcriptionJobs.priority),
+    order === "lifo" ? desc(schema.transcriptionJobs.id) : asc(schema.transcriptionJobs.id),
+  ] as const
+}
+
+/** Torna a la cua una feina que un worker havia agafat, sense que l'intent compti. */
+const releasedToQueue = {
+  status: "queued" as const,
+  attempts: sql`max(${schema.transcriptionJobs.attempts} - 1, 0)`,
+  workerId: null,
+  leaseUntil: null,
+  startedAt: null,
 }
 
 // ─── Worker: claim / heartbeat / result / fail ───────────────
@@ -86,20 +109,17 @@ export function claimJob(
     const job = tx
       .select()
       .from(schema.transcriptionJobs)
-      .where(
-        and(
-          eq(schema.transcriptionJobs.status, "queued"),
-          or(isNull(schema.transcriptionJobs.notBefore), lte(schema.transcriptionJobs.notBefore, NOW)),
-        ),
-      )
-      .orderBy(desc(schema.transcriptionJobs.priority), asc(schema.transcriptionJobs.id))
+      .where(and(eq(schema.transcriptionJobs.status, "queued"), availableNow))
+      .orderBy(...queueOrderBy(getQueueOrder()))
       .limit(1)
       .get()
     if (!job) return null
 
+    // Cada assignació a un worker compta com a intent (un alliberament el retorna)
     tx.update(schema.transcriptionJobs)
       .set({
         status: "running",
+        attempts: sql`${schema.transcriptionJobs.attempts} + 1`,
         workerId: worker.id,
         leaseUntil: sql`datetime('now', ${`+${LEASE_SECONDS} seconds`})`,
         startedAt: NOW,
@@ -286,6 +306,9 @@ export function completeJob(
           language: job.language || proposal.language || "ca",
           tags: proposal.tags,
           youtubeUrl: job.sourceUrl,
+          spotifyUrl: job.spotifyUrl,
+          album: job.album,
+          year: job.year,
           bpm: metrics.bpm,
           timeSignature: metrics.timeSignature,
           state: SONG_STATE.PENDING,
@@ -342,14 +365,12 @@ export function failJob(
   if (!job) return false
 
   if (body.released) {
-    db.update(schema.transcriptionJobs)
-      .set({ status: "queued", workerId: null, leaseUntil: null, startedAt: null })
-      .where(eq(schema.transcriptionJobs.id, jobId))
-      .run()
+    db.update(schema.transcriptionJobs).set(releasedToQueue).where(eq(schema.transcriptionJobs.id, jobId)).run()
     return true
   }
 
-  const attempts = job.attempts + 1
+  // L'intent ja es va comptar en el claim
+  const attempts = Math.max(job.attempts, 1)
   const final = body.kind === "permanent" || attempts >= MAX_ATTEMPTS
   const wait = RETRY_BASE_SECONDS * 2 ** (attempts - 1)
   db.update(schema.transcriptionJobs)
@@ -383,7 +404,7 @@ function hasActiveJobForSong(songId: number): boolean {
     .get()
 }
 
-function findJobForVideo(videoId: string): TranscriptionJob | null {
+export function findJobForVideo(videoId: string): TranscriptionJob | null {
   // Poques feines actives: es filtren en memòria per id de vídeo (les URL poden variar)
   const rows = db
     .select()
@@ -399,6 +420,22 @@ function findJobForVideo(videoId: string): TranscriptionJob | null {
     )
     .all()
   return rows.find((r) => youtubeVideoId(r.sourceUrl) === videoId) ?? null
+}
+
+/** Feina activa (en cua o en curs) d'una cançó nova amb aquest artista i títol, si n'hi ha. */
+export function findActiveJobByArtistTitle(artist: string, title: string): { id: number; status: string } | null {
+  const row = db
+    .select({ id: schema.transcriptionJobs.id, status: schema.transcriptionJobs.status })
+    .from(schema.transcriptionJobs)
+    .where(
+      and(
+        inArray(schema.transcriptionJobs.status, ACTIVE_STATUSES),
+        sql`lower(trim(${schema.transcriptionJobs.artist})) = ${artist.trim().toLowerCase()}`,
+        sql`lower(trim(${schema.transcriptionJobs.title})) = ${title.trim().toLowerCase()}`,
+      ),
+    )
+    .get()
+  return row ?? null
 }
 
 export function enqueueJobs(jobs: EnqueueJob[], priority: number, userId: number): EnqueueOutcome[] {
@@ -455,6 +492,10 @@ export function enqueueJobs(jobs: EnqueueJob[], priority: number, userId: number
         artist: j.artist || null,
         language: j.language || null,
         lyricsText: j.lyrics_text || null,
+        spotifyUrl: j.spotify_url || null,
+        album: j.album || null,
+        year: j.year ?? null,
+        durationS: j.duration_s ?? null,
         priority,
         createdBy: userId,
       })
@@ -508,54 +549,57 @@ export function enqueueAnalyzeMissing(priority: number, userId: number, missing:
 
 // ─── Admin: consulta i accions ───────────────────────────────
 
-const LIST_FINISHED_LIMIT = 200
+const FINISHED_MAX_LIMIT = 500
 
-export function listJobs() {
-  expireLeases()
-  const cols = {
-    id: schema.transcriptionJobs.id,
-    mode: schema.transcriptionJobs.mode,
-    sourceUrl: schema.transcriptionJobs.sourceUrl,
-    title: schema.transcriptionJobs.title,
-    artist: schema.transcriptionJobs.artist,
-    songId: schema.transcriptionJobs.songId,
-    status: schema.transcriptionJobs.status,
-    priority: schema.transcriptionJobs.priority,
-    workerName: schema.transcriptionWorkers.name,
-    attempts: schema.transcriptionJobs.attempts,
-    notBefore: schema.transcriptionJobs.notBefore,
-    error: schema.transcriptionJobs.error,
-    resultSongId: schema.transcriptionJobs.resultSongId,
-    resultProposalId: sql<number | null>`(SELECT id FROM song_proposals WHERE song_id = ${schema.transcriptionJobs.resultSongId} ORDER BY id DESC LIMIT 1)`,
-    elapsedSeconds: schema.transcriptionJobs.elapsedSeconds,
-    stats: schema.transcriptionJobs.stats,
-    createdAt: schema.transcriptionJobs.createdAt,
-    startedAt: schema.transcriptionJobs.startedAt,
-    finishedAt: schema.transcriptionJobs.finishedAt,
-  }
-  const base = () =>
-    db
-      .select(cols)
-      .from(schema.transcriptionJobs)
-      .leftJoin(schema.transcriptionWorkers, eq(schema.transcriptionJobs.workerId, schema.transcriptionWorkers.id))
-  const active = base()
-    .where(inArray(schema.transcriptionJobs.status, ACTIVE_STATUSES))
-    .orderBy(desc(schema.transcriptionJobs.priority), asc(schema.transcriptionJobs.id))
-    .all()
-  const finished = base()
-    .where(notInArray(schema.transcriptionJobs.status, ACTIVE_STATUSES))
-    .orderBy(desc(schema.transcriptionJobs.finishedAt), desc(schema.transcriptionJobs.id))
-    .limit(LIST_FINISHED_LIMIT)
-    .all()
-  return [...active, ...finished].map((j) => ({
+type JobStatusValue = TranscriptionJob["status"]
+
+const listCols = {
+  id: schema.transcriptionJobs.id,
+  mode: schema.transcriptionJobs.mode,
+  sourceUrl: schema.transcriptionJobs.sourceUrl,
+  title: schema.transcriptionJobs.title,
+  artist: schema.transcriptionJobs.artist,
+  songId: schema.transcriptionJobs.songId,
+  spotifyUrl: schema.transcriptionJobs.spotifyUrl,
+  durationS: schema.transcriptionJobs.durationS,
+  status: schema.transcriptionJobs.status,
+  priority: schema.transcriptionJobs.priority,
+  workerId: schema.transcriptionJobs.workerId,
+  workerName: schema.transcriptionWorkers.name,
+  attempts: schema.transcriptionJobs.attempts,
+  notBefore: schema.transcriptionJobs.notBefore,
+  error: schema.transcriptionJobs.error,
+  resultSongId: schema.transcriptionJobs.resultSongId,
+  resultProposalId: sql<number | null>`(SELECT id FROM song_proposals WHERE song_id = ${schema.transcriptionJobs.resultSongId} ORDER BY id DESC LIMIT 1)`,
+  elapsedSeconds: schema.transcriptionJobs.elapsedSeconds,
+  stats: schema.transcriptionJobs.stats,
+  createdAt: schema.transcriptionJobs.createdAt,
+  startedAt: schema.transcriptionJobs.startedAt,
+  finishedAt: schema.transcriptionJobs.finishedAt,
+}
+
+function listBase() {
+  return db
+    .select(listCols)
+    .from(schema.transcriptionJobs)
+    .leftJoin(schema.transcriptionWorkers, eq(schema.transcriptionJobs.workerId, schema.transcriptionWorkers.id))
+}
+
+type ListRow = Awaited<ReturnType<ReturnType<typeof listBase>["all"]>>[number]
+
+function mapListRow(j: ListRow) {
+  return {
     id: j.id,
     mode: j.mode,
     source_url: j.sourceUrl,
     title: j.title,
     artist: j.artist,
     song_id: j.songId,
+    spotify_url: j.spotifyUrl,
+    duration_s: j.durationS,
     status: j.status,
     priority: j.priority,
+    worker_id: j.workerId,
     worker_name: j.workerName,
     attempts: j.attempts,
     not_before: j.notBefore,
@@ -567,7 +611,49 @@ export function listJobs() {
     created_at: j.createdAt,
     started_at: j.startedAt,
     finished_at: j.finishedAt,
-  }))
+  }
+}
+
+/**
+ * La cua en l'ordre en què es processarà: primer les en curs, després les en cua
+ * que ja es poden agafar (en l'ordre del claim) i al final les ajornades, per data.
+ * `position` és l'ordre de sortida de les que encara no ha agafat cap worker.
+ */
+export function listQueue() {
+  expireLeases()
+  const running = listBase()
+    .where(eq(schema.transcriptionJobs.status, "running"))
+    .orderBy(asc(schema.transcriptionJobs.startedAt), asc(schema.transcriptionJobs.id))
+    .all()
+  const ready = listBase()
+    .where(and(eq(schema.transcriptionJobs.status, "queued"), availableNow))
+    .orderBy(...queueOrderBy(getQueueOrder()))
+    .all()
+  const deferred = listBase()
+    .where(and(eq(schema.transcriptionJobs.status, "queued"), sql`${schema.transcriptionJobs.notBefore} > datetime('now')`))
+    .orderBy(asc(schema.transcriptionJobs.notBefore), asc(schema.transcriptionJobs.id))
+    .all()
+  return [
+    ...running.map((j) => ({ ...mapListRow(j), position: null, deferred: false })),
+    ...ready.map((j, i) => ({ ...mapListRow(j), position: i + 1, deferred: false })),
+    ...deferred.map((j, i) => ({ ...mapListRow(j), position: ready.length + i + 1, deferred: true })),
+  ]
+}
+
+/** Feines acabades (fetes, fallades o cancel·lades), de la més recent a la més antiga. */
+export function listFinished(filter: { status?: JobStatusValue; workerId?: number; limit: number }) {
+  const statuses = filter.status ? [filter.status] : (["done", "failed", "cancelled"] as JobStatusValue[])
+  return listBase()
+    .where(
+      and(
+        inArray(schema.transcriptionJobs.status, statuses),
+        filter.workerId ? eq(schema.transcriptionJobs.workerId, filter.workerId) : undefined,
+      ),
+    )
+    .orderBy(desc(schema.transcriptionJobs.finishedAt), desc(schema.transcriptionJobs.id))
+    .limit(Math.min(Math.max(filter.limit, 1), FINISHED_MAX_LIMIT))
+    .all()
+    .map(mapListRow)
 }
 
 export function countJobsByStatus(): Record<string, number> {
@@ -579,13 +665,29 @@ export function countJobsByStatus(): Record<string, number> {
   return Object.fromEntries(rows.map((r) => [r.status, r.n]))
 }
 
-/** `cancel`: una feina en cua o en curs (el worker ho veurà al següent heartbeat). `retry`: torna a la cua. */
-export function jobAction(id: number, action: "cancel" | "retry"): boolean {
+/**
+ * `cancel`: una feina en cua o en curs (el worker ho veurà al següent heartbeat).
+ * `retry`: torna a la cua. `top`: «Processa-la ara», la passa davant de totes les en cua.
+ */
+export function jobAction(id: number, action: "cancel" | "retry" | "top"): boolean {
   if (action === "cancel") {
     const r = db
       .update(schema.transcriptionJobs)
       .set({ status: "cancelled", leaseUntil: null, finishedAt: NOW })
       .where(and(eq(schema.transcriptionJobs.id, id), inArray(schema.transcriptionJobs.status, ACTIVE_STATUSES)))
+      .run()
+    return r.changes > 0
+  }
+  if (action === "top") {
+    const max = db
+      .select({ p: sql<number | null>`max(${schema.transcriptionJobs.priority})` })
+      .from(schema.transcriptionJobs)
+      .where(and(eq(schema.transcriptionJobs.status, "queued"), ne(schema.transcriptionJobs.id, id)))
+      .get()
+    const r = db
+      .update(schema.transcriptionJobs)
+      .set({ priority: (max?.p ?? 0) + 1, notBefore: null })
+      .where(and(eq(schema.transcriptionJobs.id, id), eq(schema.transcriptionJobs.status, "queued")))
       .run()
     return r.changes > 0
   }
@@ -606,6 +708,15 @@ export function jobAction(id: number, action: "cancel" | "retry"): boolean {
     )
     .run()
   return r.changes > 0
+}
+
+/** Cancel·la totes les feines en cua (les que són en curs continuen). Retorna quantes. */
+export function cancelQueued(): number {
+  return db
+    .update(schema.transcriptionJobs)
+    .set({ status: "cancelled", finishedAt: NOW })
+    .where(eq(schema.transcriptionJobs.status, "queued"))
+    .run().changes
 }
 
 // ─── Admin: workers ─────────────────────────────────────────
@@ -649,9 +760,9 @@ export function setWorkerActive(id: number, active: boolean): boolean {
 }
 
 export function deleteWorker(id: number): boolean {
-  // Les feines en curs d'aquest worker tornen a la cua
+  // Les feines en curs d'aquest worker tornen a la cua, com si les hagués alliberat
   db.update(schema.transcriptionJobs)
-    .set({ status: "queued", workerId: null, leaseUntil: null, startedAt: null })
+    .set(releasedToQueue)
     .where(and(eq(schema.transcriptionJobs.workerId, id), eq(schema.transcriptionJobs.status, "running")))
     .run()
   const r = db.delete(schema.transcriptionWorkers).where(eq(schema.transcriptionWorkers.id, id)).run()

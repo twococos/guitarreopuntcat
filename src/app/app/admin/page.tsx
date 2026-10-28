@@ -10,6 +10,7 @@ import { SongsTab } from "@/components/admin/SongsTab"
 import { UsersTab } from "@/components/admin/UsersTab"
 import { CanconersTab } from "@/components/admin/CanconersTab"
 import { TranscriptionsTab } from "@/components/admin/TranscriptionsTab"
+import { ImportTab } from "@/components/admin/import/ImportTab"
 import { ReportsTab } from "@/components/admin/ReportsTab"
 import { AnalyticsPanel } from "@/components/admin/analytics/AnalyticsPanel"
 import {
@@ -20,12 +21,23 @@ import {
   IconBookOpen,
   IconWand,
   IconFlag,
+  IconDownload,
 } from "@/components/shared/Icons"
 import { AppHeader } from "@/components/songbook/AppHeader"
 
-type Tab = "stats" | "proposals" | "reports" | "songs" | "users" | "canconers" | "transcriptions" | "analytics"
+type Tab = "stats" | "proposals" | "reports" | "songs" | "users" | "canconers" | "import" | "transcriptions" | "analytics"
 
-const VALID_TABS: Tab[] = ["stats", "proposals", "reports", "songs", "users", "canconers", "transcriptions", "analytics"]
+const VALID_TABS: Tab[] = [
+  "stats",
+  "proposals",
+  "reports",
+  "songs",
+  "users",
+  "canconers",
+  "import",
+  "transcriptions",
+  "analytics",
+]
 
 interface Stats {
   songs: number
@@ -127,6 +139,12 @@ export default function AdminPage() {
           <IconBookOpen /> {t.admin.tabs.canconers}
         </button>
         <button
+          className={`tab ${tab === "import" ? "active" : ""}`}
+          onClick={() => setTab("import")}
+        >
+          <IconDownload /> {t.admin.tabs.importar}
+        </button>
+        <button
           className={`tab ${tab === "transcriptions" ? "active" : ""}`}
           onClick={() => setTab("transcriptions")}
         >
@@ -147,6 +165,7 @@ export default function AdminPage() {
         {tab === "songs" && <SongsTab focusId={focusId} />}
         {tab === "users" && <UsersTab />}
         {tab === "canconers" && <CanconersTab />}
+        {tab === "import" && <ImportTab onGoToQueue={() => setTab("transcriptions")} />}
         {tab === "transcriptions" && <TranscriptionsTab />}
         {tab === "analytics" && <AnalyticsPanel />}
       </div>
