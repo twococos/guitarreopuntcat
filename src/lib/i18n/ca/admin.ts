@@ -107,6 +107,7 @@ export const admin = {
     analisiQualsevol: "Anàlisi: qualsevol",
     analisiSense: "Sense anàlisi",
     analisiDolenta: "Sincronització dolenta",
+    analisiDesactualitzadaFiltre: "Desactualitzada",
     analisiCap: "Sense anàlisi",
     analisiObsoleta: "obsoleta",
     analisiObsoletaTitle: "L'anàlisi és d'un altre vídeo de YouTube",
@@ -114,6 +115,11 @@ export const admin = {
       `Cobertura ${coverage} · paraules ${words} · acords ${chords}`,
     analisiOk: "Prou bona per a reproducció sincronitzada",
     analisiNoOk: "No prou bona per a reproducció sincronitzada",
+    analisiDesactualitzada: (versio: string) => `Feta amb el transcriptor ${versio}: n'hi ha una versió més nova`,
+    actualitzarAnalisi: "Actualitza l'anàlisi",
+    actualitzarAnalisiTitle: "La torna a fer amb la versió més nova del transcriptor (no toca la lletra ni els acords)",
+    toastActualitzacioEncuada: "Actualització encuada",
+    toastActualitzacioJaEnCua: "Ja té una feina a la cua",
     canviarTipusTitle: "Clica per canviar el tipus",
     estatProposta: "Proposta",
     hintPublica: "Visible i cercable per a tothom",
@@ -413,6 +419,22 @@ export const admin = {
     colAccions: "Accions",
     modeNew: "Nova",
     modeAnalyze: "Anàlisi",
+    modeUpdate: "Actualització",
+    actualitzacionsTitol: "Actualitzacions de les anàlisis",
+    actualitzacionsHint: (versio: string) =>
+      `Quan un worker té una versió del transcriptor que canvia el resultat, les anàlisis fetes abans es poden tornar a fer. Només canvia l'anàlisi (ritme, acords sincronitzats, seccions…): mai la lletra ni els acords de la cançó. El BPM i el compàs només s'actualitzen si no s'han editat a mà. Versió més nova dels workers: ${versio}.`,
+    actualitzacionsSenseVersio:
+      "Cap worker no informa encara de la seva versió d'anàlisi (cal el transcriptor 0.1.9 o posterior).",
+    desactualitzades: (n: number) =>
+      n === 0 ? "Totes les anàlisis estan al dia." : `${n} ${n === 1 ? "anàlisi feta" : "anàlisis fetes"} amb versions anteriors`,
+    perVersio: (versio: string, n: number) => `${versio}: ${n}`,
+    actualitzacionsEnCua: (n: number) => `${n} a la cua`,
+    actualitzarTotes: (n: number) => `Actualitza-les totes (${n})`,
+    confirmActualitzarTotes: (n: number) =>
+      `Encuar l'actualització de ${n} anàlisis? Van darrere de la resta de feines. Les que tinguin dades crues es fan en segons; les altres es tornen a transcriure senceres.`,
+    actualitzacionsEncuades: (n: number) => `${n} actualitzacions encuades`,
+    automatic: "Automàtic quan la cua és buida",
+    automaticTitle: "Els workers agafen sols les anàlisis desactualitzades quan no hi ha cap altra feina.",
     statusLabels: {
       queued: "En cua",
       running: "En curs",

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm"
-import { index, integer, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core"
+import { blob, index, integer, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core"
 import type { PdfOptions } from "@/lib/schemas/canconer"
 import type { ReportItem } from "@/lib/schemas/report"
 import type { AnalysisCompact, JobStats, WorkerDeviceInfo } from "@/lib/schemas/transcriber"
@@ -150,6 +150,10 @@ export const transcriptionWorkers = sqliteTable(
     active: integer("active").notNull().default(1),
     deviceInfo: text("device_info", { mode: "json" }).$type<WorkerDeviceInfo>(),
     appVersion: text("app_version"),
+    // Última versió del transcriptor que ha canviat el resultat de les anàlisis, segons aquest
+    // worker (versions.py del transcriptor). Les anàlisis fetes amb una versió anterior a la més
+    // nova dels workers actius estan desactualitzades.
+    analysisVersion: text("analysis_version"),
     lastSeenAt: text("last_seen_at"),
     jobsDone: integer("jobs_done").notNull().default(0),
     avgSeconds: real("avg_seconds"),
@@ -162,12 +166,14 @@ export const transcriptionWorkers = sqliteTable(
 )
 
 // Cua de feines. `new`: crea una proposta. `analyze`: només desa l'anàlisi
-// d'una cançó existent (`songId`), sense tocar-ne el content.
+// d'una cançó existent (`songId`), sense tocar-ne el content. `update`: torna a
+// fer l'anàlisi d'una cançó amb una versió més nova del transcriptor (amb les
+// dades crues de `song_analysis_raw`, si n'hi ha, només es refà el postprocés).
 export const transcriptionJobs = sqliteTable(
   "transcription_jobs",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    mode: text("mode", { enum: ["new", "analyze"] }).notNull().default("new"),
+    mode: text("mode", { enum: ["new", "analyze", "update"] }).notNull().default("new"),
     sourceUrl: text("source_url").notNull(),
     title: text("title"),
     artist: text("artist"),
@@ -232,6 +238,20 @@ export const songAnalyses = sqliteTable("song_analyses", {
   // si no coincideix, cal recalcular-la (src/db/queries/transcriptions.ts).
   syncQuality: text("sync_quality", { mode: "json" }).$type<SyncQuality>(),
   syncHash: text("sync_hash"),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
+})
+
+// Dades crues de l'última anàlisi de cada cançó: la sortida dels models abans del
+// postprocés (paquet.py del transcriptor, un .npz de ~75 KB). Amb elles un worker
+// pot refer el postprocés sense l'àudio. A part de song_analyses perquè les
+// consultes i les llistes no carreguin els blobs.
+export const songAnalysisRaw = sqliteTable("song_analysis_raw", {
+  songId: integer("song_id")
+    .primaryKey()
+    .references(() => songs.id, { onDelete: "cascade" }),
+  appVersion: text("app_version"),
+  data: blob("data", { mode: "buffer" }).notNull(),
+  size: integer("size").notNull(),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
 })
 

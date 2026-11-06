@@ -33,3 +33,16 @@ export function getQueueOrder(): QueueOrder {
 export function setQueueOrder(order: QueueOrder): void {
   setSetting(QUEUE_ORDER_KEY, order)
 }
+
+// ─── Actualització automàtica de les anàlisis ───────────────
+
+const AUTO_UPDATE_KEY = "transcription_auto_update"
+
+/** Si els workers agafen sols les anàlisis desactualitzades quan la cua és buida. */
+export function getAutoUpdate(): boolean {
+  return getSetting(AUTO_UPDATE_KEY) === "1"
+}
+
+export function setAutoUpdate(on: boolean): void {
+  setSetting(AUTO_UPDATE_KEY, on ? "1" : "0")
+}

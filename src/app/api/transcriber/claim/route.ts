@@ -22,6 +22,7 @@ export async function POST(req: Request) {
 
     const job = claimJob(worker, {
       appVersion: parsed.data.app_version,
+      analysisVersion: parsed.data.analysis_version,
       device: { ...parsed.data.device, hostname: parsed.data.worker },
     })
     if (!job) return new NextResponse(null, { status: 204 })

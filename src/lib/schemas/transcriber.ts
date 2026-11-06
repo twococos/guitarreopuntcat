@@ -14,6 +14,8 @@ export type WorkerDeviceInfo = z.infer<typeof workerDeviceInfoSchema>
 export const claimBodySchema = z.object({
   worker: z.string().max(200),
   app_version: z.string().max(50),
+  // Última versió que ha canviat el resultat de les anàlisis (opcional: workers < 0.1.9)
+  analysis_version: z.string().max(50).optional(),
   device: workerDeviceInfoSchema,
 })
 
@@ -135,10 +137,19 @@ export const jobStatsSchema = z
 
 export type JobStats = z.infer<typeof jobStatsSchema>
 
+/** Mida màxima del paquet de dades crues, descodificat (en sol fer ~75 KB). */
+export const MAX_RAW_BYTES = 512 * 1024
+
 export const resultBodySchema = z.object({
   proposal: proposalResultSchema,
   analysis: analysisCompactSchema,
   stats: jobStatsSchema.optional(),
+  // Dades crues (paquet.py del transcriptor) en base64. Opcional: workers < 0.1.9
+  raw: z
+    .string()
+    .max(Math.ceil((MAX_RAW_BYTES * 4) / 3) + 4)
+    .regex(/^[A-Za-z0-9+/]*={0,2}$/, "base64 no vàlid")
+    .optional(),
 })
 
 // ─── Admin ─────────────────────────────────────────────────────
@@ -167,6 +178,8 @@ export const enqueueBodySchema = z.union([
   // Encua el mode `analyze` per a totes les cançons públiques amb YouTube i sense anàlisi
   // (`true`), o amb una anàlisi sense l'estil rítmic (`"rhythm"`)
   z.object({ analyzeMissing: z.union([z.literal(true), z.literal("rhythm")]), priority: z.number().int().default(0) }),
+  // Encua el mode `update` per a aquestes cançons, o per a totes les desactualitzades (`"all"`)
+  z.object({ updates: z.union([z.literal("all"), z.array(z.number().int().positive()).min(1).max(5000)]) }),
 ])
 
 export const jobActionSchema = z.object({ action: z.enum(["cancel", "retry", "top"]) })
@@ -174,6 +187,8 @@ export const jobActionSchema = z.object({ action: z.enum(["cancel", "retry", "to
 export const queueSettingsSchema = z.union([
   z.object({ queue_order: z.enum(["fifo", "lifo"]) }),
   z.object({ cancel_queued: z.literal(true) }),
+  // Els workers actualitzen sols les anàlisis desactualitzades quan la cua és buida
+  z.object({ auto_update: z.boolean() }),
 ])
 
 export const finishedQuerySchema = z.object({

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { resultBodySchema } from "@/lib/schemas/transcriber"
+import { MAX_RAW_BYTES, resultBodySchema } from "@/lib/schemas/transcriber"
 import { authenticateWorker } from "@/lib/transcriber/auth.server"
 import { jobLostResponse, parseId, readJsonBody } from "@/lib/transcriber/routeUtils.server"
 import { completeJob } from "@/db/queries/transcriptions"
@@ -7,7 +7,10 @@ import { completeJob } from "@/db/queries/transcriptions"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-/** Resultat d'una feina: proposta (forma d'ImportResult) + anàlisi en format compacte + estadístiques (opcionals). */
+/**
+ * Resultat d'una feina: proposta (forma d'ImportResult) + anàlisi en format compacte, i opcionalment
+ * estadístiques i dades crues (`raw`, base64 del paquet del transcriptor).
+ */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const worker = authenticateWorker(req)
@@ -22,7 +25,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Dades invàlides", issues }, { status: 400 })
     }
 
-    const result = completeJob(worker, id, parsed.data.proposal, parsed.data.analysis, parsed.data.stats ?? null)
+    const raw = parsed.data.raw ? Buffer.from(parsed.data.raw, "base64") : null
+    if (raw && (raw.length === 0 || raw.length > MAX_RAW_BYTES)) {
+      return NextResponse.json({ error: "Dades crues invàlides" }, { status: 400 })
+    }
+    const result = completeJob(worker, id, parsed.data.proposal, parsed.data.analysis, parsed.data.stats ?? null, raw)
     if (result.status === "lost") return jobLostResponse()
     return NextResponse.json(result)
   } catch (err) {

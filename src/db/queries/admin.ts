@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, isNotNull, isNull, like, ne, or, sql, type SQL }
 import { alias } from "drizzle-orm/sqlite-core"
 import { db, schema } from "@/db/client"
 import { SONG_STATE, songKind } from "@/lib/songKind"
-import { getAnalysisSummaries } from "./transcriptions"
+import { getAnalysisSummaries, isOutdatedVersion, latestAnalysisVersion } from "./transcriptions"
 import { countPendingReports } from "./reports"
 
 // ─── GET /api/admin/stats ────────────────────────────────────
@@ -153,7 +153,7 @@ export async function adminDeleteCanconer(id: number) {
 // ─── GET /api/admin/songs ────────────────────────────────────
 
 export type AdminSongKindFilter = "all" | "public" | "private" | "arrangement"
-export type AdminAnalysisFilter = "any" | "none" | "bad"
+export type AdminAnalysisFilter = "any" | "none" | "bad" | "outdated"
 
 /**
  * Cançons per al panell d'admin (sense les propostes pendents, que tenen la
@@ -208,6 +208,7 @@ export function listSongsForAdmin(opts: {
     .all()
 
   const analyses = getAnalysisSummaries(rows.map((r) => r.id))
+  const latest = latestAnalysisVersion()
 
   const mapped = rows.map((r) => {
     const a = analyses.get(r.id)
@@ -224,13 +225,17 @@ export function listSongsForAdmin(opts: {
       original: r.originalSongId !== null
         ? { id: r.originalSongId, title: r.originalTitle ?? "", artist: r.originalArtist ?? "" }
         : null,
-      analysis: a ? { current: a.current, quality: a.quality } : null,
+      analysis: a
+        ? { current: a.current, quality: a.quality, app_version: a.appVersion,
+            outdated: a.current && isOutdatedVersion(a.appVersion, latest) }
+        : null,
       songbook_count: r.songbookCount,
       updated_at: r.updatedAt,
     }
   })
 
   if (opts.analysis === "none") return mapped.filter((m) => !m.analysis || !m.analysis.current)
+  if (opts.analysis === "outdated") return mapped.filter((m) => m.analysis?.outdated)
   if (opts.analysis === "bad") {
     return mapped.filter((m) => m.analysis?.current && !m.analysis.quality?.ok)
   }

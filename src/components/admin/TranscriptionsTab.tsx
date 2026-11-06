@@ -9,7 +9,7 @@ type JobStatus = "queued" | "running" | "done" | "failed" | "cancelled"
 
 interface JobRow {
   id: number
-  mode: "new" | "analyze"
+  mode: "new" | "analyze" | "update"
   source_url: string
   title: string | null
   artist: string | null
@@ -59,12 +59,22 @@ interface WorkerRow {
   avg_seconds: number | null
 }
 
+// updatesSummary() de src/db/queries/transcriptions.ts
+interface UpdatesState {
+  target: string | null
+  outdated: number
+  by_version: Record<string, number>
+  active: number
+  auto: boolean
+}
+
 interface QueueState {
   queue: QueueRow[]
   queue_order: QueueOrder
   counts: Partial<Record<JobStatus, number>>
   workers: WorkerRow[]
   leaderboards: Leaderboards | null
+  updates: UpdatesState | null
 }
 
 const REFRESH_MS = 10_000
@@ -107,6 +117,7 @@ export function TranscriptionsTab() {
     counts: {},
     workers: [],
     leaderboards: null,
+    updates: null,
   })
   const [finished, setFinished] = useState<JobRow[]>([])
   const [finishedStatus, setFinishedStatus] = useState<FinishedStatus | null>(null)
@@ -160,6 +171,29 @@ export function TranscriptionsTab() {
     if (n === 0 || !confirm(tt.confirmCancellaCua(n))) return
     const data = (await patchQueue({ cancel_queued: true })) as { cancelled: number } | null
     if (data) toast(tt.cuaCancellada(data.cancelled), { type: "success" })
+    load()
+  }
+
+  async function handleUpdateAll() {
+    const n = state.updates?.outdated ?? 0
+    if (n === 0 || !confirm(tt.confirmActualitzarTotes(n))) return
+    const res = await fetch("/api/admin/transcriptions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ updates: "all" }),
+    })
+    if (!res.ok) {
+      toast(t.admin.toasts.errorAccio, { type: "error" })
+      return
+    }
+    const data = (await res.json()) as { queued: number }
+    toast(tt.actualitzacionsEncuades(data.queued), { type: "success" })
+    load()
+  }
+
+  async function handleAutoUpdate(on: boolean) {
+    setState((s) => (s.updates ? { ...s, updates: { ...s.updates, auto: on } } : s))
+    await patchQueue({ auto_update: on })
     load()
   }
 
@@ -218,6 +252,10 @@ export function TranscriptionsTab() {
       else next.add(id)
       return next
     })
+  }
+
+  function modeLabel(mode: JobRow["mode"]): string {
+    return mode === "new" ? tt.modeNew : mode === "update" ? tt.modeUpdate : tt.modeAnalyze
   }
 
   function formatLeaderboardValue(key: LeaderboardKey, value: number): string {
@@ -305,7 +343,7 @@ export function TranscriptionsTab() {
                 <tr key={j.id} className={j.status === "running" ? "queue-running" : j.deferred ? "queue-deferred" : ""}>
                   <td className="queue-position">{j.position ?? "▶"}</td>
                   {songCell(j)}
-                  <td>{j.mode === "new" ? tt.modeNew : tt.modeAnalyze}</td>
+                  <td>{modeLabel(j.mode)}</td>
                   <td>
                     <span className={`badge ${STATUS_BADGE[j.status]}`}>{tt.statusLabels[j.status]}</span>
                     {j.deferred && j.not_before && (
@@ -321,7 +359,7 @@ export function TranscriptionsTab() {
                         {tt.processaAra}
                       </button>
                     )}
-                    {j.mode === "analyze" && j.song_id !== null && (
+                    {j.mode !== "new" && j.song_id !== null && (
                       <button className="btn-xs" onClick={() => router.push(`/app/editor?id=${j.song_id}`)}>
                         {tt.obrir}
                       </button>
@@ -336,6 +374,47 @@ export function TranscriptionsTab() {
           </table>
         )}
       </section>
+
+      {state.updates && (
+        <section className="transcriptions-section">
+          <div className="panel-toolbar">
+            <h3>{tt.actualitzacionsTitol}</h3>
+            <label className="queue-auto-update" title={tt.automaticTitle}>
+              <input
+                type="checkbox"
+                checked={state.updates.auto}
+                onChange={(e) => handleAutoUpdate(e.target.checked)}
+              />{" "}
+              {tt.automatic}
+            </label>
+            <button
+              className="btn-xs success"
+              onClick={handleUpdateAll}
+              disabled={state.updates.outdated === 0}
+            >
+              {tt.actualitzarTotes(state.updates.outdated)}
+            </button>
+          </div>
+          <p className="transcriptions-hint">
+            {state.updates.target ? tt.actualitzacionsHint(state.updates.target) : tt.actualitzacionsSenseVersio}
+          </p>
+          {state.updates.target && (
+            <p>
+              {tt.desactualitzades(state.updates.outdated)}
+              {Object.entries(state.updates.by_version).length > 0 && (
+                <span style={{ color: "var(--muted)" }}>
+                  {" ("}
+                  {Object.entries(state.updates.by_version)
+                    .map(([v, n]) => tt.perVersio(v, n))
+                    .join(" · ")}
+                  {")"}
+                </span>
+              )}
+              {state.updates.active > 0 && <span> · {tt.actualitzacionsEnCua(state.updates.active)}</span>}
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="transcriptions-section">
         <div className="panel-toolbar">
@@ -389,7 +468,7 @@ export function TranscriptionsTab() {
                   <tr>
                     <td style={{ fontSize: ".8rem" }}>{formatDate(j.finished_at)}</td>
                     {songCell(j)}
-                    <td>{j.mode === "new" ? tt.modeNew : tt.modeAnalyze}</td>
+                    <td>{modeLabel(j.mode)}</td>
                     <td>
                       <span className={`badge ${STATUS_BADGE[j.status]}`}>{tt.statusLabels[j.status]}</span>
                     </td>
@@ -410,7 +489,7 @@ export function TranscriptionsTab() {
                           {tt.revisar}
                         </button>
                       )}
-                      {j.mode === "analyze" && j.song_id !== null && (
+                      {j.mode !== "new" && j.song_id !== null && (
                         <button className="btn-xs" onClick={() => router.push(`/app/editor?id=${j.song_id}`)}>
                           {tt.obrir}
                         </button>

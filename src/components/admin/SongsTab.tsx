@@ -19,13 +19,13 @@ interface SongRow {
   kind: "public" | "private" | "arrangement" | "proposal"
   owner: { id: number; name: string; avatar_url: string | null } | null
   original: { id: number; title: string; artist: string } | null
-  analysis: { current: boolean; quality: SyncQuality | null } | null
+  analysis: { current: boolean; quality: SyncQuality | null; app_version: string | null; outdated: boolean } | null
   songbook_count: number
   updated_at: string | null
 }
 
 type KindFilter = "all" | "public" | "private" | "arrangement"
-type AnalysisFilter = "any" | "none" | "bad"
+type AnalysisFilter = "any" | "none" | "bad" | "outdated"
 type Counts = Record<KindFilter, number>
 
 const pct = (v: number | null) => (v === null ? "—" : `${Math.round(v * 100)}%`)
@@ -128,6 +128,23 @@ export function SongsTab({ focusId = null }: { focusId?: number | null }) {
     }
   }
 
+  async function handleUpdateAnalysis(id: number) {
+    const toast = useToastStore.getState().show
+    const res = await fetch("/api/admin/transcriptions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ updates: [id] }),
+    })
+    if (!res.ok) {
+      toast(t.admin.toasts.errorAccio, { type: "error" })
+      return
+    }
+    const data = (await res.json()) as { queued: number }
+    toast(data.queued > 0 ? tt.toastActualitzacioEncuada : tt.toastActualitzacioJaEnCua, {
+      type: data.queued > 0 ? "success" : "info",
+    })
+  }
+
   async function handleDelete(id: number, title: string) {
     if (!confirm(tt.confirmEliminar(title))) return
     const res = await fetch(`/api/songs/${id}`, { method: "DELETE" })
@@ -174,6 +191,7 @@ export function SongsTab({ focusId = null }: { focusId?: number | null }) {
           <option value="any">{tt.analisiQualsevol}</option>
           <option value="none">{tt.analisiSense}</option>
           <option value="bad">{tt.analisiDolenta}</option>
+          <option value="outdated">{tt.analisiDesactualitzadaFiltre}</option>
         </select>
       </div>
       <table className="admin-songs-table">
@@ -278,6 +296,15 @@ export function SongsTab({ focusId = null }: { focusId?: number | null }) {
                   <a href={`/app/editor?id=${s.id}`} className="btn-xs">
                     {tt.editar}
                   </a>
+                  {s.analysis?.outdated && (
+                    <button
+                      className="btn-xs"
+                      onClick={() => void handleUpdateAnalysis(s.id)}
+                      title={tt.actualitzarAnalisiTitle}
+                    >
+                      {tt.actualitzarAnalisi}
+                    </button>
+                  )}
                   <button className="btn-xs danger" onClick={() => void handleDelete(s.id, s.title)}>
                     {tt.eliminar}
                   </button>
@@ -333,6 +360,11 @@ function AnalysisCell({ analysis }: { analysis: SongRow["analysis"] }) {
     <span className={`admin-analysis is-${level}`} title={title}>
       <span className="admin-analysis-dot" aria-hidden="true" />
       {pct(q.coverage ?? q.chords)}
+      {analysis.outdated && (
+        <span className="admin-analysis-outdated" title={tt.analisiDesactualitzada(analysis.app_version ?? "?")}>
+          {analysis.app_version ?? "?"} ↻
+        </span>
+      )}
     </span>
   )
 }

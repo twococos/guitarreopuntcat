@@ -10,9 +10,9 @@ import { cleanupContent } from "@/lib/importers/cleanupContent"
 import { normalizeSectionTitles } from "@/lib/importers/normalizeSections"
 import { youtubeVideoId } from "@/lib/youtube"
 import { getOrCreateTranscriberUser } from "@/lib/transcriber/transcriberUser"
-import { generateWorkerToken, hashWorkerToken } from "@/lib/transcriber/auth.server"
+import { compareVersions, generateWorkerToken, hashWorkerToken } from "@/lib/transcriber/auth.server"
 import { findExistingSongByArtistTitle } from "./proposals"
-import { getQueueOrder, type QueueOrder } from "./settings"
+import { getAutoUpdate, getQueueOrder, type QueueOrder } from "./settings"
 import { SONG_STATE } from "@/lib/songKind"
 import { syncAnalysis, type SyncQuality } from "@/lib/transcriber/sync"
 
@@ -84,7 +84,7 @@ const releasedToQueue = {
 
 export interface ClaimedJob {
   id: number
-  mode: "new" | "analyze"
+  mode: "new" | "analyze" | "update"
   source_url: string
   title: string | null
   artist: string | null
@@ -92,27 +92,174 @@ export interface ClaimedJob {
   lyrics_text: string | null
   song_content: string | null
   lease_seconds: number
+  // Només en mode `update`: l'anàlisi que s'actualitza, amb quina versió es va fer i les seves
+  // dades crues (base64; null si encara no en té i s'ha de refer sencera)
+  song_id?: number
+  analysis?: AnalysisCompact | null
+  analysis_app_version?: string | null
+  raw?: string | null
+}
+
+// ─── Versions de les anàlisis (feines `update`) ──────────────
+
+/** Les actualitzacions passen darrere de tota la resta de la cua. */
+export const UPDATE_PRIORITY = -10
+/** Un worker compta per decidir la versió més nova si s'ha vist en aquests dies. */
+const ACTIVE_WORKER_DAYS = 30
+/** Feines en cua que es miren en cada claim (les `update` d'una versió massa nova se salten). */
+const CLAIM_SCAN = 200
+
+/**
+ * La versió d'anàlisi més nova entre els workers actius vistos fa poc: l'última versió del
+ * transcriptor que ha canviat el resultat (versions.py). null si cap worker n'informa (< 0.1.9).
+ */
+export function latestAnalysisVersion(): string | null {
+  const rows = db
+    .select({ v: schema.transcriptionWorkers.analysisVersion })
+    .from(schema.transcriptionWorkers)
+    .where(
+      and(
+        eq(schema.transcriptionWorkers.active, 1),
+        isNotNull(schema.transcriptionWorkers.analysisVersion),
+        sql`${schema.transcriptionWorkers.lastSeenAt} >= datetime('now', ${`-${ACTIVE_WORKER_DAYS} days`})`,
+      ),
+    )
+    .all()
+  let max: string | null = null
+  for (const r of rows) {
+    if (r.v && (!max || compareVersions(r.v, max) > 0)) max = r.v
+  }
+  return max
+}
+
+/**
+ * Anàlisis vigents (del vídeo actual de la cançó) fetes amb una versió anterior a `version`, de la
+ * més antiga a la més nova. Una anàlisi sense versió compta com la més antiga.
+ */
+function outdatedAnalyses(version: string): { songId: number; appVersion: string | null }[] {
+  const rows = db
+    .select({
+      songId: schema.songAnalyses.songId,
+      appVersion: schema.songAnalyses.appVersion,
+      youtubeId: schema.songAnalyses.youtubeId,
+      youtubeUrl: schema.songs.youtubeUrl,
+    })
+    .from(schema.songAnalyses)
+    .innerJoin(schema.songs, eq(schema.songs.id, schema.songAnalyses.songId))
+    .all()
+  return rows
+    .filter((r) => {
+      const videoId = r.youtubeUrl ? youtubeVideoId(r.youtubeUrl) : null
+      return videoId && (!r.youtubeId || r.youtubeId === videoId) && compareVersions(r.appVersion ?? "0", version) < 0
+    })
+    .sort((a, b) => compareVersions(a.appVersion ?? "0", b.appVersion ?? "0") || a.songId - b.songId)
+    .map(({ songId, appVersion }) => ({ songId, appVersion }))
+}
+
+/** Encua una feina `update` per a la cançó si té anàlisi, vídeo i cap feina activa. Retorna l'id. */
+function insertUpdateJob(songId: number, userId: number | null): number | null {
+  const song = db
+    .select({ title: schema.songs.title, artist: schema.songs.artist, language: schema.songs.language,
+              youtubeUrl: schema.songs.youtubeUrl })
+    .from(schema.songs)
+    .innerJoin(schema.songAnalyses, eq(schema.songAnalyses.songId, schema.songs.id))
+    .where(eq(schema.songs.id, songId))
+    .get()
+  if (!song?.youtubeUrl || !youtubeVideoId(song.youtubeUrl) || hasActiveJobForSong(songId)) return null
+  const r = db
+    .insert(schema.transcriptionJobs)
+    .values({
+      mode: "update",
+      sourceUrl: song.youtubeUrl,
+      title: song.title,
+      artist: song.artist,
+      language: song.language,
+      songId,
+      priority: UPDATE_PRIORITY,
+      createdBy: userId,
+    })
+    .run()
+  return Number(r.lastInsertRowid)
+}
+
+/**
+ * Encua `update` per a aquestes cançons (encara que no estiguin desactualitzades: «torna-la a
+ * fer») o per a totes les desactualitzades (`"all"`). Retorna quantes s'han encuat.
+ */
+export function enqueueUpdates(songIds: number[] | "all", userId: number): number {
+  const target = latestAnalysisVersion()
+  const ids = songIds === "all" ? (target ? outdatedAnalyses(target).map((o) => o.songId) : []) : songIds
+  return db.transaction(() => ids.filter((id) => insertUpdateJob(id, userId) !== null).length)
+}
+
+/** Resum per a l'admin: versió més nova, anàlisis desactualitzades (per versió) i interruptor. */
+export function updatesSummary() {
+  const target = latestAnalysisVersion()
+  const outdated = target ? outdatedAnalyses(target) : []
+  const byVersion: Record<string, number> = {}
+  for (const o of outdated) byVersion[o.appVersion ?? "?"] = (byVersion[o.appVersion ?? "?"] ?? 0) + 1
+  const active = db
+    .select({ n: sql<number>`count(*)` })
+    .from(schema.transcriptionJobs)
+    .where(and(eq(schema.transcriptionJobs.mode, "update"), inArray(schema.transcriptionJobs.status, ACTIVE_STATUSES)))
+    .get()
+  return { target, outdated: outdated.length, by_version: byVersion, active: active?.n ?? 0, auto: getAutoUpdate() }
+}
+
+/** Si una versió d'anàlisi `version` deixa la cançó desactualitzada (per a la llista de l'admin). */
+export function isOutdatedVersion(appVersion: string | null, version: string | null): boolean {
+  return !!version && compareVersions(appVersion ?? "0", version) < 0
 }
 
 export function claimJob(
   worker: TranscriptionWorker,
-  info: { appVersion: string; device: WorkerDeviceInfo },
+  info: { appVersion: string; analysisVersion?: string; device: WorkerDeviceInfo },
 ): ClaimedJob | null {
   return db.transaction((tx) => {
     tx.update(schema.transcriptionWorkers)
-      .set({ lastSeenAt: NOW, appVersion: info.appVersion, deviceInfo: info.device })
+      .set({
+        lastSeenAt: NOW,
+        appVersion: info.appVersion,
+        analysisVersion: info.analysisVersion ?? null,
+        deviceInfo: info.device,
+      })
       .where(eq(schema.transcriptionWorkers.id, worker.id))
       .run()
 
     expireLeases()
 
-    const job = tx
-      .select()
-      .from(schema.transcriptionJobs)
-      .where(and(eq(schema.transcriptionJobs.status, "queued"), availableNow))
-      .orderBy(...queueOrderBy(getQueueOrder()))
-      .limit(1)
-      .get()
+    // Una feina `update` només la pot fer un worker que la sàpiga fer (≥ 0.1.9) i que no tingui una
+    // versió d'anàlisi més antiga que la de la cançó (la faria tornar enrere)
+    const canUpdate = (songId: number | null): boolean => {
+      if (!info.analysisVersion || songId === null) return false
+      const a = tx
+        .select({ v: schema.songAnalyses.appVersion })
+        .from(schema.songAnalyses)
+        .where(eq(schema.songAnalyses.songId, songId))
+        .get()
+      return compareVersions(info.analysisVersion, a?.v ?? "0") >= 0
+    }
+
+    let job =
+      tx
+        .select()
+        .from(schema.transcriptionJobs)
+        .where(and(eq(schema.transcriptionJobs.status, "queued"), availableNow))
+        .orderBy(...queueOrderBy(getQueueOrder()))
+        .limit(CLAIM_SCAN)
+        .all()
+        .find((j) => j.mode !== "update" || canUpdate(j.songId)) ?? null
+
+    // Cua buida i actualització automàtica: la cançó desactualitzada més antiga que aquest worker pot millorar
+    if (!job && info.analysisVersion && getAutoUpdate()) {
+      for (const o of outdatedAnalyses(info.analysisVersion)) {
+        const id = insertUpdateJob(o.songId, null)
+        if (id !== null) {
+          job = tx.select().from(schema.transcriptionJobs).where(eq(schema.transcriptionJobs.id, id)).get() ?? null
+          break
+        }
+      }
+    }
     if (!job) return null
 
     // Cada assignació a un worker compta com a intent (un alliberament el retorna)
@@ -137,7 +284,7 @@ export function claimJob(
       songContent = song?.content ?? null
     }
 
-    return {
+    const claimed: ClaimedJob = {
       id: job.id,
       mode: job.mode,
       source_url: job.sourceUrl,
@@ -148,6 +295,23 @@ export function claimJob(
       song_content: songContent,
       lease_seconds: LEASE_SECONDS,
     }
+    if (job.mode === "update" && job.songId) {
+      const current = tx
+        .select({ analysis: schema.songAnalyses.analysis, appVersion: schema.songAnalyses.appVersion })
+        .from(schema.songAnalyses)
+        .where(eq(schema.songAnalyses.songId, job.songId))
+        .get()
+      const raw = tx
+        .select({ data: schema.songAnalysisRaw.data })
+        .from(schema.songAnalysisRaw)
+        .where(eq(schema.songAnalysisRaw.songId, job.songId))
+        .get()
+      claimed.song_id = job.songId
+      claimed.analysis = current?.analysis ?? null
+      claimed.analysis_app_version = current?.appVersion ?? null
+      claimed.raw = raw ? Buffer.from(raw.data).toString("base64") : null
+    }
+    return claimed
   })
 }
 
@@ -216,11 +380,30 @@ function analysisRow(songId: number, jobId: number, analysis: AnalysisCompact, w
   }
 }
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+/** Dades crues de l'anàlisi vigent: les noves substitueixen les velles; sense, s'esborren. */
+function saveRaw(tx: Tx, songId: number, raw: Buffer | null, worker: TranscriptionWorker): void {
+  if (!raw) {
+    tx.delete(schema.songAnalysisRaw).where(eq(schema.songAnalysisRaw.songId, songId)).run()
+    return
+  }
+  const row = { songId, appVersion: worker.appVersion, data: raw, size: raw.length, createdAt: NOW }
+  tx.insert(schema.songAnalysisRaw)
+    .values(row)
+    .onConflictDoUpdate({ target: schema.songAnalysisRaw.songId, set: row })
+    .run()
+}
+
 /**
  * Desa el resultat d'una feina. Mode `new`: crea la cançó pendent + proposta
  * de l'usuari "Transcriptor" + anàlisi. Mode `analyze`: només desa (o
- * sobreescriu) l'anàlisi i omple bpm/compàs si la cançó no en té. Les
- * estadístiques (si el worker les envia) es desen a la feina en tots els casos.
+ * sobreescriu) l'anàlisi i omple bpm/compàs si la cançó no en té. Mode
+ * `update`: com `analyze`, però el bpm/compàs també s'actualitzen si encara
+ * són els de l'anàlisi anterior (ningú no els ha editat). Les estadístiques
+ * (si el worker les envia) es desen a la feina en tots els casos, i les dades
+ * crues (`raw`) substitueixen les de la cançó: sense, s'esborren, perquè han
+ * de ser les de l'anàlisi vigent.
  */
 export function completeJob(
   worker: TranscriptionWorker,
@@ -228,6 +411,7 @@ export function completeJob(
   proposal: ProposalResult,
   analysis: AnalysisCompact,
   stats: JobStats | null = null,
+  raw: Buffer | null = null,
 ): CompleteResult {
   const job = ownedRunningJob(worker.id, jobId)
   if (!job) return { status: "lost" }
@@ -246,23 +430,34 @@ export function completeJob(
   let songId: number
   let proposalId: number | null = null
 
-  if (job.mode === "analyze") {
-    if (!job.songId) throw new Error(`Feina ${job.id} en mode analyze sense cançó`)
+  if (job.mode === "analyze" || job.mode === "update") {
+    if (!job.songId) throw new Error(`Feina ${job.id} en mode ${job.mode} sense cançó`)
     songId = job.songId
     db.transaction((tx) => {
+      // bpm/compàs que va posar l'anàlisi anterior: si la cançó encara els té, no s'han editat a mà
+      const previous = job.mode === "update"
+        ? tx.select({ analysis: schema.songAnalyses.analysis }).from(schema.songAnalyses)
+            .where(eq(schema.songAnalyses.songId, songId)).get()
+        : undefined
+      const prev = previous ? songMetrics(previous.analysis) : { bpm: null, timeSignature: null }
       const row = analysisRow(songId, job.id, analysis, worker)
       tx.insert(schema.songAnalyses)
         .values(row)
         .onConflictDoUpdate({ target: schema.songAnalyses.songId, set: row })
         .run()
+      saveRaw(tx, songId, raw, worker)
       if (metrics.bpm !== null) {
         tx.update(schema.songs)
           .set({ bpm: metrics.bpm })
-          .where(and(eq(schema.songs.id, songId), isNull(schema.songs.bpm)))
+          .where(and(eq(schema.songs.id, songId),
+                     prev.bpm !== null ? or(isNull(schema.songs.bpm), eq(schema.songs.bpm, prev.bpm)) : isNull(schema.songs.bpm)))
           .run()
         tx.update(schema.songs)
           .set({ timeSignature: metrics.timeSignature })
-          .where(and(eq(schema.songs.id, songId), isNull(schema.songs.timeSignature)))
+          .where(and(eq(schema.songs.id, songId),
+                     prev.timeSignature !== null
+                       ? or(isNull(schema.songs.timeSignature), eq(schema.songs.timeSignature, prev.timeSignature))
+                       : isNull(schema.songs.timeSignature)))
           .run()
       }
       tx.update(schema.transcriptionJobs)
@@ -324,6 +519,7 @@ export function completeJob(
       proposalId = Number(proposalResult.lastInsertRowid)
 
       tx.insert(schema.songAnalyses).values(analysisRow(newSongId, job.id, analysis, worker)).run()
+      saveRaw(tx, newSongId, raw, worker)
       tx.update(schema.transcriptionJobs)
         .set({ ...finish, resultSongId: newSongId })
         .where(eq(schema.transcriptionJobs.id, job.id))
@@ -932,6 +1128,8 @@ export interface SongAnalysisSummary {
   /** L'anàlisi és del vídeo actual de la cançó. */
   current: boolean
   quality: SyncQuality | null
+  /** Versió del transcriptor amb què es va fer (o actualitzar per últim cop). */
+  appVersion: string | null
 }
 
 function syncHashOf(content: string, capo: number | null): string {
@@ -951,6 +1149,7 @@ export function getAnalysisSummaries(songIds: number[]): Map<number, SongAnalysi
     .select({
       songId: schema.songAnalyses.songId,
       youtubeId: schema.songAnalyses.youtubeId,
+      appVersion: schema.songAnalyses.appVersion,
       syncQuality: schema.songAnalyses.syncQuality,
       syncHash: schema.songAnalyses.syncHash,
       youtubeUrl: schema.songs.youtubeUrl,
@@ -966,7 +1165,7 @@ export function getAnalysisSummaries(songIds: number[]): Map<number, SongAnalysi
     const videoId = r.youtubeUrl ? youtubeVideoId(r.youtubeUrl) : null
     const current = !r.youtubeId || videoId === r.youtubeId
     if (!current) {
-      out.set(r.songId, { current: false, quality: null })
+      out.set(r.songId, { current: false, quality: null, appVersion: r.appVersion })
       continue
     }
     const hash = syncHashOf(r.content, r.capo)
@@ -989,7 +1188,7 @@ export function getAnalysisSummaries(songIds: number[]): Map<number, SongAnalysi
         .where(eq(schema.songAnalyses.songId, r.songId))
         .run()
     }
-    out.set(r.songId, { current: true, quality })
+    out.set(r.songId, { current: true, quality, appVersion: r.appVersion })
   }
   return out
 }

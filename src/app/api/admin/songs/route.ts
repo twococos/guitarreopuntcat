@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 
 const querySchema = z.object({
   kind: z.enum(["all", "public", "private", "arrangement"]).default("all"),
-  analysis: z.enum(["any", "none", "bad"]).default("any"),
+  analysis: z.enum(["any", "none", "bad", "outdated"]).default("any"),
   search: z.string().trim().max(100).optional(),
 })
 

@@ -2889,6 +2889,13 @@ body:has(.public-nav) {
 .queue-more {
   margin-top: 0.75rem;
 }
+.queue-auto-update {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
 
 /* ─── Admin: importar cançons (Spotify → YouTube → cua) ─── */
 .import-notice {
@@ -8880,6 +8887,12 @@ body:has(.account-page) > header {
 .admin-analysis.is-stale {
   color: var(--muted);
   font-style: italic;
+}
+.admin-analysis-outdated {
+  margin-left: 0.35rem;
+  font-size: 0.7rem;
+  color: #b7791f;
+  white-space: nowrap;
 }
 
 /* ── Admin: diàlegs (propietari, original) ───────────────── */
