@@ -395,12 +395,42 @@ function saveRaw(tx: Tx, songId: number, raw: Buffer | null, worker: Transcripti
     .run()
 }
 
+function transcriberContentOf(proposal: ProposalResult): string {
+  return cleanupContent(normalizeSectionTitles(proposal.content))
+}
+
+/**
+ * Feina `update`: si la cançó encara té el content que hi va escriure el transcriptor (ningú no
+ * l'ha editat) i el mateix capo, el substitueix pel de la versió nova.
+ */
+function refreshTranscriberContent(tx: Tx, songId: number, proposal: ProposalResult): void {
+  const cur = tx
+    .select({
+      content: schema.songs.content,
+      capo: schema.songs.capo,
+      original: schema.songAnalyses.transcriberContent,
+    })
+    .from(schema.songAnalyses)
+    .innerJoin(schema.songs, eq(schema.songs.id, schema.songAnalyses.songId))
+    .where(eq(schema.songAnalyses.songId, songId))
+    .get()
+  if (!cur?.original || cur.content !== cur.original || (cur.capo ?? 0) !== (proposal.capo ?? 0)) return
+  const content = transcriberContentOf(proposal)
+  if (content === cur.content) return
+  tx.update(schema.songs).set({ content, updatedAt: NOW }).where(eq(schema.songs.id, songId)).run()
+  tx.update(schema.songAnalyses)
+    .set({ transcriberContent: content })
+    .where(eq(schema.songAnalyses.songId, songId))
+    .run()
+}
+
 /**
  * Desa el resultat d'una feina. Mode `new`: crea la cançó pendent + proposta
  * de l'usuari "Transcriptor" + anàlisi. Mode `analyze`: només desa (o
  * sobreescriu) l'anàlisi i omple bpm/compàs si la cançó no en té. Mode
  * `update`: com `analyze`, però el bpm/compàs també s'actualitzen si encara
- * són els de l'anàlisi anterior (ningú no els ha editat). Les estadístiques
+ * són els de l'anàlisi anterior (ningú no els ha editat), i el content també
+ * si encara és el que va escriure el transcriptor. Les estadístiques
  * (si el worker les envia) es desen a la feina en tots els casos, i les dades
  * crues (`raw`) substitueixen les de la cançó: sense, s'esborren, perquè han
  * de ser les de l'anàlisi vigent.
@@ -446,6 +476,7 @@ export function completeJob(
         .onConflictDoUpdate({ target: schema.songAnalyses.songId, set: row })
         .run()
       saveRaw(tx, songId, raw, worker)
+      if (job.mode === "update") refreshTranscriberContent(tx, songId, proposal)
       if (metrics.bpm !== null) {
         tx.update(schema.songs)
           .set({ bpm: metrics.bpm })
@@ -486,7 +517,7 @@ export function completeJob(
 
     // Sense slugs: els rep en aprovar-se la proposta (slugsForPublishing)
     const transcriberUserId = getOrCreateTranscriberUser()
-    const content = cleanupContent(normalizeSectionTitles(proposal.content))
+    const content = transcriberContentOf(proposal)
 
     let newSongId!: number
     db.transaction((tx) => {
@@ -518,7 +549,9 @@ export function completeJob(
         .run()
       proposalId = Number(proposalResult.lastInsertRowid)
 
-      tx.insert(schema.songAnalyses).values(analysisRow(newSongId, job.id, analysis, worker)).run()
+      tx.insert(schema.songAnalyses)
+        .values({ ...analysisRow(newSongId, job.id, analysis, worker), transcriberContent: content })
+        .run()
       saveRaw(tx, newSongId, raw, worker)
       tx.update(schema.transcriptionJobs)
         .set({ ...finish, resultSongId: newSongId })

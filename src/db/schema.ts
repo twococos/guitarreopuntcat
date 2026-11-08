@@ -238,6 +238,10 @@ export const songAnalyses = sqliteTable("song_analyses", {
   // si no coincideix, cal recalcular-la (src/db/queries/transcriptions.ts).
   syncQuality: text("sync_quality", { mode: "json" }).$type<SyncQuality>(),
   syncHash: text("sync_hash"),
+  // El content tal com el va escriure el transcriptor (cançons noves). Mentre la
+  // cançó el tingui igual (ningú no l'ha editat), les feines `update` el substitueixen
+  // pel de la versió nova. Null: el content és de la BD o d'una persona.
+  transcriberContent: text("transcriber_content"),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
 })
 
