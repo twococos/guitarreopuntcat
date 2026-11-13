@@ -401,7 +401,9 @@ function transcriberContentOf(proposal: ProposalResult): string {
 
 /**
  * Feina `update`: si la cançó encara té el content que hi va escriure el transcriptor (ningú no
- * l'ha editat) i el mateix capo, el substitueix pel de la versió nova.
+ * l'ha editat) i el mateix capo, el substitueix pel de la versió nova. Amb `force_content` (marca
+ * de la migració 0010) el substitueix sempre, amb el capo de la proposta, i desa l'anterior a
+ * `replaced_content`.
  */
 function refreshTranscriberContent(tx: Tx, songId: number, proposal: ProposalResult): void {
   const cur = tx
@@ -409,13 +411,26 @@ function refreshTranscriberContent(tx: Tx, songId: number, proposal: ProposalRes
       content: schema.songs.content,
       capo: schema.songs.capo,
       original: schema.songAnalyses.transcriberContent,
+      force: schema.songAnalyses.forceContent,
     })
     .from(schema.songAnalyses)
     .innerJoin(schema.songs, eq(schema.songs.id, schema.songAnalyses.songId))
     .where(eq(schema.songAnalyses.songId, songId))
     .get()
-  if (!cur?.original || cur.content !== cur.original || (cur.capo ?? 0) !== (proposal.capo ?? 0)) return
+  if (!cur) return
   const content = transcriberContentOf(proposal)
+  if (cur.force) {
+    tx.update(schema.songs)
+      .set({ content, capo: proposal.capo ?? 0, updatedAt: NOW })
+      .where(eq(schema.songs.id, songId))
+      .run()
+    tx.update(schema.songAnalyses)
+      .set({ transcriberContent: content, forceContent: 0, replacedContent: cur.content })
+      .where(eq(schema.songAnalyses.songId, songId))
+      .run()
+    return
+  }
+  if (!cur.original || cur.content !== cur.original || (cur.capo ?? 0) !== (proposal.capo ?? 0)) return
   if (content === cur.content) return
   tx.update(schema.songs).set({ content, updatedAt: NOW }).where(eq(schema.songs.id, songId)).run()
   tx.update(schema.songAnalyses)

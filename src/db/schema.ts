@@ -242,6 +242,12 @@ export const songAnalyses = sqliteTable("song_analyses", {
   // cançó el tingui igual (ningú no l'ha editat), les feines `update` el substitueixen
   // pel de la versió nova. Null: el content és de la BD o d'una persona.
   transcriberContent: text("transcriber_content"),
+  // 1: la propera feina `update` substitueix el content (i el capo) encara que algú
+  // l'hagi editat, i el que hi havia es desa a `replacedContent`. Ho va marcar la
+  // migració 0010 per a totes les cançons que ja tenien anàlisi, perquè entrin a la
+  // regla de `transcriberContent` (abans no se'n guardava l'original).
+  forceContent: integer("force_content").notNull().default(0),
+  replacedContent: text("replaced_content"),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
 })
 
