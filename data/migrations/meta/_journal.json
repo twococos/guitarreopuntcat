@@ -78,6 +78,13 @@
       "when": 1794573035254,
       "tag": "0010_force_content",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1794592539968,
+      "tag": "0011_chord_sources",
+      "breakpoints": true
     }
   ]
 }

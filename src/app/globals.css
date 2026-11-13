@@ -8998,6 +8998,89 @@ body:has(.account-page) > header {
   gap: 0.5rem;
   margin-top: 0.9rem;
 }
+.admin-dialog.is-wide {
+  max-width: 760px;
+}
+
+/* ── Admin: fonts d'acords d'una cançó (ChordSourcesDialog) ── */
+.admin-analysis-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.admin-chord-sources-btn {
+  opacity: 0.55;
+}
+.admin-songs-table tbody tr:hover .admin-chord-sources-btn,
+.admin-chord-sources-btn:focus-visible {
+  opacity: 1;
+}
+.chord-sources-add {
+  display: flex;
+  gap: 0.5rem;
+}
+.chord-sources-add input {
+  flex: 1;
+  min-width: 0;
+}
+.chord-source {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.chord-source:last-child {
+  border-bottom: none;
+}
+.chord-source.is-blocked .chord-source-main {
+  opacity: 0.55;
+}
+.chord-source-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+.chord-source-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+.chord-source-url {
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chord-source-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.chord-source-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+.chord-sources-pending {
+  margin-right: auto;
+  align-self: center;
+  font-size: 0.75rem;
+  color: #b7791f;
+}
+@media (max-width: 560px) {
+  .chord-source {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
 .admin-avatar-fallback {
   display: inline-flex;
   align-items: center;

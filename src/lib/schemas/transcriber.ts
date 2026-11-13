@@ -32,6 +32,27 @@ export const failBodySchema = z.object({
 const ms = z.number().int().nonnegative()
 const conf = z.number().min(0).max(1)
 
+/**
+ * Una tab d'acords externa (FontAcords de src/transcriptor/schema.py). `site` "bd" és el content
+ * de la mateixa cançó (url buida). `fit`: fracció dels seus acords que l'àudio admet; `matched`:
+ * fracció de la seva lletra aparellada amb l'anàlisi; `weight` 0 = descartada; les del mateix
+ * `group` són còpies l'una de l'altra.
+ */
+export const chordSourceSchema = z.object({
+  site: z.string().max(40),
+  url: z.string().max(2000),
+  rating: z.number().nullable().default(null),
+  votes: z.number().int().nonnegative().nullable().default(null),
+  manual: z.boolean().default(false),
+  fit: z.number().min(0).max(1).nullable().default(null),
+  matched: z.number().min(0).max(1).nullable().default(null),
+  weight: z.number().nonnegative().default(0),
+  group: z.number().int().nullable().default(null),
+  used: z.boolean().default(false),
+})
+
+export type ChordSource = z.infer<typeof chordSourceSchema>
+
 export const analysisCompactSchema = z.object({
   v: z.literal(2),
   source: z.object({
@@ -94,6 +115,9 @@ export const analysisCompactSchema = z.object({
       arpeggiated: z.number().min(0).max(1).optional(),
     })
     .optional(),
+  // Tabs d'internet contrastades amb els acords (opcional: els workers < 0.1.14 no l'envien, i
+  // tampoc quan no se n'ha trobat cap). Es desen a song_chord_sources (src/db/queries/chordSources.ts).
+  chord_sources: z.array(chordSourceSchema).max(100).optional(),
 })
 
 export type AnalysisCompact = z.infer<typeof analysisCompactSchema>
@@ -181,6 +205,15 @@ export const enqueueBodySchema = z.union([
   // Encua el mode `update` per a aquestes cançons, o per a totes les desactualitzades (`"all"`)
   z.object({ updates: z.union([z.literal("all"), z.array(z.number().int().positive()).min(1).max(5000)]) }),
 ])
+
+// Fonts d'acords d'una cançó (/api/admin/songs/[id]/chord-sources). `reanalyze`: a més, encua
+// una feina `update` de la cançó perquè el canvi tingui efecte.
+export const chordSourceAddSchema = z.object({ url: z.string().max(2000), reanalyze: z.boolean().default(false) })
+export const chordSourcePatchSchema = z.object({
+  url: z.string().max(2000),
+  blocked: z.boolean(),
+  reanalyze: z.boolean().default(false),
+})
 
 export const jobActionSchema = z.object({ action: z.enum(["cancel", "retry", "top"]) })
 

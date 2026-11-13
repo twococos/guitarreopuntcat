@@ -6,6 +6,7 @@ import type { SyncQuality } from "@/lib/transcriber/sync"
 import { OwnerPickerDialog } from "./OwnerPickerDialog"
 import { OriginalSongPickerDialog } from "./OriginalSongPickerDialog"
 import { BadgeMenu } from "./BadgeMenu"
+import { ChordSourcesDialog } from "./ChordSourcesDialog"
 
 // GET /api/admin/songs (src/db/queries/admin.ts, listSongsForAdmin)
 interface SongRow {
@@ -41,6 +42,7 @@ export function SongsTab({ focusId = null }: { focusId?: number | null }) {
   const [focus, setFocus] = useState<number | null>(focusId)
   const [ownerFor, setOwnerFor] = useState<SongRow | null>(null)
   const [originalFor, setOriginalFor] = useState<SongRow | null>(null)
+  const [sourcesFor, setSourcesFor] = useState<SongRow | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestIdRef = useRef(0)
 
@@ -290,7 +292,17 @@ export function SongsTab({ focusId = null }: { focusId?: number | null }) {
                   )}
                 </td>
                 <td>
-                  <AnalysisCell analysis={s.analysis} />
+                  <span className="admin-analysis-cell">
+                    <AnalysisCell analysis={s.analysis} />
+                    <button
+                      type="button"
+                      className="btn-xs admin-chord-sources-btn"
+                      title={tt.fontsAcordsTitle}
+                      onClick={() => setSourcesFor(s)}
+                    >
+                      {tt.fontsAcords}
+                    </button>
+                  </span>
                 </td>
                 <td className="td-actions">
                   <a href={`/app/editor?id=${s.id}`} className="btn-xs">
@@ -326,6 +338,10 @@ export function SongsTab({ focusId = null }: { focusId?: number | null }) {
             void patch(s.id, { owner_id: userId }, tt.toastPropietariCanviat)
           }}
         />
+      )}
+
+      {sourcesFor && (
+        <ChordSourcesDialog songId={sourcesFor.id} songTitle={sourcesFor.title} onClose={() => setSourcesFor(null)} />
       )}
 
       {originalFor && (

@@ -15,6 +15,7 @@ import { findExistingSongByArtistTitle } from "./proposals"
 import { getAutoUpdate, getQueueOrder, type QueueOrder } from "./settings"
 import { SONG_STATE } from "@/lib/songKind"
 import { syncAnalysis, type SyncQuality } from "@/lib/transcriber/sync"
+import { chordSourcesForClaim, saveChordSources } from "./chordSources"
 
 /**
  * Cua de transcripcions (vegeu docs/api_worker.md del repo transcriptor).
@@ -91,6 +92,13 @@ export interface ClaimedJob {
   language: string | null
   lyrics_text: string | null
   song_content: string | null
+  // Fonts d'acords (src/db/queries/chordSources.ts): URL afegides a mà, que s'han de baixar
+  // sempre, i URL descartades, que no s'han de fer servir mai
+  chord_source_urls: string[]
+  chord_source_blocked: string[]
+  // El content de la cançó l'ha escrit o editat una persona (no és el `transcriber_content` de
+  // l'anàlisi): també vota com a font d'acords. false sense cançó.
+  song_content_human: boolean
   lease_seconds: number
   // Només en mode `update`: l'anàlisi que s'actualitza, amb quina versió es va fer i les seves
   // dades crues (base64; null si encara no en té i s'ha de refer sencera)
@@ -180,6 +188,20 @@ function insertUpdateJob(songId: number, userId: number | null): number | null {
     })
     .run()
   return Number(r.lastInsertRowid)
+}
+
+/** Si la cançó es pot tornar a analitzar (`update`: té anàlisi i vídeo) i si ja té una feina activa. */
+export function songUpdateState(songId: number): { can_update: boolean; active_job: boolean } {
+  const song = db
+    .select({ youtubeUrl: schema.songs.youtubeUrl })
+    .from(schema.songs)
+    .innerJoin(schema.songAnalyses, eq(schema.songAnalyses.songId, schema.songs.id))
+    .where(eq(schema.songs.id, songId))
+    .get()
+  return {
+    can_update: !!song?.youtubeUrl && !!youtubeVideoId(song.youtubeUrl),
+    active_job: hasActiveJobForSong(songId),
+  }
 }
 
 /**
@@ -275,13 +297,18 @@ export function claimJob(
       .run()
 
     let songContent: string | null = null
+    let contentHuman = false
+    let chordSources: { urls: string[]; blocked: string[] } = { urls: [], blocked: [] }
     if (job.songId) {
       const song = tx
-        .select({ content: schema.songs.content })
+        .select({ content: schema.songs.content, transcriberContent: schema.songAnalyses.transcriberContent })
         .from(schema.songs)
+        .leftJoin(schema.songAnalyses, eq(schema.songAnalyses.songId, schema.songs.id))
         .where(eq(schema.songs.id, job.songId))
         .get()
       songContent = song?.content ?? null
+      contentHuman = songContent !== null && songContent !== (song?.transcriberContent ?? null)
+      chordSources = chordSourcesForClaim(tx, job.songId)
     }
 
     const claimed: ClaimedJob = {
@@ -293,6 +320,9 @@ export function claimJob(
       language: job.language,
       lyrics_text: job.lyricsText,
       song_content: songContent,
+      chord_source_urls: chordSources.urls,
+      chord_source_blocked: chordSources.blocked,
+      song_content_human: contentHuman,
       lease_seconds: LEASE_SECONDS,
     }
     if (job.mode === "update" && job.songId) {
@@ -448,7 +478,8 @@ function refreshTranscriberContent(tx: Tx, songId: number, proposal: ProposalRes
  * si encara és el que va escriure el transcriptor. Les estadístiques
  * (si el worker les envia) es desen a la feina en tots els casos, i les dades
  * crues (`raw`) substitueixen les de la cançó: sense, s'esborren, perquè han
- * de ser les de l'anàlisi vigent.
+ * de ser les de l'anàlisi vigent. Les fonts d'acords de l'anàlisi (`chord_sources`)
+ * es desen a song_chord_sources (saveChordSources).
  */
 export function completeJob(
   worker: TranscriptionWorker,
@@ -491,6 +522,7 @@ export function completeJob(
         .onConflictDoUpdate({ target: schema.songAnalyses.songId, set: row })
         .run()
       saveRaw(tx, songId, raw, worker)
+      saveChordSources(tx, songId, analysis.chord_sources)
       if (job.mode === "update") refreshTranscriberContent(tx, songId, proposal)
       if (metrics.bpm !== null) {
         tx.update(schema.songs)
@@ -568,6 +600,7 @@ export function completeJob(
         .values({ ...analysisRow(newSongId, job.id, analysis, worker), transcriberContent: content })
         .run()
       saveRaw(tx, newSongId, raw, worker)
+      saveChordSources(tx, newSongId, analysis.chord_sources)
       tx.update(schema.transcriptionJobs)
         .set({ ...finish, resultSongId: newSongId })
         .where(eq(schema.transcriptionJobs.id, job.id))
@@ -638,7 +671,7 @@ export type EnqueueOutcome =
   | { index: number; status: "queued"; id: number }
   | { index: number; status: "duplicate" | "error"; error: string }
 
-function hasActiveJobForSong(songId: number): boolean {
+export function hasActiveJobForSong(songId: number): boolean {
   return !!db
     .select({ id: schema.transcriptionJobs.id })
     .from(schema.transcriptionJobs)

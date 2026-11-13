@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm"
-import { blob, index, integer, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core"
+import { blob, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core"
 import type { PdfOptions } from "@/lib/schemas/canconer"
 import type { ReportItem } from "@/lib/schemas/report"
 import type { AnalysisCompact, JobStats, WorkerDeviceInfo } from "@/lib/schemas/transcriber"
@@ -265,6 +265,36 @@ export const songAnalysisRaw = sqliteTable("song_analysis_raw", {
   createdAt: text("created_at").default(sql`(datetime('now'))`),
 })
 
+// Tabs d'acords d'internet de cada cançó (fonts/ del transcriptor). Les que troba el worker es
+// reescriuen amb cada anàlisi (src/db/queries/chordSources.ts); les que l'admin afegeix a mà
+// (`manual`) o descarta (`blocked`) es conserven encara que l'última anàlisi no les faci servir, i
+// viatgen a la feina en fer `claim` (chord_source_urls / chord_source_blocked).
+export const songChordSources = sqliteTable(
+  "song_chord_sources",
+  {
+    songId: integer("song_id")
+      .notNull()
+      .references(() => songs.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    site: text("site").notNull(), // ultimate_guitar, cifraclub, lacuerda, guitartuna, acordscatala
+    manual: integer("manual").notNull().default(0), // 1: afegida a mà per l'admin (es baixa sempre)
+    blocked: integer("blocked").notNull().default(0), // 1: descartada per l'admin (no es fa servir mai)
+    rating: real("rating"),
+    votes: integer("votes"),
+    fit: real("fit"), // fracció dels seus acords que l'àudio admet
+    matched: real("matched"), // fracció de la seva lletra aparellada amb l'anàlisi
+    weight: real("weight").notNull().default(0), // pes al consens (0 = descartada)
+    groupId: integer("group_id"), // les del mateix grup són còpies l'una de l'altra
+    used: integer("used").notNull().default(0),
+    createdAt: text("created_at").default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").default(sql`(datetime('now'))`),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.songId, t.url] }),
+    songIdx: index("song_chord_sources_song_idx").on(t.songId),
+  }),
+)
+
 // ─── Reports d'errors de les cançons (vegeu src/lib/reports/) ──
 // Un report és un enviament d'un visitant (amb sessió o sense); els ítems són
 // les correccions concretes, que l'admin aplica o rebutja d'una en una.
@@ -331,5 +361,6 @@ export type SongProposalInsert = typeof songProposals.$inferInsert
 export type TranscriptionWorker = typeof transcriptionWorkers.$inferSelect
 export type TranscriptionJob = typeof transcriptionJobs.$inferSelect
 export type SongAnalysis = typeof songAnalyses.$inferSelect
+export type SongChordSource = typeof songChordSources.$inferSelect
 export type SongReport = typeof songReports.$inferSelect
 export type SongReportItem = typeof songReportItems.$inferSelect

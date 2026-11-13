@@ -11,12 +11,15 @@ export function AdminDialog({
   onClose,
   children,
   footer,
+  wide = false,
 }: {
   title: string
   description?: string
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
+  /** Caixa més ampla (llistes amb més informació per fila). */
+  wide?: boolean
 }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -33,7 +36,7 @@ export function AdminDialog({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="admin-dialog" role="dialog" aria-modal="true" aria-label={title}>
+      <div className={wide ? "admin-dialog is-wide" : "admin-dialog"} role="dialog" aria-modal="true" aria-label={title}>
         <h2 className="admin-dialog-title">{title}</h2>
         {description && <p className="admin-dialog-desc">{description}</p>}
         <div className="admin-dialog-body">{children}</div>
