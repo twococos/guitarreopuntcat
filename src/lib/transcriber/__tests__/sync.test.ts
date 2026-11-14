@@ -212,6 +212,27 @@ test("Intro escrita un cop i tocada dues vegades: casa amb la primera", () => {
   assertEqual(r.occurrences[0].end, 8000, "la línia dura fins a la lletra")
 })
 
+test("Roda de compassos amb (x3): es repeteix", () => {
+  const roda: [number, number, string][] = [0, 1, 2].flatMap((k) => [
+    [k * 4000, k * 4000 + 2000, "G"],
+    [k * 4000 + 2000, k * 4000 + 4000, "C"],
+  ] as [number, number, string][])
+  const an = analysis(sung("Hola com estàs avui", 12000), [...roda, [12000, 16000, "D"]])
+  const r = syncAnalysis(
+    an,
+    "<sec>Intro</sec>\n<ch>G</ch>| ' ' ' <ch>C</ch>| ' ' '  (x3)\n<sec>Estrofa</sec>\n<ch>D</ch>Hola com estàs avui",
+  )
+  assertEqual(r.occurrences.map((o) => o.rep), [0, 1, 2, 0], "tres passades i la línia")
+  assertEqual(chordTimes(r).slice(0, 6).map(([l, t]) => [l, t]),
+    [["G", 0], ["C", 2000], ["G", 4000], ["C", 6000], ["G", 8000], ["C", 10000]], "acords de cada passada")
+})
+
+test("Acords al final d'una línia de lletra (cua de la secció)", () => {
+  const an = analysis(sung("Hola com estàs avui", 1000), [[0, 3000, "C"], [3000, 4000, "G"], [4000, 5000, "D"]], 6000)
+  const r = syncAnalysis(an, "<ch>C</ch>Hola com estàs avui <ch>G</ch>      <ch>D</ch>")
+  assertEqual(chordTimes(r), [["C", 1000, true], ["G", 3000, true], ["D", 4000, true]], "acords després de la lletra")
+})
+
 test("Cadena dins una línia amb lletra", () => {
   const r = syncAnalysis(BASE, "<ch>Am→F</ch>Hola com estàs avui\n<ch>G</ch>molt bé gràcies")
   assertEqual(chordTimes(r).slice(0, 2), [["Am", 2000, true], ["F", 3000, true]], "Am i després F")

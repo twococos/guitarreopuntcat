@@ -198,9 +198,10 @@ function readContent(content: string): { lines: Line[]; occs: Occ[] } {
       }
     }
     // Una línia d'acords amb una marca ("<ch>F#m</ch>x2 <ch>Bm</ch>") no es repeteix: la marca
-    // sol voler dir que l'acord dura més, i els acords s'alineen igualment amb l'anàlisi
+    // sol voler dir que l'acord dura més, i els acords s'alineen igualment amb l'anàlisi. Una línia
+    // de compassos ("<ch>G</ch>| ' ' ' <ch>C</ch>| ' ' '  (x3)", les rodes del transcriptor) sí.
     const words = tokenize(body)
-    if (words.length === 0) times = 1
+    if (words.length === 0 && !body.includes("|")) times = 1
     if (words.length === 0 && chords.length === 0) return
     lines.push({ block: bi, section, words, chords })
     for (let k = 0; k < times; k++) push(lines.length - 1)
@@ -375,6 +376,7 @@ interface Pending {
   occ: number
   chord: LineChord
   anchor: number // temps d'ancoratge de la primera etiqueta
+  tail?: boolean // després de la lletra (la cua de la secció): pot sonar fins a la línia següent
 }
 
 export function syncAnalysis(analysis: AnalysisCompact, content: string, capo = 0): SyncResult {
@@ -502,6 +504,10 @@ export function syncAnalysis(analysis: AnalysisCompact, content: string, capo = 
       } else {
         const after = line.words.findIndex((w) => w.from >= chord.pos)
         anchor = after >= 0 ? wts[after].start : wts[wts.length - 1].end
+        if (after < 0) {
+          pending.push({ occ: oi, chord, anchor, tail: true })
+          continue
+        }
       }
       pending.push({ occ: oi, chord, anchor })
     }
@@ -543,7 +549,20 @@ export function syncAnalysis(analysis: AnalysisCompact, content: string, capo = 
       const cls = chordClass(label)
       let t: number | null = null
       let match = false
-      if (sub === 0) {
+      const tail =
+        p.tail && sub === 0
+          ? an.changes.find(
+              (c) =>
+                c.start >= lo &&
+                c.start < Math.min(nextAnchor, lo + CHAIN_DEFAULT_BARS * an.beatsPerBar * an.ibi) &&
+                sameClass(cls, c.cls, shift),
+            )
+          : undefined
+      if (tail) {
+        // Acord després de la lletra: el primer canvi concordant abans de la línia següent
+        t = tail.start
+        match = true
+      } else if (sub === 0) {
         // Canvi concordant més proper dins la finestra
         let bestCost = Infinity
         for (const c of an.changes) {
