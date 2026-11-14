@@ -426,7 +426,7 @@ export const admin = {
     manualTitol: "Enllaços de YouTube",
     analitzarTitol: "Cançons ja publicades",
     encuarHint:
-      "Una cançó per línia: enllaç de YouTube, títol, artista (títol i artista opcionals). Es crearan propostes a nom de l'usuari «Transcriptor».",
+      "Una cançó per línia: enllaç de YouTube, títol, artista (títol i artista opcionals). Les cançons es publicaran directament.",
     encuarPlaceholder: "https://www.youtube.com/watch?v=…, Bon dia, Els Pets",
     encuar: "Encuar",
     analitzarFalten: "Analitzar les cançons publicades sense anàlisi",

@@ -1,5 +1,6 @@
 "use client"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useToastStore } from "@/hooks/useToasts"
 import { getT } from "@/lib/i18n"
 import { contentHash } from "@/lib/reports/dedupe"
@@ -47,7 +48,10 @@ export type ReportStep =
   | { name: "form"; kind: FormKind; category: ReportCategory }
   | { name: "review" }
   | { name: "sending" }
-  | { name: "thanks" }
+  | { name: "thanks"; admin?: AdminApplied }
+
+/** Resultat d'un report enviat per un admin: s'aplica directament a la cançó. */
+export type AdminApplied = { applied: number; pending: number }
 
 export type ReportContext =
   | { source: "song" }
@@ -67,6 +71,7 @@ export function useSongReport({
   semitones: number
   context: ReportContext
 }) {
+  const router = useRouter()
   const [step, setStep] = useState<ReportStep>({ name: "closed" })
   const [items, setItems] = useState<ReportItem[]>([])
   const [comment, setComment] = useState("")
@@ -145,19 +150,22 @@ export function useSongReport({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       })
-      if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null
-        throw new Error(data?.error ?? getT().public.report.errorEnviant)
-      }
-      setStep({ name: "thanks" })
-      window.setTimeout(reset, THANKS_MS)
+      const data = (await res.json().catch(() => null)) as { error?: string; admin?: AdminApplied } | null
+      if (!res.ok) throw new Error(data?.error ?? getT().public.report.errorEnviant)
+      const admin = data?.admin
+      setStep({ name: "thanks", admin })
+      window.setTimeout(() => {
+        reset()
+        // La cançó ja s'ha corregit: es torna a carregar per veure-la
+        if (admin?.applied) router.refresh()
+      }, THANKS_MS)
     } catch (err) {
       setStep({ name: "review" })
       useToastStore
         .getState()
         .show(err instanceof Error ? err.message : getT().public.report.errorEnviant, { type: "error" })
     }
-  }, [items, comment, content, semitones, context, honeypot, songId, reset])
+  }, [items, comment, content, semitones, context, honeypot, songId, reset, router])
 
   return useMemo(
     () => ({

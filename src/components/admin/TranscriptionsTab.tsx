@@ -265,6 +265,12 @@ export function TranscriptionsTab() {
   }
 
   /** Títol (enllaç al vídeo), artista, Spotify i error. */
+  /** Cançó que obre «Obre»: la de la feina, o la creada si s'ha publicat sense proposta. */
+  function openSongId(j: JobRow): number | null {
+    if (j.mode !== "new") return j.song_id
+    return j.status === "done" && j.result_proposal_id === null ? j.result_song_id : null
+  }
+
   function songCell(j: JobRow) {
     return (
       <td>
@@ -489,8 +495,8 @@ export function TranscriptionsTab() {
                           {tt.revisar}
                         </button>
                       )}
-                      {j.mode !== "new" && j.song_id !== null && (
-                        <button className="btn-xs" onClick={() => router.push(`/app/editor?id=${j.song_id}`)}>
+                      {openSongId(j) !== null && (
+                        <button className="btn-xs" onClick={() => router.push(`/app/editor?id=${openSongId(j)}`)}>
                           {tt.obrir}
                         </button>
                       )}

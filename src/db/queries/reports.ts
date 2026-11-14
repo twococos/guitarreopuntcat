@@ -66,6 +66,16 @@ export function createReport(
   })
 }
 
+/** Ids dels ítems d'un report (per aplicar de seguida els d'un admin). */
+export function getReportItemIds(reportId: number): number[] {
+  return db
+    .select({ id: schema.songReportItems.id })
+    .from(schema.songReportItems)
+    .where(eq(schema.songReportItems.reportId, reportId))
+    .all()
+    .map((row) => row.id)
+}
+
 // ─── Admin ───────────────────────────────────────────────────
 
 /** Reports amb alguna correcció pendent (comptador de la pestanya Errors). */

@@ -9,9 +9,9 @@ import type { proposalResultSchema } from "@/lib/schemas/transcriber"
 import { cleanupContent } from "@/lib/importers/cleanupContent"
 import { normalizeSectionTitles } from "@/lib/importers/normalizeSections"
 import { youtubeVideoId } from "@/lib/youtube"
-import { getOrCreateTranscriberUser } from "@/lib/transcriber/transcriberUser"
 import { compareVersions, generateWorkerToken, hashWorkerToken } from "@/lib/transcriber/auth.server"
 import { findExistingSongByArtistTitle } from "./proposals"
+import { generateSlugsForNewSong } from "./songs"
 import { getAutoUpdate, getQueueOrder, type QueueOrder } from "./settings"
 import { SONG_STATE } from "@/lib/songKind"
 import { syncAnalysis, type SyncQuality } from "@/lib/transcriber/sync"
@@ -384,7 +384,8 @@ export function heartbeatJob(workerId: number, jobId: number): boolean {
 export type CompleteResult =
   | { status: "lost" }
   | { status: "duplicate"; songId: number }
-  | { status: "ok"; songId: number; proposalId: number | null }
+  // proposalId es manté (sempre null) per compatibilitat amb el protocol del worker
+  | { status: "ok"; songId: number; proposalId: null }
 
 function songMetrics(analysis: AnalysisCompact): { bpm: number | null; timeSignature: string | null } {
   if (!analysis.tempo || analysis.tempo.bpm <= 0) return { bpm: null, timeSignature: null }
@@ -470,8 +471,8 @@ function refreshTranscriberContent(tx: Tx, songId: number, proposal: ProposalRes
 }
 
 /**
- * Desa el resultat d'una feina. Mode `new`: crea la cançó pendent + proposta
- * de l'usuari "Transcriptor" + anàlisi. Mode `analyze`: només desa (o
+ * Desa el resultat d'una feina. Mode `new`: crea la cançó directament pública
+ * (amb slugs, sense propietari ni proposta) + anàlisi. Mode `analyze`: només desa (o
  * sobreescriu) l'anàlisi i omple bpm/compàs si la cançó no en té. Mode
  * `update`: com `analyze`, però el bpm/compàs també s'actualitzen si encara
  * són els de l'anàlisi anterior (ningú no els ha editat), i el content també
@@ -504,7 +505,6 @@ export function completeJob(
   }
 
   let songId: number
-  let proposalId: number | null = null
 
   if (job.mode === "analyze" || job.mode === "update") {
     if (!job.songId) throw new Error(`Feina ${job.id} en mode ${job.mode} sense cançó`)
@@ -562,8 +562,8 @@ export function completeJob(
       return { status: "duplicate", songId: dup.id }
     }
 
-    // Sense slugs: els rep en aprovar-se la proposta (slugsForPublishing)
-    const transcriberUserId = getOrCreateTranscriberUser()
+    // Les transcripcions es publiquen directament, sense passar per propostes
+    const slugs = generateSlugsForNewSong(artist, title)
     const content = transcriberContentOf(proposal)
 
     let newSongId!: number
@@ -584,17 +584,12 @@ export function completeJob(
           year: job.year,
           bpm: metrics.bpm,
           timeSignature: metrics.timeSignature,
-          state: SONG_STATE.PENDING,
-          ownerId: transcriberUserId,
+          state: SONG_STATE.PUBLIC,
+          ownerId: null,
+          ...slugs,
         })
         .run()
       newSongId = Number(songResult.lastInsertRowid)
-
-      const proposalResult = tx
-        .insert(schema.songProposals)
-        .values({ userId: transcriberUserId, songId: newSongId })
-        .run()
-      proposalId = Number(proposalResult.lastInsertRowid)
 
       tx.insert(schema.songAnalyses)
         .values({ ...analysisRow(newSongId, job.id, analysis, worker), transcriberContent: content })
@@ -624,7 +619,7 @@ export function completeJob(
     .where(eq(schema.transcriptionWorkers.id, worker.id))
     .run()
 
-  return { status: "ok", songId, proposalId }
+  return { status: "ok", songId, proposalId: null }
 }
 
 /**

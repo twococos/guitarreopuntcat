@@ -69,7 +69,7 @@ export function ReportPanel({
   if (step.name === "kinds") title = t.categories[step.category]
   if (step.name === "form") title = t.kinds[step.kind].label
   if (step.name === "review" || step.name === "sending") title = t.review.titol(report.items.length)
-  if (step.name === "thanks") title = t.thanks.titol
+  if (step.name === "thanks") title = step.admin ? t.thanks.admin.titol : t.thanks.titol
 
   return createPortal(
     <>
@@ -181,7 +181,7 @@ export function ReportPanel({
         {step.name === "thanks" && (
           <div className="rp-thanks">
             <IconCheckCircle className="rp-thanks-icon" />
-            <p>{t.thanks.text}</p>
+            <p>{step.admin ? t.thanks.admin.text(step.admin.applied, step.admin.pending) : t.thanks.text}</p>
           </div>
         )}
       </div>

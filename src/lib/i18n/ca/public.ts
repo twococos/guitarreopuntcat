@@ -299,6 +299,14 @@ export const public_ = {
     thanks: {
       titol: "Moltes gràcies!",
       text: "Ho revisarem aviat. Entre tots fem el cançoner millor.",
+      admin: {
+        titol: "Cançó corregida",
+        text: (applied: number, pending: number) =>
+          (applied ? "S'han aplicat les correccions a la cançó." : "No s'ha pogut aplicar cap correcció.") +
+          (pending
+            ? ` ${pending === 1 ? "N'ha quedat 1 pendent" : `N'han quedat ${pending} pendents`} a la pestanya «Errors» de l'admin.`
+            : ""),
+      },
     },
     errorEnviant: "No s'ha pogut enviar. Torna-ho a provar.",
     describe: {

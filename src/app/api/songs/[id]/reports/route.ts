@@ -2,9 +2,10 @@ import crypto from "node:crypto"
 import { NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
 import { db, schema } from "@/db/client"
-import { countRecentReports, createReport } from "@/db/queries/reports"
+import { countRecentReports, createReport, getReportItemIds } from "@/db/queries/reports"
 import { getSongAccessRow } from "@/lib/access/songs"
 import { hashIp } from "@/lib/analytics/ip"
+import { applyPendingReportItems } from "@/lib/reports/applyToSong.server"
 import { reportInputSchema } from "@/lib/schemas/report"
 import { getSessionUser } from "@/lib/session"
 import { SONG_STATE } from "@/lib/songKind"
@@ -30,7 +31,9 @@ function sessionId(request: Request): string {
 
 /**
  * POST /api/songs/[id]/reports — un visitant (amb sessió o sense) reporta
- * errors d'una cançó pública. No toca la cançó: només desa el report.
+ * errors d'una cançó pública. Només desa el report, llevat que l'enviï un
+ * admin: llavors les correccions s'apliquen de seguida a la cançó (les que no
+ * es poden aplicar soles queden pendents a la pestanya «Errors»).
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -51,16 +54,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
     const input = parsed.data
 
+    const user = await getSessionUser()
+    const isAdmin = user?.role === "admin"
+
     // Camp trampa ple: és un bot. Responem com si res perquè no ho intenti d'una altra manera.
     if (input.website) return NextResponse.json({ ok: true })
-    if (input.elapsed_ms < MIN_ELAPSED_MS) {
+    if (!isAdmin && input.elapsed_ms < MIN_ELAPSED_MS) {
       return NextResponse.json({ error: "Massa ràpid. Torna-ho a provar." }, { status: 400 })
     }
 
     const sid = sessionId(request)
     const sessionHash = sid ? crypto.createHash("sha256").update(sid).digest("hex").slice(0, 32) : ""
     const ipHash = hashIp(clientIp(request))
-    if (countRecentReports(sessionHash || "-", ipHash, 60) >= MAX_PER_HOUR) {
+    if (!isAdmin && countRecentReports(sessionHash || "-", ipHash, 60) >= MAX_PER_HOUR) {
       return NextResponse.json(
         { error: "Has enviat molts reports seguits. Torna-ho a provar d'aquí a una estona." },
         { status: 429 },
@@ -82,7 +88,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             )
             .get()
 
-    const user = await getSessionUser()
     const reportId = createReport(songId, input, {
       userId: user?.id ?? null,
       sessionHash,
@@ -90,6 +95,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       source: canconer ? ctx.source : "song",
       canconerId: canconer?.id ?? null,
     })
+
+    if (user && isAdmin) {
+      const outcome = await applyPendingReportItems(songId, getReportItemIds(reportId), user.id)
+      const applied = outcome.status === "ok" ? outcome.applied.length : 0
+      const pending = Math.max(0, input.items.length - applied)
+      return NextResponse.json({ ok: true, id: reportId, admin: { applied, pending } }, { status: 201 })
+    }
 
     return NextResponse.json({ ok: true, id: reportId }, { status: 201 })
   } catch (err) {
