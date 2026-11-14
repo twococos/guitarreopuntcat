@@ -8,7 +8,9 @@ export const CHORD_SOURCE_DOMAINS: Record<string, string> = {
   "ultimate-guitar.com": "ultimate_guitar",
   "cifraclub.com": "cifraclub",
   "cifraclub.com.br": "cifraclub",
+  "e-chords.com": "echords",
   "lacuerda.net": "lacuerda",
+  "acordesweb.com": "acordesweb",
   "guitartuna.com": "guitartuna",
   "acordscatala.cat": "acordscatala",
 }

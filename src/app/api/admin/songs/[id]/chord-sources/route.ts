@@ -73,7 +73,7 @@ export async function POST(request: Request, { params }: Ctx) {
     const source = parseChordSourceUrl(parsed.data.url)
     if (!source) {
       return NextResponse.json(
-        { error: "Ha de ser una URL d'Ultimate Guitar, Cifra Club, LaCuerda, GuitarTuna o acordscatala" },
+        { error: "Ha de ser una URL d'Ultimate Guitar, Cifra Club, E-Chords, LaCuerda, AcordesWeb, GuitarTuna o acordscatala" },
         { status: 400 },
       )
     }

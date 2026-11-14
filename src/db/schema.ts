@@ -276,7 +276,7 @@ export const songChordSources = sqliteTable(
       .notNull()
       .references(() => songs.id, { onDelete: "cascade" }),
     url: text("url").notNull(),
-    site: text("site").notNull(), // ultimate_guitar, cifraclub, lacuerda, guitartuna, acordscatala
+    site: text("site").notNull(), // ultimate_guitar, cifraclub, echords, lacuerda, acordesweb, guitartuna, acordscatala
     manual: integer("manual").notNull().default(0), // 1: afegida a mà per l'admin (es baixa sempre)
     blocked: integer("blocked").notNull().default(0), // 1: descartada per l'admin (no es fa servir mai)
     rating: real("rating"),
