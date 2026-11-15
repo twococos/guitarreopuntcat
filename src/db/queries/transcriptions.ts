@@ -345,6 +345,91 @@ export function claimJob(
   })
 }
 
+// ─── Depurador del transcriptor (tx depura) ─────────────────
+
+export interface AnalyzedSongRow {
+  id: number
+  title: string
+  artist: string
+  youtube_url: string | null
+  app_version: string | null
+  has_raw: boolean
+  analyzed_at: string | null
+}
+
+/** Cançons amb anàlisi, de la més recent a la més antiga (filtre opcional per títol o artista). */
+export function listAnalyzedSongs(q: string, limit: number): AnalyzedSongRow[] {
+  const filtre = q.trim()
+    ? or(sql`${schema.songs.title} LIKE ${`%${q.trim()}%`}`, sql`${schema.songs.artist} LIKE ${`%${q.trim()}%`}`)
+    : undefined
+  return db
+    .select({
+      id: schema.songs.id,
+      title: schema.songs.title,
+      artist: schema.songs.artist,
+      youtube_url: schema.songs.youtubeUrl,
+      app_version: schema.songAnalyses.appVersion,
+      has_raw: sql<number>`${schema.songAnalysisRaw.songId} IS NOT NULL`,
+      analyzed_at: schema.songAnalyses.createdAt,
+    })
+    .from(schema.songs)
+    .innerJoin(schema.songAnalyses, eq(schema.songAnalyses.songId, schema.songs.id))
+    .leftJoin(schema.songAnalysisRaw, eq(schema.songAnalysisRaw.songId, schema.songs.id))
+    .where(filtre)
+    .orderBy(desc(schema.songAnalyses.createdAt), desc(schema.songs.id))
+    .limit(limit)
+    .all()
+    .map((r) => ({ ...r, has_raw: !!r.has_raw }))
+}
+
+/**
+ * El que rebria un worker en una feina `update` d'aquesta cançó (sense crear cap feina), més el
+ * content que va escriure el transcriptor: el depurador refà el postprocés en local amb les mateixes
+ * dades i el compara. null si la cançó no té anàlisi.
+ */
+export function songForDebug(songId: number) {
+  const row = db
+    .select({
+      song: schema.songs,
+      analysis: schema.songAnalyses.analysis,
+      appVersion: schema.songAnalyses.appVersion,
+      transcriberContent: schema.songAnalyses.transcriberContent,
+      analyzedAt: schema.songAnalyses.createdAt,
+    })
+    .from(schema.songs)
+    .innerJoin(schema.songAnalyses, eq(schema.songAnalyses.songId, schema.songs.id))
+    .where(eq(schema.songs.id, songId))
+    .get()
+  if (!row) return null
+  const raw = db
+    .select({ data: schema.songAnalysisRaw.data, appVersion: schema.songAnalysisRaw.appVersion })
+    .from(schema.songAnalysisRaw)
+    .where(eq(schema.songAnalysisRaw.songId, songId))
+    .get()
+  const chordSources = chordSourcesForClaim(db, songId)
+  const s = row.song
+  return {
+    song_id: s.id,
+    source_url: s.youtubeUrl,
+    title: s.title,
+    artist: s.artist,
+    language: s.language,
+    key: s.key,
+    capo: s.capo ?? 0,
+    state: s.state,
+    song_content: s.content,
+    song_content_human: s.content !== (row.transcriberContent ?? null),
+    transcriber_content: row.transcriberContent,
+    chord_source_urls: chordSources.urls,
+    chord_source_blocked: chordSources.blocked,
+    analysis: row.analysis,
+    analysis_app_version: row.appVersion,
+    analyzed_at: row.analyzedAt,
+    raw: raw ? Buffer.from(raw.data).toString("base64") : null,
+    raw_app_version: raw?.appVersion ?? null,
+  }
+}
+
 /** La feina, si és en curs i d'aquest worker. Si no, el worker l'ha de deixar córrer. */
 function ownedRunningJob(workerId: number, jobId: number): TranscriptionJob | null {
   return (
